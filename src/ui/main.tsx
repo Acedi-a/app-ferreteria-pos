@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Layout from './components/Layout';
 import PuntoVenta from './pages/PuntoVenta';
 import './main.css';
+import Productos from './pages/Productos';
 
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -14,7 +15,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/punto-venta" element={<PuntoVenta />} />
-          {/* Añade más rutas aquí */}
+          <Route path="/productos" element={<Productos />} />
         </Routes>
       </Layout>
     </HashRouter>
