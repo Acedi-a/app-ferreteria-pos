@@ -24,7 +24,7 @@ const navigation = [
   { name: "Proveedores", href: "/proveedores", icon: Warehouse },
   { name: "Ventas", href: "/ventas", icon: ShoppingCart },
   { name: "Inventario", href: "/inventario", icon: Package },
-  { name: "Cuentas por Cobrar", href: "/cuentas-cobrar", icon: CreditCard },
+  { name: "Cuentas por Cobrar", href: "/cuentas-por-cobrar", icon: CreditCard },
   { name: "Reportes", href: "/reportes", icon: BarChart3 },
   { name: "Configuración", href: "/configuracion", icon: Settings },
 ];

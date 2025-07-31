@@ -6,6 +6,13 @@ import Layout from './components/Layout';
 import PuntoVenta from './pages/PuntoVenta';
 import './main.css';
 import Productos from './pages/Productos';
+import Clientes from './pages/Clientes';
+import Proveedores from './pages/Proveedores';
+import Ventas from './pages/Ventas';
+import Inventario from './pages/Inventario';
+import Reportes from './pages/Reportes';
+import CuentasPorCobrar from './pages/CuentasPorCobrar';
+import Configuracion from './pages/Configuracion';
 
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -16,6 +23,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<Dashboard />} />
           <Route path="/punto-venta" element={<PuntoVenta />} />
           <Route path="/productos" element={<Productos />} />
+          <Route path="/clientes" element={<Clientes />} />
+          <Route path="/proveedores" element={<Proveedores />} />
+          <Route path="/ventas" element={<Ventas />} />
+          <Route path="/inventario" element={<Inventario />} />
+          <Route path="/reportes" element={<Reportes />} />
+          <Route path="/cuentas-por-cobrar" element={<CuentasPorCobrar />} />
+          <Route path="/configuracion" element={<Configuracion />} />
         </Routes>
       </Layout>
     </HashRouter>
