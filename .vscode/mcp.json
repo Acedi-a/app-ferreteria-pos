@@ -13,8 +13,9 @@
         "args": [
             "mcp-server-sqlite",
             "--db-path",
-            "${input:db_path}"
-        ],
+            "${workspaceFolder}/db.sqlite"
+            ]
+
         }
     }
 }

@@ -5,5 +5,11 @@
         "module": "nodenext",
         "outDir": "../../dist-electron",
         "skipLibCheck": true
-    }
+    },
+    "include": [
+        "main.ts",
+        "utils.ts",
+        "database.ts",
+        "preload.ts"
+    ]
 }
