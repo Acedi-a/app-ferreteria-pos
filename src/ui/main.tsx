@@ -13,6 +13,7 @@ import Inventario from './pages/Inventario';
 import Reportes from './pages/Reportes';
 import CuentasPorCobrar from './pages/CuentasPorCobrar';
 import Configuracion from './pages/Configuracion';
+import CategoriaTipo from './pages/CategoriaTipo';
 
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -30,6 +31,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/reportes" element={<Reportes />} />
           <Route path="/cuentas-por-cobrar" element={<CuentasPorCobrar />} />
           <Route path="/configuracion" element={<Configuracion />} />
+          <Route path='/categoria-unidad' element={<CategoriaTipo />} />
         </Routes>
       </Layout>
     </HashRouter>

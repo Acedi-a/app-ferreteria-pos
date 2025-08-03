@@ -27,6 +27,7 @@ const navigation = [
   { name: "Cuentas por Cobrar", href: "/cuentas-por-cobrar", icon: CreditCard },
   { name: "Reportes", href: "/reportes", icon: BarChart3 },
   { name: "Configuración", href: "/configuracion", icon: Settings },
+  { name: "Categorías y Unidades", href: "/categoria-unidad", icon: Package },
 ];
 
 interface LayoutProps {

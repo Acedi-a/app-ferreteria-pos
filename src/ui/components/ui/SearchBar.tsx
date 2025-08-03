@@ -1,6 +1,6 @@
     import { Search } from "lucide-react";
-    import { Card, CardContent } from "../Card";
-    import { Button } from "../Button";
+    import { Card, CardContent } from "./Card";
+    import { Button } from "./Button";
 
     interface SearchBarProps {
     searchTerm: string;

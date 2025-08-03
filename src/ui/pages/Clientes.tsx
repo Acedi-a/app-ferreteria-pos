@@ -6,7 +6,7 @@ import { ClientesService, type Cliente } from "../services/clientes-service";
 import { ClientModal } from "../components/ui/Cliente/ClientModal";
 import { ClientStats } from "../components/ui/Cliente/ClientStats";
 import { ClientTable } from "../components/ui/Cliente/ClientTable";
-import { SearchBar } from "../components/ui/Cliente/SearchBar";
+import { SearchBar } from "../components/ui/SearchBar";
 
 export default function Clientes() {
   const [searchTerm, setSearchTerm] = useState("");

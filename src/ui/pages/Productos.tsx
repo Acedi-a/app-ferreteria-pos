@@ -1,344 +1,273 @@
-import { useState } from "react";
-import { Search, Plus, Edit, Trash2, Package, ImageIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus } from "lucide-react";
 
-import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../components/ui/Table";
-import { Badge } from "../components/ui/Badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/Dialog";
-import { Select } from "../components/ui/Select";
-
-interface Producto {
-  id: number;
-  codigoBarras: string;
-  codigoInterno: string;
-  nombre: string;
-  descripcion: string;
-  costo: number;
-  precioVenta: number;
-  stockActual: number;
-  stockMinimo: number;
-  ventaFraccionada: boolean;
-  unidadMedida: string;
-  categoria: string;
-  activo: boolean;
-  fotos: string[];
-}
-
-/* --- Datos --- */
-const initialProducts: Producto[] = [
-  {
-    id: 1,
-    codigoBarras: "1234567890123",
-    codigoInterno: "P001",
-    nombre: "Producto Ejemplo A",
-    descripcion: "Descripción del producto A",
-    costo: 15,
-    precioVenta: 25.5,
-    stockActual: 100,
-    stockMinimo: 10,
-    ventaFraccionada: false,
-    unidadMedida: "unidad",
-    categoria: "Categoría 1",
-    activo: true,
-    fotos: [],
-  },
-  {
-    id: 2,
-    codigoBarras: "1234567890124",
-    codigoInterno: "P002",
-    nombre: "Tela Premium",
-    descripcion: "Tela de alta calidad",
-    costo: 8.5,
-    precioVenta: 15.75,
-    stockActual: 50,
-    stockMinimo: 5,
-    ventaFraccionada: true,
-    unidadMedida: "metro",
-    categoria: "Textiles",
-    activo: true,
-    fotos: [],
-  },
-];
-
-const categorias = ["Categoría 1", "Textiles", "Electrónicos", "Hogar", "Deportes"];
-const unidadesMedida = ["unidad", "metro", "kilogramo", "litro", "pieza", "caja"];
-
-/* --- helpers --- */
-const toast = (msg: string) => alert(msg);
-const calcMargen = (costo: number, precio: number) =>
-  costo === 0 ? "0" : (((precio - costo) / costo) * 100).toFixed(1);
+import { SearchBar } from "../components/ui/SearchBar";
+import ProductStats from "../components/productos/ProductStats";
+import ProductTable from "../components/productos/ProductTable";
+import ProductModal from "../components/productos/ProductModal";
+import { productosService } from "../services/productos-service";
+import type { Producto, ProductoStats, Categoria, TipoUnidad } from "../services/productos-service";
 
 export default function Productos() {
-  const [productos, setProductos] = useState<Producto[]>(initialProducts);
-  const [busqueda, setBusqueda] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Producto | null>(null);
-  const [form, setForm] = useState<Partial<Producto>>({});
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [tiposUnidad, setTiposUnidad] = useState<TipoUnidad[]>([]);
+  const [stats, setStats] = useState<ProductoStats>({
+    totalProductos: 0,
+    stockBajo: 0,
+    valorInventario: 0,
+    productosActivos: 0
+  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Producto | null>(null);
+  const [formData, setFormData] = useState<Partial<Producto>>({});
 
-  const filtered = productos.filter(
-    (p) =>
-      p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.codigoInterno.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.codigoBarras.includes(busqueda) ||
-      p.categoria.toLowerCase().includes(busqueda.toLowerCase())
-  );
-
-  const openDialog = (p?: Producto) => {
-    setEditing(p ?? null);
-    setForm(
-      p
-        ? p
-        : {
-            codigoBarras: "",
-            codigoInterno: "",
-            nombre: "",
-            descripcion: "",
-            costo: 0,
-            precioVenta: 0,
-            stockActual: 0,
-            stockMinimo: 0,
-            ventaFraccionada: false,
-            unidadMedida: "unidad",
-            categoria: "",
-            activo: true,
-            fotos: [],
-          }
-    );
-    setDialogOpen(true);
+  const toast = (msg: string) => {
+    alert(msg); // Reemplazar con toast real más adelante
   };
 
-  const saveProduct = () => {
-    if (!form.nombre || !form.codigoInterno) {
+  useEffect(() => {
+    cargarDatosIniciales();
+  }, []);
+
+  const cargarDatosIniciales = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        cargarProductos(),
+        cargarCategorias(),
+        cargarTiposUnidad(),
+        cargarEstadisticas()
+      ]);
+    } catch (error) {
+      console.error("Error cargando datos:", error);
+      toast("Error al cargar los datos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cargarProductos = async () => {
+    try {
+      const data = await productosService.obtenerProductos();
+      setProductos(data);
+    } catch (error) {
+      console.error("Error cargando productos:", error);
+      toast("Error al cargar productos");
+    }
+  };
+
+  const cargarCategorias = async () => {
+    try {
+      const data = await productosService.obtenerCategorias();
+      setCategorias(data);
+    } catch (error) {
+      console.error("Error cargando categorías:", error);
+    }
+  };
+
+  const cargarTiposUnidad = async () => {
+    try {
+      const data = await productosService.obtenerTiposUnidad();
+      setTiposUnidad(data);
+    } catch (error) {
+      console.error("Error cargando tipos de unidad:", error);
+    }
+  };
+
+  const cargarEstadisticas = async () => {
+    try {
+      const data = await productosService.obtenerEstadisticas();
+      setStats(data);
+    } catch (error) {
+      console.error("Error cargando estadísticas:", error);
+    }
+  };
+
+  const buscarProductos = async (termino: string) => {
+    if (!termino.trim()) {
+      cargarProductos();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await productosService.buscarProductos(termino);
+      setProductos(data);
+    } catch (error) {
+      console.error("Error buscando productos:", error);
+      toast("Error en la búsqueda");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      buscarProductos(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  const handleNewProduct = () => {
+    setEditingProduct(null);
+    setFormData({
+      codigo_barras: "",
+      codigo_interno: "",
+      nombre: "",
+      descripcion: "",
+      costo: 0,
+      precio_venta: 0,
+      stock_actual: 0,
+      stock_minimo: 0,
+      venta_fraccionada: false,
+      categoria_id: undefined,
+      tipo_unidad_id: undefined,
+      activo: true,
+      fotos: ""
+    });
+    setShowModal(true);
+  };
+
+  const handleEdit = (producto: Producto) => {
+    setEditingProduct(producto);
+    setFormData({
+      codigo_barras: producto.codigo_barras || "",
+      codigo_interno: producto.codigo_interno,
+      nombre: producto.nombre,
+      descripcion: producto.descripcion || "",
+      costo: producto.costo,
+      precio_venta: producto.precio_venta,
+      stock_actual: producto.stock_actual,
+      stock_minimo: producto.stock_minimo,
+      venta_fraccionada: producto.venta_fraccionada,
+      categoria_id: producto.categoria_id,
+      tipo_unidad_id: producto.tipo_unidad_id,
+      activo: producto.activo,
+      fotos: producto.fotos || ""
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.nombre || !formData.codigo_interno) {
       toast("Nombre y código interno son obligatorios");
       return;
     }
-    const prod = { ...form, id: editing?.id ?? Math.max(...productos.map((p) => p.id), 0) + 1 } as Producto;
-    setProductos(editing ? productos.map((p) => (p.id === prod.id ? prod : p)) : [...productos, prod]);
-    toast(editing ? "Producto actualizado" : "Producto creado");
-    setDialogOpen(false);
+
+    try {
+      // Validar códigos únicos
+      const codigoInternoValido = await productosService.validarCodigoInterno(
+        formData.codigo_interno!, 
+        editingProduct?.id
+      );
+      
+      if (!codigoInternoValido) {
+        toast("El código interno ya existe");
+        return;
+      }
+
+      if (formData.codigo_barras) {
+        const codigoBarrasValido = await productosService.validarCodigoBarras(
+          formData.codigo_barras, 
+          editingProduct?.id
+        );
+        
+        if (!codigoBarrasValido) {
+          toast("El código de barras ya existe");
+          return;
+        }
+      }
+
+      if (editingProduct) {
+        // Actualizar producto existente
+        await productosService.actualizarProducto(editingProduct.id!, formData);
+        toast("Producto actualizado exitosamente");
+      } else {
+        // Crear nuevo producto
+        await productosService.crearProducto(formData as Omit<Producto, 'id' | 'fecha_creacion' | 'fecha_modificacion'>);
+        toast("Producto creado exitosamente");
+      }
+
+      setShowModal(false);
+      await cargarProductos();
+      await cargarEstadisticas();
+    } catch (error) {
+      console.error("Error guardando producto:", error);
+      toast("Error al guardar el producto");
+    }
   };
 
-  const deleteProduct = (id: number) => {
-    setProductos(productos.filter((p) => p.id !== id));
-    toast("Producto eliminado");
+  const handleDelete = async (id: number) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar este producto?")) {
+      return;
+    }
+
+    try {
+      await productosService.eliminarProducto(id);
+      toast("Producto eliminado exitosamente");
+      await cargarProductos();
+      await cargarEstadisticas();
+    } catch (error) {
+      console.error("Error eliminando producto:", error);
+      toast("Error al eliminar el producto");
+    }
   };
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Productos</h1>
           <p className="text-sm text-slate-500">Gestiona tu catálogo de productos</p>
         </div>
-        <Button onClick={() => openDialog()}>
+        <Button onClick={handleNewProduct}>
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Producto
         </Button>
       </div>
 
-      {/* Búsqueda */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-            <input
-              placeholder="Buscar productos..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 pl-8 text-sm focus:outline-none focus:ring-2"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Stats Cards */}
+      <ProductStats stats={stats} />
 
-      {/* Tabla */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            Lista de Productos ({filtered.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Producto</TableHead>
-                <TableHead>Categoría</TableHead>
-                <TableHead>Costo</TableHead>
-                <TableHead>Precio</TableHead>
-                <TableHead>Margen</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>
-                    <p className="font-medium">{p.codigoInterno}</p>
-                    <p className="text-xs text-slate-500">{p.codigoBarras}</p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-medium">{p.nombre}</p>
-                    <p className="text-xs text-slate-500">{p.descripcion}</p>
-                    {p.ventaFraccionada && <Badge className="mt-1">{p.unidadMedida}</Badge>}
-                  </TableCell>
-                  <TableCell>{p.categoria}</TableCell>
-                  <TableCell>${p.costo.toFixed(2)}</TableCell>
-                  <TableCell>${p.precioVenta.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Badge>{calcMargen(p.costo, p.precioVenta)}%</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <p className={p.stockActual <= p.stockMinimo ? "text-red-600 font-medium" : ""}>
-                      {p.stockActual}
-                    </p>
-                    <p className="text-xs text-slate-500">Min: {p.stockMinimo}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Badge >
-                      {p.activo ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" onClick={() => openDialog(p)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost"  onClick={() => deleteProduct(p.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Search */}
+      <SearchBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onClear={() => {
+          setSearchTerm("");
+          cargarProductos();
+        }}
+        placeholder="Buscar productos..."
+      />
 
-      {/* Diálogo */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
-            <DialogDescription>
-              {editing ? "Modifica los datos del producto" : "Ingresa los datos del nuevo producto"}
-            </DialogDescription>
-          </DialogHeader>
+      {/* Products Table */}
+      <ProductTable
+        products={productos}
+        loading={loading}
+        searchTerm={searchTerm}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
 
-          <div className="grid gap-4">
-            <input
-              placeholder="Código Interno *"
-              value={form.codigoInterno || ""}
-              onChange={(e) => setForm({ ...form, codigoInterno: e.target.value })}
-              className="rounded border px-3 py-2"
-            />
-            <input
-              placeholder="Código de Barras"
-              value={form.codigoBarras || ""}
-              onChange={(e) => setForm({ ...form, codigoBarras: e.target.value })}
-              className="rounded border px-3 py-2"
-            />
-            <input
-              placeholder="Nombre *"
-              value={form.nombre || ""}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              className="rounded border px-3 py-2"
-            />
-            <textarea
-              placeholder="Descripción"
-              value={form.descripcion || ""}
-              onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-              rows={3}
-              className="rounded border px-3 py-2"
-            />
-            <Select
-              value={form.categoria}
-              onChange={(e) => setForm({ ...form, categoria: e.target.value })}
-            >
-              <option value="">Seleccionar categoría</option>
-              {categorias.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Select>
-            <Select
-              value={form.unidadMedida}
-              onChange={(e) => setForm({ ...form, unidadMedida: e.target.value })}
-            >
-              {unidadesMedida.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </Select>
-            <input
-              type="number"
-              placeholder="Costo"
-              value={form.costo || ""}
-              onChange={(e) => setForm({ ...form, costo: Number(e.target.value) })}
-              className="rounded border px-3 py-2"
-            />
-            <input
-              type="number"
-              placeholder="Precio de Venta"
-              value={form.precioVenta || ""}
-              onChange={(e) => setForm({ ...form, precioVenta: Number(e.target.value) })}
-              className="rounded border px-3 py-2"
-            />
-            <input
-              type="number"
-              placeholder="Stock Actual"
-              value={form.stockActual || ""}
-              onChange={(e) => setForm({ ...form, stockActual: Number(e.target.value) })}
-              className="rounded border px-3 py-2"
-            />
-            <input
-              type="number"
-              placeholder="Stock Mínimo"
-              value={form.stockMinimo || ""}
-              onChange={(e) => setForm({ ...form, stockMinimo: Number(e.target.value) })}
-              className="rounded border px-3 py-2"
-            />
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="ventaFraccionada"
-                checked={form.ventaFraccionada}
-                onChange={(e) => setForm({ ...form, ventaFraccionada: e.target.checked })}
-              />
-              <label htmlFor="ventaFraccionada">Permitir venta fraccionada</label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="activo"
-                checked={form.activo}
-                onChange={(e) => setForm({ ...form, activo: e.target.checked })}
-              />
-              <label htmlFor="activo">Producto activo</label>
-            </div>
-            {/* fotos placeholder */}
-            <div className="rounded border-2 border-dashed p-4 text-center">
-              <ImageIcon className="mx-auto h-10 w-10 text-slate-400" />
-              <p className="mt-2 text-sm">Subir fotos (placeholder)</p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={saveProduct}>
-              {editing ? "Actualizar" : "Crear"} Producto
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Product Modal */}
+      <ProductModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSubmit={handleSubmit}
+        editingProduct={editingProduct}
+        formData={formData}
+        setFormData={setFormData}
+        categorias={categorias}
+        tiposUnidad={tiposUnidad}
+      />
     </div>
   );
 }
