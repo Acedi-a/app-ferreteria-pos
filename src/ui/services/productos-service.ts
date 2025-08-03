@@ -143,16 +143,16 @@ class ProductosService {
     const campos = [];
     const valores = [];
 
-    // Construir SET clause dinámicamente
+    // Construir dinámicamente la consulta UPDATE solo con los campos proporcionados
     if (producto.codigo_barras !== undefined) {
       campos.push('codigo_barras = ?');
       valores.push(producto.codigo_barras || null);
     }
-    if (producto.codigo_interno) {
+    if (producto.codigo_interno !== undefined) {
       campos.push('codigo_interno = ?');
       valores.push(producto.codigo_interno);
     }
-    if (producto.nombre) {
+    if (producto.nombre !== undefined) {
       campos.push('nombre = ?');
       valores.push(producto.nombre);
     }
@@ -192,22 +192,23 @@ class ProductosService {
       campos.push('activo = ?');
       valores.push(producto.activo ? 1 : 0);
     }
-    if (producto.fotos !== undefined) {
-      campos.push('fotos = ?');
-      valores.push(producto.fotos || null);
+    //if (producto.fotos !== undefined) {
+      //campos.push('fotos = ?');
+      //valores.push(producto.fotos || null);
+    //}
+
+    if (campos.length === 0) {
+      return false; // No hay campos para actualizar
     }
 
-    // Siempre actualizar fecha de modificación
-    campos.push('fecha_modificacion = CURRENT_TIMESTAMP');
-    valores.push(id);
+    valores.push(id); // Agregar el ID al final para la cláusula WHERE
 
-    const query = `
+    const result = await window.electronAPI.db.run(`
       UPDATE productos 
       SET ${campos.join(', ')}
       WHERE id = ?
-    `;
-
-    const result = await window.electronAPI.db.run(query, valores);
+    `, valores);
+    
     return result.changes > 0;
   }
 

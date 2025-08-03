@@ -14,6 +14,7 @@ import Reportes from './pages/Reportes';
 import CuentasPorCobrar from './pages/CuentasPorCobrar';
 import Configuracion from './pages/Configuracion';
 import CategoriaTipo from './pages/CategoriaTipo';
+import { Toaster } from "./components/ui/toaster";
 
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -35,5 +36,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </Routes>
       </Layout>
     </HashRouter>
+    <Toaster />
   </React.StrictMode>
 );

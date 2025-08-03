@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Folder, Ruler } from "lucide-react";
-
+import { useToast } from "../components/ui/use-toast";
 import { Button } from "../components/ui/Button";
 import CategoriaStats from "../components/categoria-tipo/CategoriaStats";
 import TipoUnidadStats from "../components/categoria-tipo/TipoUnidadStats";
@@ -42,9 +42,9 @@ export default function CategoriaTipo() {
   const [editingTipo, setEditingTipo] = useState<TipoUnidadForm | null>(null);
   const [tipoFormData, setTipoFormData] = useState<Partial<TipoUnidadForm>>({});
 
-  const toast = (msg: string) => {
-    alert(msg); // Reemplazar con toast real más adelante
-  };
+
+
+const { toast } = useToast();
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -60,7 +60,7 @@ export default function CategoriaTipo() {
       ]);
     } catch (error) {
       console.error("Error cargando datos:", error);
-      toast("Error al cargar los datos");
+      toast({ title: "Error", description: "Error al cargar los datos" });
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,7 @@ export default function CategoriaTipo() {
       setCategorias(data);
     } catch (error) {
       console.error("Error cargando categorías:", error);
-      toast("Error al cargar categorías");
+      toast({ title: "Error", description: "Error al cargar categorías" });
     }
   };
 
@@ -82,7 +82,7 @@ export default function CategoriaTipo() {
       setTiposUnidad(data);
     } catch (error) {
       console.error("Error cargando tipos de unidad:", error);
-      toast("Error al cargar tipos de unidad");
+      toast({ title: "Error", description: "Error al cargar tipos de unidad" });
     }
   };
 
@@ -124,7 +124,7 @@ export default function CategoriaTipo() {
     e.preventDefault();
     
     if (!categoriaFormData.nombre) {
-      toast("El nombre de la categoría es obligatorio");
+      toast({ title: "Error", description: "El nombre de la categoría es obligatorio", variant: "destructive" });
       return;
     }
 
@@ -136,18 +136,18 @@ export default function CategoriaTipo() {
       );
       
       if (!nombreValido) {
-        toast("Ya existe una categoría con ese nombre");
+        toast({ title: "Error", description: "Ya existe una categoría con ese nombre", variant: "destructive" });
         return;
       }
 
       if (editingCategoria) {
         // Actualizar categoría existente
         await categoriaTipoService.actualizarCategoria(editingCategoria.id!, categoriaFormData);
-        toast("Categoría actualizada exitosamente");
+        toast({ title: "Éxito", description: "Categoría actualizada exitosamente", variant: "success" });
       } else {
         // Crear nueva categoría
         await categoriaTipoService.crearCategoria(categoriaFormData as Omit<CategoriaForm, 'id'>);
-        toast("Categoría creada exitosamente");
+        toast({ title: "Éxito", description: "Categoría creada exitosamente", variant: "success" });
       }
 
       setShowCategoriaModal(false);
@@ -155,7 +155,7 @@ export default function CategoriaTipo() {
       await cargarEstadisticas();
     } catch (error) {
       console.error("Error guardando categoría:", error);
-      toast("Error al guardar la categoría");
+      toast({ title: "Error", description: "Error al guardar la categoría", variant: "destructive" });
     }
   };
 
@@ -166,12 +166,12 @@ export default function CategoriaTipo() {
 
     try {
       await categoriaTipoService.eliminarCategoria(id);
-      toast("Categoría eliminada exitosamente");
+      toast({ title: "Éxito", description: "Categoría eliminada exitosamente", variant: "success" });
       await cargarCategorias();
       await cargarEstadisticas();
     } catch (error: any) {
       console.error("Error eliminando categoría:", error);
-      toast(error.message || "Error al eliminar la categoría");
+      toast({ title: "Error", description: error.message || "Error al eliminar la categoría", variant: "destructive" });
     }
   };
 
@@ -202,7 +202,7 @@ export default function CategoriaTipo() {
     e.preventDefault();
     
     if (!tipoFormData.nombre || !tipoFormData.abreviacion) {
-      toast("El nombre y la abreviación son obligatorios");
+      toast({ title: "Error", description: "El nombre y la abreviación son obligatorios", variant: "destructive" });
       return;
     }
 
@@ -214,7 +214,7 @@ export default function CategoriaTipo() {
       );
       
       if (!nombreValido) {
-        toast("Ya existe un tipo de unidad con ese nombre");
+        toast({ title: "Error", description: "Ya existe un tipo de unidad con ese nombre", variant: "destructive" });
         return;
       }
 
@@ -225,18 +225,18 @@ export default function CategoriaTipo() {
       );
       
       if (!abreviacionValida) {
-        toast("Ya existe un tipo de unidad con esa abreviación");
+        toast({ title: "Error", description: "Ya existe un tipo de unidad con esa abreviación", variant: "destructive" });
         return;
       }
 
       if (editingTipo) {
         // Actualizar tipo existente
         await categoriaTipoService.actualizarTipoUnidad(editingTipo.id!, tipoFormData);
-        toast("Tipo de unidad actualizado exitosamente");
+        toast({ title: "Éxito", description: "Tipo de unidad actualizado exitosamente", variant: "success" });
       } else {
         // Crear nuevo tipo
         await categoriaTipoService.crearTipoUnidad(tipoFormData as Omit<TipoUnidadForm, 'id'>);
-        toast("Tipo de unidad creado exitosamente");
+        toast({ title: "Éxito", description: "Tipo de unidad creado exitosamente", variant: "success" });
       }
 
       setShowTipoModal(false);
@@ -244,7 +244,7 @@ export default function CategoriaTipo() {
       await cargarEstadisticas();
     } catch (error) {
       console.error("Error guardando tipo de unidad:", error);
-      toast("Error al guardar el tipo de unidad");
+      toast({ title: "Error", description: "Error al guardar el tipo de unidad", variant: "destructive" });
     }
   };
 
@@ -255,67 +255,100 @@ export default function CategoriaTipo() {
 
     try {
       await categoriaTipoService.eliminarTipoUnidad(id);
-      toast("Tipo de unidad eliminado exitosamente");
+      toast({ title: "Éxito", description: "Tipo de unidad eliminado exitosamente", variant: "success" });
       await cargarTiposUnidad();
       await cargarEstadisticas();
     } catch (error: any) {
       console.error("Error eliminando tipo de unidad:", error);
-      toast(error.message || "Error al eliminar el tipo de unidad");
+      toast({ title: "Error", description: error.message || "Error al eliminar el tipo de unidad", variant: "destructive" });
     }
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Categorías y Tipos de Unidad</h1>
-          <p className="text-sm text-slate-500">Gestiona las categorías y unidades de medida de tus productos</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header estilo macOS */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex justify-between items-center py-8">
+            <div>
+              <h1 className="text-4xl font-light text-gray-900 tracking-tight">Categorías y Tipos de Unidad</h1>
+              <p className="mt-2 text-base text-gray-600 font-light">Gestiona las categorías y unidades de medida de tus productos</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Sección de Categorías */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Folder className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Categorías</h2>
+      {/* Contenido principal */}
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+        <div className="space-y-16">
+          {/* Sección de Categorías */}
+          <div className="space-y-12">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-blue-50">
+                  <Folder className="h-6 w-6 text-blue-500" />
+                </div>
+                <h2 className="text-2xl font-light text-gray-900 tracking-tight">Categorías</h2>
+              </div>
+              <Button 
+                onClick={handleNewCategoria}
+                className="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nueva Categoría
+              </Button>
+            </div>
+
+            <CategoriaStats stats={categoriaStats} />
+            
+            <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
+              <div className="px-8 py-6 border-b border-gray-200/50 bg-white/50">
+                <h3 className="text-xl font-light text-gray-900 tracking-tight">Lista de Categorías</h3>
+                <p className="mt-2 text-sm text-gray-600 font-light">Administra y visualiza todas las categorías</p>
+              </div>
+              <CategoriaTable
+                categorias={categorias}
+                loading={loading}
+                onEdit={handleEditCategoria}
+                onDelete={handleDeleteCategoria}
+              />
+            </div>
           </div>
-          <Button onClick={handleNewCategoria}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva Categoría
-          </Button>
-        </div>
 
-        <CategoriaStats stats={categoriaStats} />
-        <CategoriaTable
-          categorias={categorias}
-          loading={loading}
-          onEdit={handleEditCategoria}
-          onDelete={handleDeleteCategoria}
-        />
-      </div>
+          {/* Sección de Tipos de Unidad */}
+          <div className="space-y-12">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-green-50">
+                  <Ruler className="h-6 w-6 text-green-500" />
+                </div>
+                <h2 className="text-2xl font-light text-gray-900 tracking-tight">Tipos de Unidad</h2>
+              </div>
+              <Button 
+                onClick={handleNewTipo}
+                className="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Tipo
+              </Button>
+            </div>
 
-      {/* Sección de Tipos de Unidad */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Ruler className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Tipos de Unidad</h2>
+            <TipoUnidadStats stats={tipoStats} />
+            
+            <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
+              <div className="px-8 py-6 border-b border-gray-200/50 bg-white/50">
+                <h3 className="text-xl font-light text-gray-900 tracking-tight">Lista de Tipos de Unidad</h3>
+                <p className="mt-2 text-sm text-gray-600 font-light">Administra y visualiza todos los tipos de unidad</p>
+              </div>
+              <TipoUnidadTable
+                tiposUnidad={tiposUnidad}
+                loading={loading}
+                onEdit={handleEditTipo}
+                onDelete={handleDeleteTipo}
+              />
+            </div>
           </div>
-          <Button onClick={handleNewTipo}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo Tipo
-          </Button>
         </div>
-
-        <TipoUnidadStats stats={tipoStats} />
-        <TipoUnidadTable
-          tiposUnidad={tiposUnidad}
-          loading={loading}
-          onEdit={handleEditTipo}
-          onDelete={handleDeleteTipo}
-        />
       </div>
 
       {/* Modales */}

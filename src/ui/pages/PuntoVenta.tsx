@@ -77,14 +77,17 @@ const clientes = [
   { id: 3, nombre: "Carlos López", codigo: "C003" },
 ];
 
+import { useToast } from "../components/ui/use-toast";
+
 /* ---------- helpers para toasts (simplificado) ---------- */
-const toast = ({ title, description }: { title: string; description: string; variant?: string }) => {
-  alert(`${title}: ${description}`);
-};
+// const toast = ({ title, description }: { title: string; description: string; variant?: string }) => {
+//   alert(`${title}: ${description}`);
+// };
 
 /* ---------- componente principal ---------- */
-export default function PuntoVenta() {
-  const [productos, setProductos] = useState<ProductoVenta[]>([]);
+  export default function PuntoVenta() {
+    const { toast } = useToast();
+    const [productos, setProductos] = useState<ProductoVenta[]>([]);
   const [busquedaProducto, setBusquedaProducto] = useState("");
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
   const [metodoPago, setMetodoPago] = useState("efectivo");

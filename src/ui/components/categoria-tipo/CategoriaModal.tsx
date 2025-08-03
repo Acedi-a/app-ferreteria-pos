@@ -22,7 +22,7 @@ export default function CategoriaModal({
 }: CategoriaModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl bg-white/95 backdrop-blur-xl border border-gray-200/50 rounded-3xl shadow-2xl">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -35,21 +35,21 @@ export default function CategoriaModal({
             </div>
             <button 
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600"
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100/50 rounded-xl p-2 transition-all duration-200"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" />
             </button>
           </div>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Nombre de la Categoría *
             </label>
             <input
               type="text"
-              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
               value={formData.nombre || ""}
               onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
               placeholder="Ej: Herramientas, Textiles, etc."
@@ -58,11 +58,11 @@ export default function CategoriaModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Descripción
             </label>
             <textarea
-              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200 resize-none"
               value={formData.descripcion || ""}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               placeholder="Descripción opcional de la categoría"
@@ -70,15 +70,15 @@ export default function CategoriaModal({
             />
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3 p-4 bg-gray-50/50 rounded-xl border border-gray-200/50">
             <input
               type="checkbox"
               id="activo"
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
+              className="h-4 w-4 text-gray-600 focus:ring-gray-300/50 border-gray-300 rounded transition-all duration-200"
               checked={formData.activo !== false}
               onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
             />
-            <label htmlFor="activo" className="text-sm text-slate-700">
+            <label htmlFor="activo" className="text-sm font-medium text-gray-700">
               Categoría activa
             </label>
           </div>

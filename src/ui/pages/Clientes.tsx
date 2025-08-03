@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "../components/ui/Button";
@@ -7,8 +7,10 @@ import { ClientModal } from "../components/ui/Cliente/ClientModal";
 import { ClientStats } from "../components/ui/Cliente/ClientStats";
 import { ClientTable } from "../components/ui/Cliente/ClientTable";
 import { SearchBar } from "../components/ui/SearchBar";
+import { useToast } from "../components/ui/use-toast";
 
 export default function Clientes() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Cliente | null>(null);
@@ -69,7 +71,11 @@ export default function Clientes() {
       setClientes(clientesData);
     } catch (error) {
       console.error('Error al cargar clientes:', error);
-      alert('Error al cargar los clientes');
+      toast({
+        title: "Error",
+        description: "Error al cargar los clientes",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -122,10 +128,18 @@ export default function Clientes() {
       try {
         await ClientesService.eliminar(id);
         await cargarDatos(); // Recargar datos
-        alert('Cliente eliminado correctamente');
+        toast({
+          title: "Éxito",
+          description: "Cliente eliminado correctamente",
+          variant: "success"
+        });
       } catch (error) {
         console.error('Error al eliminar cliente:', error);
-        alert('Error al eliminar el cliente');
+        toast({
+          title: "Error",
+          description: "Error al eliminar el cliente",
+          variant: "destructive"
+        });
       }
     }
   };
@@ -149,7 +163,11 @@ export default function Clientes() {
       setShowModal(true);
     } catch (error) {
       console.error('Error al generar código:', error);
-      alert('Error al generar código de cliente');
+      toast({
+        title: "Error",
+        description: "Error al generar código de cliente",
+        variant: "destructive"
+      });
     }
   };
 
@@ -158,7 +176,11 @@ export default function Clientes() {
     
     // Validaciones básicas
     if (!formData.codigo.trim() || !formData.nombre.trim()) {
-      alert('El código y nombre son obligatorios');
+      toast({
+        title: "Error de validación",
+        description: "El código y nombre son obligatorios",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -170,7 +192,11 @@ export default function Clientes() {
       );
       
       if (codigoExiste) {
-        alert('El código ya existe, por favor use otro');
+        toast({
+          title: "Error de validación",
+          description: "El código ya existe, por favor use otro",
+          variant: "destructive"
+        });
         return;
       }
 
@@ -188,7 +214,11 @@ export default function Clientes() {
           tipo_documento: formData.tipo_documento,
           activo: formData.activo
         });
-        alert('Cliente actualizado correctamente');
+        toast({
+          title: "Éxito",
+          description: "Cliente actualizado correctamente",
+          variant: "success"
+        });
       } else {
         // Crear nuevo cliente
         await ClientesService.crear({
@@ -205,58 +235,119 @@ export default function Clientes() {
           saldo_pendiente: 0,
           total_compras: 0
         });
-        alert('Cliente creado correctamente');
+        toast({
+          title: "Éxito",
+          description: "Cliente creado correctamente",
+          variant: "success"
+        });
       }
       
+      // Resetear formulario y cerrar modal
       setShowModal(false);
+      setEditingClient(null);
+      setFormData({
+        codigo: '',
+        nombre: '',
+        apellido: '',
+        telefono: '',
+        email: '',
+        direccion: '',
+        ciudad: '',
+        documento: '',
+        tipo_documento: 'cedula',
+        activo: true
+      });
       await cargarDatos(); // Recargar datos
     } catch (error) {
       console.error('Error al guardar cliente:', error);
-      alert('Error al guardar el cliente');
+      toast({
+        title: "Error",
+        description: "Error al guardar el cliente",
+        variant: "destructive"
+      });
     }
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestión de Clientes</h1>
-          <p className="text-sm text-slate-500">Administra la información de tus clientes</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header estilo macOS */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex justify-between items-center py-8">
+            <div>
+              <h1 className="text-4xl font-light text-gray-900 tracking-tight">Clientes</h1>
+              <p className="mt-2 text-base text-gray-600 font-light">Gestiona tu cartera de clientes</p>
+            </div>
+            <Button 
+              onClick={handleNewClient}
+              className="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Cliente
+            </Button>
+          </div>
         </div>
-        <Button onClick={handleNewClient}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Cliente
-        </Button>
       </div>
 
-      {/* Stats Cards */}
-      <ClientStats stats={stats} />
+      {/* Contenido principal */}
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+        <div className="space-y-12">
+          {/* Estadísticas */}
+          <ClientStats stats={stats} />
 
-      {/* Search */}
-      <SearchBar
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        onClear={() => {
-          setSearchTerm("");
-          cargarClientes();
-        }}
-        placeholder="Buscar por nombre, apellido, código o documento..."
-      />
+          {/* Barra de búsqueda */}
+          <div className="flex justify-center">
+            <div className="w-full max-w-2xl">
+              <SearchBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                onClear={() => {
+                  setSearchTerm("");
+                  cargarClientes();
+                }}
+                placeholder="Buscar clientes..."
+              />
+            </div>
+          </div>
 
-      {/* Clients Table */}
-      <ClientTable
-        clients={filteredClients}
-        loading={loading}
-        searchTerm={searchTerm}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+          {/* Tabla de clientes */}
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
+            <div className="px-8 py-6 border-b border-gray-200/50 bg-white/50">
+              <h2 className="text-xl font-light text-gray-900 tracking-tight">Lista de Clientes</h2>
+              <p className="mt-2 text-sm text-gray-600 font-light">Administra y visualiza todos tus clientes</p>
+            </div>
+            
+            {/* Table Content */}
+            <ClientTable
+              clients={filteredClients}
+              loading={loading}
+              searchTerm={searchTerm}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          </div>
+        </div>
+      </div>
 
       {/* Client Modal */}
       <ClientModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={() => {
+          setShowModal(false);
+          setEditingClient(null);
+          setFormData({
+            codigo: '',
+            nombre: '',
+            apellido: '',
+            telefono: '',
+            email: '',
+            direccion: '',
+            ciudad: '',
+            documento: '',
+            tipo_documento: 'cedula',
+            activo: true
+          });
+        }}
         onSubmit={handleSubmit}
         editingClient={editingClient}
         formData={formData}

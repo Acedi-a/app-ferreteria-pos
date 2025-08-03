@@ -204,7 +204,11 @@ export default function Configuracion() {
   const renderEmpresaTab = () => (
     <div className="space-y-6">
       {message && (
-        <div className={`p-4 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+        <div className={`p-4 rounded-xl backdrop-blur-sm border transition-all duration-200 ${
+          message.type === 'success' 
+            ? 'bg-green-50/80 text-green-800 border-green-200/50' 
+            : 'bg-red-50/80 text-red-800 border-red-200/50'
+        }`}>
           <div className="flex items-center">
             {message.type === 'success' && <CheckCircle className="h-5 w-5 mr-2" />}
             {message.text}
@@ -212,96 +216,100 @@ export default function Configuracion() {
         </div>
       )}
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Información de la Empresa</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200/50">
+          <h3 className="text-lg font-medium text-gray-900">Información de la Empresa</h3>
+        </div>
+        <div className="p-6">
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); guardarEmpresa(); }}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nombre de la Empresa *
                 </label>
                 <input
                   type="text"
                   value={empresaConfig.nombre_empresa}
                   onChange={(e) => setEmpresaConfig({...empresaConfig, nombre_empresa: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">NIT/RUT</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">NIT/RUT</label>
                 <input
                   type="text"
                   value={empresaConfig.nit_empresa}
                   onChange={(e) => setEmpresaConfig({...empresaConfig, nit_empresa: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Dirección</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
               <input
                 type="text"
                 value={empresaConfig.direccion_empresa}
                 onChange={(e) => setEmpresaConfig({...empresaConfig, direccion_empresa: e.target.value})}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Teléfono</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
                 <input
                   type="tel"
                   value={empresaConfig.telefono_empresa}
                   onChange={(e) => setEmpresaConfig({...empresaConfig, telefono_empresa: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <input
                   type="email"
                   value={empresaConfig.email_empresa}
                   onChange={(e) => setEmpresaConfig({...empresaConfig, email_empresa: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Ciudad</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ciudad</label>
                 <input
                   type="text"
                   value={empresaConfig.ciudad_empresa}
                   onChange={(e) => setEmpresaConfig({...empresaConfig, ciudad_empresa: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Descripción del Negocio
               </label>
               <textarea
                 rows={3}
                 value={empresaConfig.descripcion_empresa}
                 onChange={(e) => setEmpresaConfig({...empresaConfig, descripcion_empresa: e.target.value})}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
               />
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={saving}>
-                <Save className="mr-2 h-4 w-4" />
-                {saving ? 'Guardando...' : 'Guardar Cambios'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
     </div>
   );
 
@@ -607,25 +615,29 @@ export default function Configuracion() {
         </div>
       )}
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Configuración del Sistema</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200/50">
+          <h3 className="text-lg font-medium text-gray-900">Configuración del Sistema</h3>
+        </div>
+        <div className="p-6">
           <div className="space-y-6">
             <div>
-              <h4 className="text-md font-medium text-slate-900 mb-3">Respaldo de Datos</h4>
+              <h4 className="text-md font-medium text-gray-900 mb-3">Respaldo de Datos</h4>
               <div className="flex space-x-3">
-                <Button variant="outline" onClick={crearRespaldo} disabled={saving}>
+                <button
+                  onClick={crearRespaldo}
+                  disabled={saving}
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-xl text-gray-700 bg-white/80 border border-gray-200/50 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-gray-300/50 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <Download className="mr-2 h-4 w-4" />
                   {saving ? 'Creando...' : 'Crear Respaldo'}
-                </Button>
-                <Button variant="outline">
+                </button>
+                <button className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-xl text-gray-700 bg-white/80 border border-gray-200/50 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-gray-300/50 transition-all duration-200 shadow-sm hover:shadow-md">
                   <Upload className="mr-2 h-4 w-4" />
                   Restaurar Respaldo
-                </Button>
+                </button>
               </div>
-              <p className="text-sm text-slate-500 mt-2">
+              <p className="text-sm text-gray-500 mt-2">
                 {sistemaConfig.ultimo_backup 
                   ? `Último respaldo: ${new Date(sistemaConfig.ultimo_backup).toLocaleString()}`
                   : 'No se ha creado ningún respaldo'
@@ -634,27 +646,27 @@ export default function Configuracion() {
             </div>
 
             <div>
-              <h4 className="text-md font-medium text-slate-900 mb-3">Información del Sistema</h4>
-              <div className="bg-slate-50 p-4 rounded-lg">
+              <h4 className="text-md font-medium text-gray-900 mb-3">Información del Sistema</h4>
+              <div className="bg-gray-50/80 backdrop-blur-sm p-4 rounded-xl border border-gray-200/50">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Versión:</span> 1.0.0
+                    <span className="font-medium text-gray-700">Versión:</span> <span className="text-gray-600">1.0.0</span>
                   </div>
                   <div>
-                    <span className="font-medium">Base de Datos:</span> SQLite
+                    <span className="font-medium text-gray-700">Base de Datos:</span> <span className="text-gray-600">SQLite</span>
                   </div>
                   <div>
-                    <span className="font-medium">Última Actualización:</span> 15 de enero de 2024
+                    <span className="font-medium text-gray-700">Última Actualización:</span> <span className="text-gray-600">15 de enero de 2024</span>
                   </div>
                   <div>
-                    <span className="font-medium">Espacio Usado:</span> 245 MB
+                    <span className="font-medium text-gray-700">Espacio Usado:</span> <span className="text-gray-600">245 MB</span>
                   </div>
                 </div>
               </div>
             </div>
 
             <div>
-              <h4 className="text-md font-medium text-slate-900 mb-3">Configuraciones Avanzadas</h4>
+              <h4 className="text-md font-medium text-gray-900 mb-3">Configuraciones Avanzadas</h4>
               <form onSubmit={(e) => { e.preventDefault(); guardarSistema(); }}>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
@@ -663,9 +675,9 @@ export default function Configuracion() {
                       id="auto-backup"
                       checked={sistemaConfig.auto_backup === 'true'}
                       onChange={(e) => setSistemaConfig({...sistemaConfig, auto_backup: e.target.checked ? 'true' : 'false'})}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
-                    <label htmlFor="auto-backup" className="text-sm text-slate-700">
+                    <label htmlFor="auto-backup" className="text-sm text-gray-700">
                       Habilitar respaldos automáticos diarios
                     </label>
                   </div>
@@ -675,9 +687,9 @@ export default function Configuracion() {
                       id="log-activity"
                       checked={sistemaConfig.log_activity === 'true'}
                       onChange={(e) => setSistemaConfig({...sistemaConfig, log_activity: e.target.checked ? 'true' : 'false'})}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
-                    <label htmlFor="log-activity" className="text-sm text-slate-700">
+                    <label htmlFor="log-activity" className="text-sm text-gray-700">
                       Registrar actividad de usuarios
                     </label>
                   </div>
@@ -687,25 +699,29 @@ export default function Configuracion() {
                       id="debug-mode"
                       checked={sistemaConfig.debug_mode === 'true'}
                       onChange={(e) => setSistemaConfig({...sistemaConfig, debug_mode: e.target.checked ? 'true' : 'false'})}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
-                    <label htmlFor="debug-mode" className="text-sm text-slate-700">
+                    <label htmlFor="debug-mode" className="text-sm text-gray-700">
                       Modo de desarrollo (mostrar errores detallados)
                     </label>
                   </div>
                 </div>
 
                 <div className="flex justify-end mt-6">
-                  <Button type="submit" disabled={saving}>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  >
                     <Save className="mr-2 h-4 w-4" />
                     {saving ? 'Guardando...' : 'Guardar Configuración'}
-                  </Button>
+                  </button>
                 </div>
               </form>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 
@@ -727,36 +743,45 @@ export default function Configuracion() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Configuración del Sistema</h1>
-        <p className="text-sm text-slate-500">Personaliza y configura tu sistema POS</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header estilo macOS */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
+        <div className="px-6 lg:px-8">
+          <div className="flex justify-between items-center py-8">
+            <div>
+              <h1 className="text-4xl font-light text-gray-900 tracking-tight">Configuración</h1>
+              <p className="mt-2 text-base text-gray-600 font-light">Personaliza y configura tu sistema POS</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <Card>
-        <div className="border-b border-slate-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center space-x-2 ${
-                  activeTab === tab.id
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                }`}
-              >
-                {tab.icon}
-                <span>{tab.name}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
+      {/* Contenido principal */}
+      <div className="">
+        {/* Tabs estilo macOS */}
+        <div className="bg-white/80 backdrop-blur-xl overflow-hidden">
+          <div className="border-b border-gray-200/50">
+            <nav className="flex space-x-8 px-8" aria-label="Tabs">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-6 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center space-x-2 transition-all duration-200 ${
+                    activeTab === tab.id
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {tab.icon}
+                  <span>{tab.name}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
 
-        <div className="p-6">{renderTabContent()}</div>
-      </Card>
+          <div className="p-8">{renderTabContent()}</div>
+        </div>
+      </div>
     </div>
   );
 }

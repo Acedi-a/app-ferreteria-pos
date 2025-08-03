@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
-
+ import { useToast } from "../components/ui/use-toast";
 import { Button } from "../components/ui/Button";
 import { SearchBar } from "../components/ui/SearchBar";
 import ProductStats from "../components/productos/ProductStats";
@@ -25,9 +25,9 @@ export default function Productos() {
   const [editingProduct, setEditingProduct] = useState<Producto | null>(null);
   const [formData, setFormData] = useState<Partial<Producto>>({});
 
-  const toast = (msg: string) => {
-    alert(msg); // Reemplazar con toast real más adelante
-  };
+ 
+
+const { toast } = useToast();
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -44,7 +44,7 @@ export default function Productos() {
       ]);
     } catch (error) {
       console.error("Error cargando datos:", error);
-      toast("Error al cargar los datos");
+      toast({ title: "Error", description: "Error al cargar los datos" });
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ export default function Productos() {
       setProductos(data);
     } catch (error) {
       console.error("Error cargando productos:", error);
-      toast("Error al cargar productos");
+      toast({ title: "Error", description: "Error al cargar productos" });
     }
   };
 
@@ -99,7 +99,7 @@ export default function Productos() {
       setProductos(data);
     } catch (error) {
       console.error("Error buscando productos:", error);
-      toast("Error en la búsqueda");
+      toast({ title: "Error", description: "Error en la búsqueda" });
     } finally {
       setLoading(false);
     }
@@ -157,30 +157,34 @@ export default function Productos() {
     e.preventDefault();
     
     if (!formData.nombre || !formData.codigo_interno) {
-      toast("Nombre y código interno son obligatorios");
+      toast({ title: "Error", description: "Nombre y código interno son obligatorios", variant: "destructive" });
       return;
     }
 
     try {
-      // Validar códigos únicos
-      const codigoInternoValido = await productosService.validarCodigoInterno(
-        formData.codigo_interno!, 
-        editingProduct?.id
-      );
-      
-      if (!codigoInternoValido) {
-        toast("El código interno ya existe");
-        return;
-      }
+      // Solo validar códigos únicos si realmente se cambió el código interno o de barras
+      const isEditing = editingProduct && editingProduct.id;
 
-      if (formData.codigo_barras) {
-        const codigoBarrasValido = await productosService.validarCodigoBarras(
-          formData.codigo_barras, 
+      // Validar código interno solo si es nuevo producto o si el usuario lo cambió y no está vacío
+      if (!isEditing || (typeof formData.codigo_interno === 'string' && formData.codigo_interno.trim() !== '' && formData.codigo_interno !== editingProduct?.codigo_interno)) {
+        const codigoInternoValido = await productosService.validarCodigoInterno(
+          formData.codigo_interno!,
           editingProduct?.id
         );
-        
+        if (!codigoInternoValido) {
+          toast({ title: "Error", description: "El código interno ya existe", variant: "destructive" });
+          return;
+        }
+      }
+
+      // Validar código de barras solo si existe, no está vacía y es nuevo producto o si el usuario la cambió
+      if (typeof formData.codigo_barras === 'string' && formData.codigo_barras.trim() !== '' && (!isEditing || (formData.codigo_barras !== editingProduct?.codigo_barras))) {
+        const codigoBarrasValido = await productosService.validarCodigoBarras(
+          formData.codigo_barras,
+          editingProduct?.id
+        );
         if (!codigoBarrasValido) {
-          toast("El código de barras ya existe");
+          toast({ title: "Error", description: "El código de barras ya existe", variant: "destructive" });
           return;
         }
       }
@@ -188,11 +192,11 @@ export default function Productos() {
       if (editingProduct) {
         // Actualizar producto existente
         await productosService.actualizarProducto(editingProduct.id!, formData);
-        toast("Producto actualizado exitosamente");
+        toast({ title: "Éxito", description: "Producto actualizado exitosamente", variant: "success" });
       } else {
         // Crear nuevo producto
         await productosService.crearProducto(formData as Omit<Producto, 'id' | 'fecha_creacion' | 'fecha_modificacion'>);
-        toast("Producto creado exitosamente");
+        toast({ title: "Éxito", description: "Producto creado exitosamente", variant: "success" });
       }
 
       setShowModal(false);
@@ -200,7 +204,7 @@ export default function Productos() {
       await cargarEstadisticas();
     } catch (error) {
       console.error("Error guardando producto:", error);
-      toast("Error al guardar el producto");
+      toast({ title: "Error", description: "Error al guardar el producto", variant: "destructive" });
     }
   };
 
@@ -211,51 +215,75 @@ export default function Productos() {
 
     try {
       await productosService.eliminarProducto(id);
-      toast("Producto eliminado exitosamente");
+      toast({ title: "Éxito", description: "Producto eliminado exitosamente", variant: "success" });
       await cargarProductos();
       await cargarEstadisticas();
     } catch (error) {
       console.error("Error eliminando producto:", error);
-      toast("Error al eliminar el producto");
+      toast({ title: "Error", description: "Error al eliminar el producto", variant: "destructive" });
     }
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Productos</h1>
-          <p className="text-sm text-slate-500">Gestiona tu catálogo de productos</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header estilo macOS */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex justify-between items-center py-8">
+            <div>
+              <h1 className="text-4xl font-light text-gray-900 tracking-tight">Productos</h1>
+              <p className="mt-2 text-base text-gray-600 font-light">Gestiona tu catálogo de productos</p>
+            </div>
+            <Button 
+              onClick={handleNewProduct}
+              className="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Producto
+            </Button>
+          </div>
         </div>
-        <Button onClick={handleNewProduct}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Producto
-        </Button>
       </div>
 
-      {/* Stats Cards */}
-      <ProductStats stats={stats} />
+      {/* Contenido principal */}
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+        <div className="space-y-12">
+          {/* Estadísticas */}
+          <ProductStats stats={stats} />
 
-      {/* Search */}
-      <SearchBar
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        onClear={() => {
-          setSearchTerm("");
-          cargarProductos();
-        }}
-        placeholder="Buscar productos..."
-      />
+          {/* Barra de búsqueda */}
+          <div className="flex justify-center">
+            <div className="w-full max-w-2xl">
+              <SearchBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                onClear={() => {
+                  setSearchTerm("");
+                  cargarProductos();
+                }}
+                placeholder="Buscar productos..."
+              />
+            </div>
+          </div>
 
-      {/* Products Table */}
-      <ProductTable
-        products={productos}
-        loading={loading}
-        searchTerm={searchTerm}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+          {/* Tabla de productos */}
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
+            <div className="px-8 py-6 border-b border-gray-200/50 bg-white/50">
+              <h2 className="text-xl font-light text-gray-900 tracking-tight">Lista de Productos</h2>
+              <p className="mt-2 text-sm text-gray-600 font-light">Administra y visualiza todos tus productos</p>
+            </div>
+            
+            {/* Table Content */}
+            <ProductTable
+              products={productos}
+              loading={loading}
+              searchTerm={searchTerm}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          </div>
+        </div>
+      </div>
 
       {/* Product Modal */}
       <ProductModal

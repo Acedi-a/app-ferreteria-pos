@@ -27,7 +27,7 @@ export default function ProductModal({
 }: ProductModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white/95 backdrop-blur-2xl border border-gray-200/50 rounded-3xl shadow-2xl">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -40,9 +40,9 @@ export default function ProductModal({
             </div>
             <button 
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600"
+              className="text-gray-500 hover:text-gray-700 p-2 rounded-xl hover:bg-gray-100/50 transition-all duration-200"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" />
             </button>
           </div>
         </DialogHeader>
@@ -50,12 +50,12 @@ export default function ProductModal({
         <form onSubmit={onSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Código Interno *
               </label>
               <input
                 type="text"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 value={formData.codigo_interno || ""}
                 onChange={(e) => setFormData({ ...formData, codigo_interno: e.target.value })}
                 placeholder="Ej: P001"
@@ -63,12 +63,12 @@ export default function ProductModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Código de Barras
               </label>
               <input
                 type="text"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 value={formData.codigo_barras || ""}
                 onChange={(e) => setFormData({ ...formData, codigo_barras: e.target.value })}
                 placeholder="Código de barras del producto"
@@ -77,12 +77,12 @@ export default function ProductModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Nombre del Producto *
             </label>
             <input
               type="text"
-              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
               value={formData.nombre || ""}
               onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
               placeholder="Nombre del producto"
@@ -91,11 +91,11 @@ export default function ProductModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Descripción
             </label>
             <textarea
-              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200 resize-none"
               value={formData.descripcion || ""}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               placeholder="Descripción del producto"
@@ -105,13 +105,13 @@ export default function ProductModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Categoría
               </label>
               <Select
                 value={formData.categoria_id?.toString() || ""}
                 onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value ? Number(e.target.value) : undefined })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
               >
                 <option value="">Seleccionar categoría</option>
                 {categorias.map((categoria) => (
@@ -122,13 +122,13 @@ export default function ProductModal({
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Unidad de Medida
               </label>
               <Select
                 value={formData.tipo_unidad_id?.toString() || ""}
                 onChange={(e) => setFormData({ ...formData, tipo_unidad_id: e.target.value ? Number(e.target.value) : undefined })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
               >
                 <option value="">Seleccionar unidad</option>
                 {tiposUnidad.map((tipo) => (
@@ -142,13 +142,13 @@ export default function ProductModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Costo *
               </label>
               <input
                 type="number"
                 step="0.01"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 value={formData.costo || ""}
                 onChange={(e) => setFormData({ ...formData, costo: Number(e.target.value) })}
                 placeholder="0.00"
@@ -156,13 +156,13 @@ export default function ProductModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Precio de Venta *
               </label>
               <input
                 type="number"
                 step="0.01"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 value={formData.precio_venta || ""}
                 onChange={(e) => setFormData({ ...formData, precio_venta: Number(e.target.value) })}
                 placeholder="0.00"
@@ -173,12 +173,12 @@ export default function ProductModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Stock Actual *
               </label>
               <input
                 type="number"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 value={formData.stock_actual || ""}
                 onChange={(e) => setFormData({ ...formData, stock_actual: Number(e.target.value) })}
                 placeholder="0"
@@ -186,12 +186,12 @@ export default function ProductModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Stock Mínimo *
               </label>
               <input
                 type="number"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
                 value={formData.stock_minimo || ""}
                 onChange={(e) => setFormData({ ...formData, stock_minimo: Number(e.target.value) })}
                 placeholder="0"
@@ -201,28 +201,28 @@ export default function ProductModal({
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               <input
                 type="checkbox"
                 id="venta_fraccionada"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
+                className="h-4 w-4 text-gray-600 focus:ring-gray-300 border-gray-300 rounded-md"
                 checked={formData.venta_fraccionada || false}
                 onChange={(e) => setFormData({ ...formData, venta_fraccionada: e.target.checked })}
               />
-              <label htmlFor="venta_fraccionada" className="text-sm text-slate-700">
+              <label htmlFor="venta_fraccionada" className="text-sm text-gray-700 font-medium">
                 Permitir venta fraccionada
               </label>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               <input
                 type="checkbox"
                 id="activo"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
+                className="h-4 w-4 text-gray-600 focus:ring-gray-300 border-gray-300 rounded-md"
                 checked={formData.activo !== false}
                 onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
               />
-              <label htmlFor="activo" className="text-sm text-slate-700">
+              <label htmlFor="activo" className="text-sm text-gray-700 font-medium">
                 Producto activo
               </label>
             </div>
@@ -230,12 +230,14 @@ export default function ProductModal({
 
           {/* Placeholder para fotos */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Fotos del Producto
             </label>
-            <div className="rounded border-2 border-dashed border-slate-300 p-6 text-center">
-              <ImageIcon className="mx-auto h-10 w-10 text-slate-400" />
-              <p className="mt-2 text-sm text-slate-500">Subir fotos (próximamente)</p>
+            <div className="rounded-2xl border-2 border-dashed border-gray-200/50 p-8 text-center bg-gray-50/30 backdrop-blur-sm">
+              <div className="bg-white/80 rounded-2xl p-4 w-fit mx-auto mb-4">
+                <ImageIcon className="h-8 w-8 text-gray-500" />
+              </div>
+              <p className="text-sm text-gray-600 font-medium">Subir fotos (próximamente)</p>
             </div>
           </div>
 
