@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Edit, Trash2, Users, UserCheck, CreditCard, DollarSign, X } from "lucide-react";
+import { Plus } from "lucide-react";
 
-import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../components/ui/Table";
-import { Badge } from "../components/ui/Badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/Dialog";
 import { ClientesService, type Cliente } from "../services/clientes-service";
+import { ClientModal } from "../components/ui/Cliente/ClientModal";
+import { ClientStats } from "../components/ui/Cliente/ClientStats";
+import { ClientTable } from "../components/ui/Cliente/ClientTable";
+import { SearchBar } from "../components/ui/Cliente/SearchBar";
 
 export default function Clientes() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -231,364 +231,37 @@ export default function Clientes() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clientes</CardTitle>
-            <Users className="h-4 w-4 text-slate-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalClientes}</div>
-            <p className="text-xs text-slate-600">Clientes registrados</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Activos</CardTitle>
-            <UserCheck className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.clientesActivos}</div>
-            <p className="text-xs text-slate-600">Clientes activos</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Con Saldo Pendiente</CardTitle>
-            <CreditCard className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.conSaldoPendiente}</div>
-            <p className="text-xs text-slate-600">Clientes con deuda</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total por Cobrar</CardTitle>
-            <DollarSign className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              ${stats.totalPorCobrar.toFixed(2)}
-            </div>
-            <p className="text-xs text-slate-600">Saldo pendiente total</p>
-          </CardContent>
-        </Card>
-      </div>
+      <ClientStats stats={stats} />
 
       {/* Search */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center space-x-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, apellido, código o documento..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSearchTerm("");
-                cargarClientes();
-              }}
-            >
-              Limpiar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <SearchBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onClear={() => {
+          setSearchTerm("");
+          cargarClientes();
+        }}
+        placeholder="Buscar por nombre, apellido, código o documento..."
+      />
 
       {/* Clients Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Clientes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="text-slate-500">Cargando clientes...</div>
-            </div>
-          ) : filteredClients.length === 0 ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="text-slate-500">
-                {searchTerm ? 'No se encontraron clientes con ese criterio' : 'No hay clientes registrados'}
-              </div>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Documento</TableHead>
-                  <TableHead>Contacto</TableHead>
-                  <TableHead>Ubicación</TableHead>
-                  <TableHead>Total Compras</TableHead>
-                  <TableHead>Saldo Pendiente</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredClients.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">
-                          {client.nombre} {client.apellido || ''}
-                        </div>
-                        <div className="text-sm text-slate-500">
-                          Código: {client.codigo}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-sm">{client.documento || 'N/A'}</div>
-                        <div className="text-sm text-slate-500 capitalize">
-                          {client.tipo_documento}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-sm">{client.telefono || 'N/A'}</div>
-                        <div className="text-sm text-slate-500">{client.email || 'N/A'}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-sm">{client.ciudad || 'N/A'}</div>
-                        <div className="text-sm text-slate-500">{client.direccion || 'N/A'}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      ${client.total_compras.toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`font-medium ${
-                          client.saldo_pendiente > 0
-                            ? "text-red-600"
-                            : "text-green-600"
-                        }`}
-                      >
-                        ${client.saldo_pendiente.toFixed(2)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={client.activo ? "success" : "destructive"}>
-                        {client.activo ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          onClick={() => handleEdit(client)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          onClick={() => handleDelete(client.id)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <ClientTable
+        clients={filteredClients}
+        loading={loading}
+        searchTerm={searchTerm}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
 
       {/* Client Modal */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle>
-                  {editingClient ? "Editar Cliente" : "Nuevo Cliente"}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingClient ? "Modifica la información del cliente" : "Ingresa los datos del nuevo cliente"}
-                </DialogDescription>
-              </div>
-              <button 
-                onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Código *
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.codigo}
-                  onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                  placeholder="Ej: C001"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Tipo de Documento
-                </label>
-                <select 
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.tipo_documento}
-                  onChange={(e) => setFormData({ ...formData, tipo_documento: e.target.value as "cedula" | "nit" | "pasaporte" })}
-                >
-                  <option value="cedula">Cédula</option>
-                  <option value="nit">NIT</option>
-                  <option value="pasaporte">Pasaporte</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Número de Documento *
-              </label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={formData.documento}
-                onChange={(e) => setFormData({ ...formData, documento: e.target.value })}
-                placeholder="Número de documento"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Nombre *
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  placeholder="Nombre"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Apellido *
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.apellido}
-                  onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
-                  placeholder="Apellido"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Teléfono
-                </label>
-                <input
-                  type="tel"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.telefono}
-                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  placeholder="Número de teléfono"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="correo@ejemplo.com"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Dirección
-              </label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={formData.direccion}
-                onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                placeholder="Dirección completa"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Ciudad
-              </label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={formData.ciudad}
-                onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
-                placeholder="Ciudad"
-              />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="activo"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
-                checked={formData.activo}
-                onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-              />
-              <label htmlFor="activo" className="text-sm text-slate-700">
-                Cliente activo
-              </label>
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowModal(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit">
-                {editingClient ? "Actualizar" : "Guardar"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ClientModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSubmit={handleSubmit}
+        editingClient={editingClient}
+        formData={formData}
+        setFormData={setFormData}
+      />
     </div>
   );
 }

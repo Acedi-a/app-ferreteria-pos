@@ -168,7 +168,7 @@ export class ClientesService {
 
   // Eliminar un cliente
   static async eliminar(id: number): Promise<void> {
-    await window.electronAPI.db.run('DELETE FROM clientes WHERE id = ?', [id]);
+    await window.electronAPI.db.run('UPDATE clientes SET activo = 0 WHERE id = ?', [id]);
   }
 
   // Verificar si un código ya existe
