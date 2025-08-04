@@ -248,9 +248,9 @@ export default function Ventas() {
                       <TableRow key={index}>
                         <TableCell>{detalle.producto}</TableCell>
                         <TableCell>{detalle.cantidad}</TableCell>
-                        <TableCell>${detalle.precio_unitario.toFixed(2)}</TableCell>
+                        <TableCell>Bs {detalle.precio_unitario.toFixed(2)}</TableCell>
                         <TableCell className="font-medium">
-                          ${detalle.subtotal.toFixed(2)}
+                          Bs {detalle.subtotal.toFixed(2)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -268,19 +268,19 @@ export default function Ventas() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>${selectedSale.subtotal.toFixed(2)}</span>
+                    <span>Bs {selectedSale.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Descuento:</span>
-                    <span>-${selectedSale.descuento.toFixed(2)}</span>
+                    <span>-Bs {selectedSale.descuento.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Impuestos:</span>
-                    <span>${selectedSale.impuestos.toFixed(2)}</span>
+                    <span>Bs {selectedSale.impuestos.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total:</span>
-                    <span>${selectedSale.total.toFixed(2)}</span>
+                    <span>Bs {selectedSale.total.toFixed(2)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -336,7 +336,7 @@ export default function Ventas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              ${stats.ventasHoy.toFixed(2)}
+              Bs {stats.ventasHoy.toFixed(2)}
             </div>
             <p className="text-xs text-slate-600">Total vendido</p>
           </CardContent>
@@ -371,7 +371,7 @@ export default function Ventas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              ${stats.promedioVenta.toFixed(2)}
+              Bs {stats.promedioVenta.toFixed(2)}
             </div>
             <p className="text-xs text-slate-600">Valor promedio</p>
           </CardContent>
@@ -489,10 +489,10 @@ export default function Ventas() {
                       {sale.metodo_pago}
                     </Badge>
                   </TableCell>
-                  <TableCell>${sale.subtotal.toFixed(2)}</TableCell>
-                  <TableCell>${sale.descuento.toFixed(2)}</TableCell>
+                  <TableCell>Bs {sale.subtotal.toFixed(2)}</TableCell>
+                  <TableCell>Bs {sale.descuento.toFixed(2)}</TableCell>
                   <TableCell className="font-medium">
-                    ${sale.total.toFixed(2)}
+                    Bs {sale.total.toFixed(2)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={sale.estado === "completada" ? "success" : "destructive"}>

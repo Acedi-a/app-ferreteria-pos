@@ -320,7 +320,7 @@ export default function Proveedores() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              ${stats.totalCompras.toFixed(2)}
+              Bs {stats.totalCompras.toFixed(2)}
             </div>
             <p className="text-xs text-slate-600">Volumen total de compras</p>
           </CardContent>
@@ -333,7 +333,7 @@ export default function Proveedores() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              ${stats.promedioCompra.toFixed(2)}
+              Bs {stats.promedioCompra.toFixed(2)}
             </div>
             <p className="text-xs text-slate-600">Promedio por proveedor</p>
           </CardContent>
@@ -411,7 +411,7 @@ export default function Proveedores() {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    ${provider.total_compras.toFixed(2)}
+                    Bs {provider.total_compras.toFixed(2)}
                   </TableCell>
                   <TableCell>
                     <div className="text-sm text-slate-500">

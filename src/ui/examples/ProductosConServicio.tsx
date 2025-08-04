@@ -175,7 +175,7 @@ export default function ProductosConServicio() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Valor Inventario</p>
                 <p className="text-2xl font-bold text-green-600">
-                  ${productos.reduce((total, p) => total + (p.precio_venta * p.stock_actual), 0).toFixed(2)}
+                  Bs {productos.reduce((total, p) => total + (p.precio_venta * p.stock_actual), 0).toFixed(2)}
                 </p>
               </div>
               <Package className="h-8 w-8 text-green-600" />
@@ -248,7 +248,7 @@ export default function ProductosConServicio() {
                     </div>
                   </TableCell>
                   <TableCell>{product.categoria || '-'}</TableCell>
-                  <TableCell>${product.precio_venta?.toFixed(2)}</TableCell>
+                  <TableCell>Bs {product.precio_venta?.toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <span>{product.stock_actual}</span>

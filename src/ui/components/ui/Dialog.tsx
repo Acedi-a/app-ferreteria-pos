@@ -32,16 +32,16 @@ export const DialogContent: React.FC<DialogContentProps> = ({ children, classNam
     document.body
   );
 
-export const DialogHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="mb-4">{children}</div>
+export const DialogHeader: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
+  <div className={`mb-4 ${className}`}>{children}</div>
 );
 
-export const DialogTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <h2 className="text-lg font-semibold">{children}</h2>
+export const DialogTitle: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
+  <h2 className={`text-lg font-semibold ${className}`}>{children}</h2>
 );
 
-export const DialogDescription: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p className="text-sm text-slate-500">{children}</p>
+export const DialogDescription: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
+  <p className={`text-sm text-slate-500 ${className}`}>{children}</p>
 );
 
 export const DialogFooter: React.FC<{ children: React.ReactNode }> = ({ children }) => (

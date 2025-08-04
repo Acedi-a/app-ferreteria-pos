@@ -17,10 +17,10 @@ const calcMargen = (costo: number, precio: number) =>
 export default function ProductTable({ products, loading, searchTerm, onEdit, onDelete }: ProductTableProps) {
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <div className="bg-gray-100/50 backdrop-blur-sm rounded-2xl p-6">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-500 mb-4 mx-auto" />
-          <p className="text-gray-600 font-medium text-center">Cargando productos...</p>
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="bg-gray-50 rounded-lg p-6">
+          <Loader2 className="h-6 w-6 animate-spin text-gray-400 mb-3 mx-auto" />
+          <p className="text-gray-600 text-center">Cargando productos...</p>
         </div>
       </div>
     );
@@ -28,12 +28,12 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
 
   if (products.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <div className="bg-gray-100/50 backdrop-blur-sm rounded-3xl p-8 border border-gray-200/50">
-          <div className="bg-white/80 rounded-2xl p-4 mb-6 w-fit mx-auto">
-            <Package className="h-8 w-8 text-gray-500" />
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+          <div className="bg-white rounded-lg p-3 mb-4 w-fit mx-auto">
+            <Package className="h-6 w-6 text-gray-400" />
           </div>
-          <p className="text-gray-700 font-medium mb-2 text-center">
+          <p className="text-gray-700 font-medium mb-1 text-center">
             {searchTerm ? 'No se encontraron productos' : 'No hay productos registrados'}
           </p>
           <p className="text-gray-500 text-sm text-center">
@@ -45,7 +45,7 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
   }
 
   return (
-    <div className="overflow-hidden bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/50">
+    <div className="overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="border-gray-200/50 bg-gray-50/50">
@@ -79,10 +79,10 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                 {product.categoria_nombre || 'Sin categoría'}
               </TableCell>
               <TableCell className="py-4 px-6 text-sm font-medium text-gray-900">
-                ${product.costo.toFixed(2)}
+                Bs {product.costo.toFixed(2)}
               </TableCell>
               <TableCell className="py-4 px-6 text-sm font-medium text-gray-900">
-                ${product.precio_venta.toFixed(2)}
+                Bs {product.precio_venta.toFixed(2)}
               </TableCell>
               <TableCell className="py-4 px-6">
                 <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-gray-100/80 text-gray-700 border border-gray-200/50">
@@ -102,10 +102,10 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                 </div>
               </TableCell>
               <TableCell className="py-4 px-6">
-                <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium border ${
+                <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
                   product.activo 
-                    ? "bg-green-50/80 text-green-700 border-green-200/50" 
-                    : "bg-red-50/80 text-red-700 border-red-200/50"
+                    ? "bg-green-100 text-green-800" 
+                    : "bg-red-100 text-red-800"
                 }`}>
                   {product.activo ? "Activo" : "Inactivo"}
                 </span>
@@ -115,14 +115,14 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                   <Button
                     variant="ghost"
                     onClick={() => onEdit(product)}
-                    className="p-2 text-gray-600 hover:text-gray-700 hover:bg-gray-100/80 rounded-xl transition-all duration-200 border border-transparent hover:border-gray-200/50"
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     onClick={() => product.id && onDelete(product.id)}
-                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50/80 rounded-xl transition-all duration-200 border border-transparent hover:border-red-200/50"
+                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

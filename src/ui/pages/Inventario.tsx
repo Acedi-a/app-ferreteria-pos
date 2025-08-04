@@ -200,7 +200,7 @@ export default function Inventario() {
                   <span className="font-medium">Stock Mínimo:</span> {adjustingProduct.stock_minimo} {adjustingProduct.unidad_medida}
                 </div>
                 <div>
-                  <span className="font-medium">Costo Unitario:</span> ${adjustingProduct.costo_unitario.toFixed(2)}
+                  <span className="font-medium">Costo Unitario:</span> Bs {adjustingProduct.costo_unitario.toFixed(2)}
                 </div>
               </CardContent>
             </Card>
@@ -320,7 +320,7 @@ export default function Inventario() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              ${stats.valorTotal.toFixed(2)}
+              Bs {stats.valorTotal.toFixed(2)}
             </div>
             <p className="text-xs text-slate-600">Valor del inventario</p>
           </CardContent>
@@ -431,10 +431,10 @@ export default function Inventario() {
                       {item.stock_minimo} {item.unidad_medida}
                     </TableCell>
                     <TableCell>
-                      ${item.costo_unitario.toFixed(2)}
+                      Bs {item.costo_unitario.toFixed(2)}
                     </TableCell>
                     <TableCell className="font-medium">
-                      ${item.valor_total.toFixed(2)}
+                      Bs {item.valor_total.toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <Badge variant={stockStatus === "low" ? "destructive" : "success"}>

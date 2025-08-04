@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Folder, Ruler } from "lucide-react";
+import { Plus, Building2, Shield, TrendingUp } from "lucide-react";
 import { useToast } from "../components/ui/use-toast";
 import { Button } from "../components/ui/Button";
 import CategoriaStats from "../components/categoria-tipo/CategoriaStats";
@@ -266,45 +266,75 @@ const { toast } = useToast();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header estilo macOS */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
+      {/* Header Profesional con Branding */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex justify-between items-center py-8">
-            <div>
-              <h1 className="text-4xl font-light text-gray-900 tracking-tight">Categorías y Tipos de Unidad</h1>
-              <p className="mt-2 text-base text-gray-600 font-light">Gestiona las categorías y unidades de medida de tus productos</p>
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-10 h-10 bg-gray-600 rounded-lg">
+                <Building2 className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">Gestión de Categorías y Unidades</h1>
+                <p className="text-sm text-gray-600 flex items-center">
+                  <Building2 className="h-4 w-4 mr-1" />
+                  Sistema empresarial de administración de categorías
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="hidden md:flex items-center space-x-2 px-3 py-1 bg-gray-100 rounded border border-gray-200">
+                <Shield className="h-4 w-4 text-gray-600" />
+                <span className="text-xs font-medium text-gray-700">Sistema Seguro</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Contenido principal */}
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
-        <div className="space-y-16">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
+        <div className="space-y-8">
           {/* Sección de Categorías */}
-          <div className="space-y-12">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-blue-50">
-                  <Folder className="h-6 w-6 text-blue-500" />
+          <div className="space-y-8">
+            {/* Panel de Estadísticas de Categorías */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-center w-8 h-8 bg-gray-600 rounded-lg">
+                    <TrendingUp className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900">Panel de Categorías</h2>
+                    <p className="text-sm text-gray-600">Métricas y estadísticas de categorías</p>
+                  </div>
                 </div>
-                <h2 className="text-2xl font-light text-gray-900 tracking-tight">Categorías</h2>
+                <div className="flex items-center space-x-3">
+                  <div className="hidden sm:flex items-center space-x-2 px-3 py-1 bg-gray-100 rounded border border-gray-200">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-medium text-gray-700">En línea</span>
+                  </div>
+                  <Button 
+                    onClick={handleNewCategoria}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-black focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nueva Categoría
+                  </Button>
+                </div>
               </div>
-              <Button 
-                onClick={handleNewCategoria}
-                className="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva Categoría
-              </Button>
+              <CategoriaStats stats={categoriaStats} />
             </div>
-
-            <CategoriaStats stats={categoriaStats} />
             
-            <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
-              <div className="px-8 py-6 border-b border-gray-200/50 bg-white/50">
-                <h3 className="text-xl font-light text-gray-900 tracking-tight">Lista de Categorías</h3>
-                <p className="mt-2 text-sm text-gray-600 font-light">Administra y visualiza todas las categorías</p>
+            {/* Tabla de Categorías */}
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">Directorio de Categorías</h3>
+                    <p className="text-sm text-gray-600">Administra y visualiza todas las categorías</p>
+                  </div>
+                </div>
               </div>
               <CategoriaTable
                 categorias={categorias}
@@ -316,29 +346,45 @@ const { toast } = useToast();
           </div>
 
           {/* Sección de Tipos de Unidad */}
-          <div className="space-y-12">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-green-50">
-                  <Ruler className="h-6 w-6 text-green-500" />
+          <div className="space-y-8">
+            {/* Panel de Estadísticas de Tipos de Unidad */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-center w-8 h-8 bg-gray-600 rounded-lg">
+                    <TrendingUp className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900">Panel de Tipos de Unidad</h2>
+                    <p className="text-sm text-gray-600">Métricas y estadísticas de unidades</p>
+                  </div>
                 </div>
-                <h2 className="text-2xl font-light text-gray-900 tracking-tight">Tipos de Unidad</h2>
+                <div className="flex items-center space-x-3">
+                  <div className="hidden sm:flex items-center space-x-2 px-3 py-1 bg-gray-100 rounded border border-gray-200">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-medium text-gray-700">En línea</span>
+                  </div>
+                  <Button 
+                    onClick={handleNewTipo}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-black focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuevo Tipo
+                  </Button>
+                </div>
               </div>
-              <Button 
-                onClick={handleNewTipo}
-                className="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Tipo
-              </Button>
+              <TipoUnidadStats stats={tipoStats} />
             </div>
-
-            <TipoUnidadStats stats={tipoStats} />
             
-            <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
-              <div className="px-8 py-6 border-b border-gray-200/50 bg-white/50">
-                <h3 className="text-xl font-light text-gray-900 tracking-tight">Lista de Tipos de Unidad</h3>
-                <p className="mt-2 text-sm text-gray-600 font-light">Administra y visualiza todos los tipos de unidad</p>
+            {/* Tabla de Tipos de Unidad */}
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">Directorio de Tipos de Unidad</h3>
+                    <p className="text-sm text-gray-600">Administra y visualiza todos los tipos de unidad</p>
+                  </div>
+                </div>
               </div>
               <TipoUnidadTable
                 tiposUnidad={tiposUnidad}

@@ -210,7 +210,7 @@ export default function Productos() {
                     </div>
                   </TableCell>
                   <TableCell>{product.categoria || '-'}</TableCell>
-                  <TableCell>${product.precio_venta?.toFixed(2)}</TableCell>
+                  <TableCell>Bs {product.precio_venta?.toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <span>{product.stock_actual}</span>

@@ -163,10 +163,10 @@ export default function CuentasPorCobrar() {
                   <span className="font-medium">Venta:</span> {selectedAccount.venta_id}
                 </div>
                 <div>
-                  <span className="font-medium">Monto Total:</span> ${selectedAccount.monto.toFixed(2)}
+                  <span className="font-medium">Monto Total:</span> Bs {selectedAccount.monto.toFixed(2)}
                 </div>
                 <div>
-                  <span className="font-medium">Saldo Pendiente:</span> ${selectedAccount.saldo.toFixed(2)}
+                  <span className="font-medium">Saldo Pendiente:</span> Bs {selectedAccount.saldo.toFixed(2)}
                 </div>
               </div>
             </div>
@@ -249,7 +249,7 @@ export default function CuentasPorCobrar() {
             <CreditCard className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">${totalPendiente.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-blue-600">Bs {totalPendiente.toFixed(2)}</div>
             <p className="text-xs text-slate-600">Saldo pendiente total</p>
           </CardContent>
         </Card>
@@ -260,7 +260,7 @@ export default function CuentasPorCobrar() {
             <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">${totalVencido.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-red-600">Bs {totalVencido.toFixed(2)}</div>
             <p className="text-xs text-slate-600">Cuentas vencidas</p>
           </CardContent>
         </Card>
@@ -368,7 +368,7 @@ export default function CuentasPorCobrar() {
                   </TableCell>
                   <TableCell>{account.venta_id}</TableCell>
                   <TableCell className="font-medium">
-                    ${account.monto.toFixed(2)}
+                    Bs {account.monto.toFixed(2)}
                   </TableCell>
                   <TableCell>
                     <span
@@ -376,7 +376,7 @@ export default function CuentasPorCobrar() {
                         account.saldo > 0 ? "text-red-600" : "text-green-600"
                       }`}
                     >
-                      ${account.saldo.toFixed(2)}
+                      Bs {account.saldo.toFixed(2)}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -446,7 +446,7 @@ export default function CuentasPorCobrar() {
                       {cuenta?.cliente.nombre}
                     </TableCell>
                     <TableCell className="font-medium text-green-600">
-                      ${pago.monto.toFixed(2)}
+                      Bs {pago.monto.toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <Badge variant="default" className="capitalize">

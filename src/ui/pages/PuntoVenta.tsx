@@ -146,7 +146,7 @@ import { useToast } from "../components/ui/use-toast";
       return;
     }
     console.log("Venta procesada", { productos, clienteSeleccionado, metodoPago, descuento, total, ventaCredito, observaciones });
-    toast({ title: "Venta procesada", description: `Total: $${total.toFixed(2)}` });
+    toast({ title: "Venta procesada", description: `Total: Bs ${total.toFixed(2)}` });
     setProductos([]);
     setClienteSeleccionado(null);
     setDescuento(0);
@@ -215,7 +215,7 @@ import { useToast } from "../components/ui/use-toast";
                           )}
                         </p>
                       </div>
-                      <span className="font-bold">${p.precio.toFixed(2)}</span>
+                      <span className="font-bold">Bs {p.precio.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
@@ -254,7 +254,7 @@ import { useToast } from "../components/ui/use-toast";
                           <p className="font-medium">{p.nombre}</p>
                           <p className="text-xs text-slate-500">{p.codigo}</p>
                         </TableCell>
-                        <TableCell>${p.precio.toFixed(2)}</TableCell>
+                        <TableCell>Bs {p.precio.toFixed(2)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Button
@@ -286,7 +286,7 @@ import { useToast } from "../components/ui/use-toast";
                             <p className="text-xs text-slate-500">{p.unidadMedida}</p>
                           )}
                         </TableCell>
-                        <TableCell className="font-medium">${p.subtotal.toFixed(2)}</TableCell>
+                        <TableCell className="font-medium">Bs {p.subtotal.toFixed(2)}</TableCell>
                         <TableCell>
                           <Button variant="ghost" onClick={() => eliminarProducto(p.id)}>
                             <Trash2 className="h-4 w-4" />
@@ -376,7 +376,7 @@ import { useToast } from "../components/ui/use-toast";
             <CardContent className="space-y-4">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>Bs {subtotal.toFixed(2)}</span>
               </div>
 
               <div className="flex items-center justify-between">
@@ -397,7 +397,7 @@ import { useToast } from "../components/ui/use-toast";
               <hr />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total:</span>
-                <span>${total.toFixed(2)}</span>
+                <span>Bs {total.toFixed(2)}</span>
               </div>
 
               <div>

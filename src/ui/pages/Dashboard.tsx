@@ -17,16 +17,16 @@ import { Badge } from "../components/ui/Badge";
 
 /* ---------- datos de ejemplo ---------- */
 const stats = {
-  ventasHoy: { valor: "$2,450.00", cambio: "+12%" },
+  ventasHoy: { valor: "Bs 2,450.00", cambio: "+12%" },
   productosStock: { valor: "1,234", cambio: "-2%" },
   clientesActivos: { valor: "89", cambio: "+5%" },
-  cuentasPorCobrar: { valor: "$8,920.00", cambio: "+8%" },
+  cuentasPorCobrar: { valor: "Bs 8,920.00", cambio: "+8%" },
 };
 
 const ventasRecientes = [
-  { id: "V001", cliente: "Juan Pérez", total: "$125.50", fecha: "2024-01-15 14:30" },
-  { id: "V002", cliente: "María García", total: "$89.25", fecha: "2024-01-15 13:15" },
-  { id: "V003", cliente: "Carlos López", total: "$234.75", fecha: "2024-01-15 12:45" },
+  { id: "V001", cliente: "Juan Pérez", total: "Bs 125.50", fecha: "2024-01-15 14:30" },
+  { id: "V002", cliente: "María García", total: "Bs 89.25", fecha: "2024-01-15 13:15" },
+  { id: "V003", cliente: "Carlos López", total: "Bs 234.75", fecha: "2024-01-15 12:45" },
 ];
 
 const productosStockBajo = [

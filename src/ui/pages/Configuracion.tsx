@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { Building2, Receipt, Calculator, Users, Settings, Plus, Edit, Trash2, Save, Download, Upload, CheckCircle } from "lucide-react";
+import { Building2, Receipt, Calculator, Users, Settings, Plus, Edit, Trash2, Save, Download, Upload, CheckCircle, Shield, TrendingUp } from "lucide-react";
 import { ConfiguracionService } from "../services/configuracion-service";
 
-import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../components/ui/Table";
 import { Badge } from "../components/ui/Badge";
@@ -204,10 +203,10 @@ export default function Configuracion() {
   const renderEmpresaTab = () => (
     <div className="space-y-6">
       {message && (
-        <div className={`p-4 rounded-xl backdrop-blur-sm border transition-all duration-200 ${
+        <div className={`p-4 rounded-lg border transition-all duration-200 ${
           message.type === 'success' 
-            ? 'bg-green-50/80 text-green-800 border-green-200/50' 
-            : 'bg-red-50/80 text-red-800 border-red-200/50'
+            ? 'bg-green-50 text-green-800 border-green-200' 
+            : 'bg-red-50 text-red-800 border-red-200'
         }`}>
           <div className="flex items-center">
             {message.type === 'success' && <CheckCircle className="h-5 w-5 mr-2" />}
@@ -216,9 +215,17 @@ export default function Configuracion() {
         </div>
       )}
       
-      <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200/50">
-          <h3 className="text-lg font-medium text-gray-900">Información de la Empresa</h3>
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg">
+              <Building2 className="h-4 w-4 text-gray-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Información de la Empresa</h3>
+              <p className="text-sm text-gray-600">Configura los datos básicos de tu empresa</p>
+            </div>
+          </div>
         </div>
         <div className="p-6">
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); guardarEmpresa(); }}>
@@ -231,7 +238,7 @@ export default function Configuracion() {
                   type="text"
                   value={empresaConfig.nombre_empresa}
                   onChange={(e) => setEmpresaConfig({...empresaConfig, nombre_empresa: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
                 />
               </div>
               <div>
@@ -240,7 +247,7 @@ export default function Configuracion() {
                   type="text"
                   value={empresaConfig.nit_empresa}
                   onChange={(e) => setEmpresaConfig({...empresaConfig, nit_empresa: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
                 />
               </div>
             </div>
@@ -251,7 +258,7 @@ export default function Configuracion() {
                 type="text"
                 value={empresaConfig.direccion_empresa}
                 onChange={(e) => setEmpresaConfig({...empresaConfig, direccion_empresa: e.target.value})}
-                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
               />
             </div>
 
@@ -262,7 +269,7 @@ export default function Configuracion() {
                   type="tel"
                   value={empresaConfig.telefono_empresa}
                   onChange={(e) => setEmpresaConfig({...empresaConfig, telefono_empresa: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
                 />
               </div>
               <div>
@@ -271,7 +278,7 @@ export default function Configuracion() {
                   type="email"
                   value={empresaConfig.email_empresa}
                   onChange={(e) => setEmpresaConfig({...empresaConfig, email_empresa: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
                 />
               </div>
               <div>
@@ -280,7 +287,7 @@ export default function Configuracion() {
                   type="text"
                   value={empresaConfig.ciudad_empresa}
                   onChange={(e) => setEmpresaConfig({...empresaConfig, ciudad_empresa: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
                 />
               </div>
             </div>
@@ -293,7 +300,7 @@ export default function Configuracion() {
                 rows={3}
                 value={empresaConfig.descripcion_empresa}
                 onChange={(e) => setEmpresaConfig({...empresaConfig, descripcion_empresa: e.target.value})}
-                className="w-full px-4 py-3 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300/50 focus:border-gray-300 bg-white/80 backdrop-blur-sm transition-all duration-200"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
               />
             </div>
 
@@ -301,7 +308,7 @@ export default function Configuracion() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-black focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="mr-2 h-4 w-4" />
                   {saving ? 'Guardando...' : 'Guardar Cambios'}
@@ -324,11 +331,19 @@ export default function Configuracion() {
         </div>
       )}
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Configuración de Tickets</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
+              <Receipt className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Configuración de Tickets</h3>
+              <p className="text-sm text-gray-600">Personaliza el formato y opciones de impresión</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); guardarTickets(); }}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -338,7 +353,7 @@ export default function Configuracion() {
                 <select 
                   value={ticketsConfig.ticket_ancho}
                   onChange={(e) => setTicketsConfig({...ticketsConfig, ticket_ancho: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
                 >
                   <option value="58">58mm</option>
                   <option value="80">80mm</option>
@@ -350,7 +365,7 @@ export default function Configuracion() {
                 <select 
                   value={ticketsConfig.ticket_impresora}
                   onChange={(e) => setTicketsConfig({...ticketsConfig, ticket_impresora: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
                 >
                   <option value="">Seleccionar impresora...</option>
                   <option value="thermal1">Impresora Térmica 1</option>
@@ -367,7 +382,7 @@ export default function Configuracion() {
                 rows={2}
                 value={ticketsConfig.ticket_encabezado}
                 onChange={(e) => setTicketsConfig({...ticketsConfig, ticket_encabezado: e.target.value})}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
               />
             </div>
 
@@ -379,7 +394,7 @@ export default function Configuracion() {
                 rows={2}
                 value={ticketsConfig.ticket_pie_pagina}
                 onChange={(e) => setTicketsConfig({...ticketsConfig, ticket_pie_pagina: e.target.value})}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
               />
             </div>
 
@@ -433,8 +448,8 @@ export default function Configuracion() {
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 
@@ -449,11 +464,19 @@ export default function Configuracion() {
         </div>
       )}
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Configuración de Impuestos</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-lg">
+              <Calculator className="h-4 w-4 text-green-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Configuración de Impuestos</h3>
+              <p className="text-sm text-gray-600">Gestiona las tasas de impuestos y configuraciones fiscales</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); guardarImpuestos(); }}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -465,7 +488,7 @@ export default function Configuracion() {
                   step="0.01"
                   value={impuestosConfig.iva_general}
                   onChange={(e) => setImpuestosConfig({...impuestosConfig, iva_general: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
                 />
               </div>
               <div>
@@ -477,7 +500,7 @@ export default function Configuracion() {
                   step="0.01"
                   value={impuestosConfig.iva_reducido}
                   onChange={(e) => setImpuestosConfig({...impuestosConfig, iva_reducido: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
                 />
               </div>
             </div>
@@ -491,7 +514,7 @@ export default function Configuracion() {
                 step="0.01"
                 value={impuestosConfig.retencion_fuente}
                 onChange={(e) => setImpuestosConfig({...impuestosConfig, retencion_fuente: e.target.value})}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
               />
             </div>
 
@@ -541,23 +564,32 @@ export default function Configuracion() {
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 
   const renderUsuariosTab = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-slate-900">Gestión de Usuarios</h3>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Usuario
-        </Button>
-      </div>
-
-      <Card>
-        <CardContent className="p-0">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-8 h-8 bg-purple-100 rounded-lg">
+                <Users className="h-4 w-4 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Gestión de Usuarios</h3>
+                <p className="text-sm text-gray-600">Administra usuarios y permisos del sistema</p>
+              </div>
+            </div>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white">
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo Usuario
+            </Button>
+          </div>
+        </div>
+        <div className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -599,8 +631,8 @@ export default function Configuracion() {
               ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 
@@ -615,9 +647,17 @@ export default function Configuracion() {
         </div>
       )}
       
-      <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200/50">
-          <h3 className="text-lg font-medium text-gray-900">Configuración del Sistema</h3>
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg">
+              <Settings className="h-4 w-4 text-gray-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Configuración del Sistema</h3>
+              <p className="text-sm text-gray-600">Gestiona respaldos y configuraciones avanzadas</p>
+            </div>
+          </div>
         </div>
         <div className="p-6">
           <div className="space-y-6">
@@ -627,12 +667,12 @@ export default function Configuracion() {
                 <button
                   onClick={crearRespaldo}
                   disabled={saving}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-xl text-gray-700 bg-white/80 border border-gray-200/50 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-gray-300/50 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Download className="mr-2 h-4 w-4" />
                   {saving ? 'Creando...' : 'Crear Respaldo'}
                 </button>
-                <button className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-xl text-gray-700 bg-white/80 border border-gray-200/50 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-gray-300/50 transition-all duration-200 shadow-sm hover:shadow-md">
+                <button className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors">
                   <Upload className="mr-2 h-4 w-4" />
                   Restaurar Respaldo
                 </button>
@@ -744,43 +784,72 @@ export default function Configuracion() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header estilo macOS */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
+      {/* Header profesional */}
+      <div className="bg-white border-b border-gray-200">
         <div className="px-6 lg:px-8">
-          <div className="flex justify-between items-center py-8">
-            <div>
-              <h1 className="text-4xl font-light text-gray-900 tracking-tight">Configuración</h1>
-              <p className="mt-2 text-base text-gray-600 font-light">Personaliza y configura tu sistema POS</p>
+          <div className="flex items-center justify-between py-6">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center justify-center w-12 h-12 bg-gray-900 rounded-lg">
+                <Settings className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Configuración del Sistema</h1>
+                <p className="text-sm text-gray-600">Personaliza y configura tu sistema POS</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 px-3 py-1 bg-gray-100 rounded border border-gray-200">
+                <Shield className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">Sistema Seguro</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Contenido principal */}
-      <div className="">
-        {/* Tabs estilo macOS */}
-        <div className="bg-white/80 backdrop-blur-xl overflow-hidden">
-          <div className="border-b border-gray-200/50">
-            <nav className="flex space-x-8 px-8" aria-label="Tabs">
+      <div className="px-6 lg:px-8 py-8">
+        {/* Panel de navegación */}
+        <div className="bg-white rounded-lg border border-gray-200 mb-8">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-600 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">Panel de Configuración</h2>
+                <p className="text-sm text-gray-600">Selecciona una sección para configurar</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6">
+            <nav className="grid grid-cols-1 md:grid-cols-5 gap-4" aria-label="Tabs">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`py-6 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center space-x-2 transition-all duration-200 ${
+                  className={`p-4 rounded-lg border text-left transition-all duration-200 ${
                     activeTab === tab.id
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      ? "border-gray-900 bg-gray-50 text-gray-900"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  {tab.icon}
-                  <span>{tab.name}</span>
+                  <div className="flex items-center space-x-3">
+                    <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${
+                      activeTab === tab.id ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600"
+                    }`}>
+                      {tab.icon}
+                    </div>
+                    <span className="text-sm font-medium">{tab.name}</span>
+                  </div>
                 </button>
               ))}
             </nav>
           </div>
-
-          <div className="p-8">{renderTabContent()}</div>
         </div>
+
+        {/* Contenido de la tab activa */}
+        <div>{renderTabContent()}</div>
       </div>
     </div>
   );

@@ -127,7 +127,7 @@ export default function Reportes() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ${salesData.reduce((sum, day) => sum + day.total, 0).toFixed(2)}
+              Bs {salesData.reduce((sum, day) => sum + day.total, 0).toFixed(2)}
             </div>
             <p className="text-xs text-slate-600">Total facturado</p>
           </CardContent>
@@ -173,9 +173,9 @@ export default function Reportes() {
                   </TableCell>
                   <TableCell>{day.ventas}</TableCell>
                   <TableCell className="font-medium">
-                    ${day.total.toFixed(2)}
+                    Bs {day.total.toFixed(2)}
                   </TableCell>
-                  <TableCell>${day.promedio.toFixed(2)}</TableCell>
+                  <TableCell>Bs {day.promedio.toFixed(2)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -210,7 +210,7 @@ export default function Reportes() {
                     <TableCell className="font-medium">{product.nombre}</TableCell>
                     <TableCell>{product.vendidos}</TableCell>
                     <TableCell className="font-medium">
-                      ${product.ingresos.toFixed(2)}
+                      Bs {product.ingresos.toFixed(2)}
                     </TableCell>
                     <TableCell>{participacion}%</TableCell>
                   </TableRow>
@@ -246,10 +246,10 @@ export default function Reportes() {
                   <TableCell className="font-medium">{client.nombre}</TableCell>
                   <TableCell>{client.compras}</TableCell>
                   <TableCell className="font-medium">
-                    ${client.total.toFixed(2)}
+                    Bs {client.total.toFixed(2)}
                   </TableCell>
                   <TableCell>
-                    ${(client.total / client.compras).toFixed(2)}
+                    Bs {(client.total / client.compras).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-slate-500">
                     {new Date(client.ultima).toLocaleDateString()}
@@ -288,7 +288,7 @@ export default function Reportes() {
                   </TableCell>
                   <TableCell>{category.productos}</TableCell>
                   <TableCell className="font-medium">
-                    ${category.valor.toFixed(2)}
+                    Bs {category.valor.toFixed(2)}
                   </TableCell>
                   <TableCell>{category.stock_bajo}</TableCell>
                   <TableCell>
@@ -329,31 +329,31 @@ export default function Reportes() {
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
                 <span className="text-sm font-medium text-slate-600">Ingresos Totales</span>
                 <span className="text-sm font-bold text-green-600">
-                  ${financialData.ingresos.toFixed(2)}
+                  Bs {financialData.ingresos.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
                 <span className="text-sm font-medium text-slate-600">Costos de Ventas</span>
                 <span className="text-sm font-bold text-red-600">
-                  -${financialData.costos.toFixed(2)}
+                  -Bs {financialData.costos.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
                 <span className="text-sm font-medium text-slate-600">Utilidad Bruta</span>
                 <span className="text-sm font-bold text-blue-600">
-                  ${financialData.utilidad_bruta.toFixed(2)}
+                  Bs {financialData.utilidad_bruta.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
                 <span className="text-sm font-medium text-slate-600">Gastos Operativos</span>
                 <span className="text-sm font-bold text-red-600">
-                  -${financialData.gastos.toFixed(2)}
+                  -Bs {financialData.gastos.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-t-2 border-slate-300">
                 <span className="text-base font-bold text-slate-900">Utilidad Neta</span>
                 <span className="text-base font-bold text-green-600">
-                  ${financialData.utilidad_neta.toFixed(2)}
+                  Bs {financialData.utilidad_neta.toFixed(2)}
                 </span>
               </div>
             </div>
