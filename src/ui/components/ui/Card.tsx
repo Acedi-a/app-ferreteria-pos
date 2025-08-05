@@ -37,7 +37,7 @@ export const CardDescription: React.FC<CardDescriptionProps> = ({
 
 interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {}
 export const CardContent: React.FC<CardContentProps> = ({ className = "", children, ...rest }) => (
-  <div {...rest} className={`p-6 pt-0 ${className}`}>
+  <div {...rest} className={`p-6  ${className}`}>
     {children}
   </div>
 );

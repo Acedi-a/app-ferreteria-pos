@@ -33,6 +33,7 @@ interface Producto {
   stock: number;
   ventaFraccionada: boolean;
   unidadMedida: string;
+  categoria?: string;
 }
 
 /* ---------- datos de ejemplo ---------- */
@@ -46,6 +47,7 @@ const productosDisponibles: Producto[] = [
     stock: 25,
     ventaFraccionada: false,
     unidadMedida: "unidad",
+    categoria: "Herramientas",
   },
   {
     id: 2,
@@ -56,6 +58,7 @@ const productosDisponibles: Producto[] = [
     stock: 150,
     ventaFraccionada: true,
     unidadMedida: "metro",
+    categoria: "Electricidad",
   },
   {
     id: 3,
@@ -66,6 +69,7 @@ const productosDisponibles: Producto[] = [
     stock: 8,
     ventaFraccionada: false,
     unidadMedida: "bolsa",
+    categoria: "Construcción",
   },
   {
     id: 4,
@@ -76,6 +80,7 @@ const productosDisponibles: Producto[] = [
     stock: 40,
     ventaFraccionada: false,
     unidadMedida: "unidad",
+    categoria: "Herramientas",
   },
   {
     id: 5,
@@ -86,6 +91,7 @@ const productosDisponibles: Producto[] = [
     stock: 20,
     ventaFraccionada: true,
     unidadMedida: "metro",
+    categoria: "Plomería",
   },
   {
     id: 6,
@@ -96,6 +102,7 @@ const productosDisponibles: Producto[] = [
     stock: 15,
     ventaFraccionada: false,
     unidadMedida: "galón",
+    categoria: "Pinturas",
   },
   {
     id: 7,
@@ -106,6 +113,7 @@ const productosDisponibles: Producto[] = [
     stock: 100,
     ventaFraccionada: false,
     unidadMedida: "caja",
+    categoria: "Ferretería",
   },
   {
     id: 8,
@@ -116,6 +124,7 @@ const productosDisponibles: Producto[] = [
     stock: 200,
     ventaFraccionada: true,
     unidadMedida: "kilogramo",
+    categoria: "Construcción",
   }
 ];
 
@@ -141,6 +150,10 @@ export default function PuntoVenta() {
   // Estados de la interfaz
   const [busquedaProducto, setBusquedaProducto] = useState("");
   const [cartMinimized, setCartMinimized] = useState(false);
+  const [filtroStock, setFiltroStock] = useState("todos");
+  const [filtroCategoria, setFiltroCategoria] = useState("todas");
+  const [ordenPrecio, setOrdenPrecio] = useState("ninguno");
+  const [filtroVenta, setFiltroVenta] = useState("todos");
 
   /* ---------- lógica del carrito ---------- */
   const agregarProducto = (producto: Producto) => {
@@ -245,7 +258,7 @@ export default function PuntoVenta() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Punto de Venta</h1>
@@ -255,37 +268,50 @@ export default function PuntoVenta() {
         </div>
       </div>
 
-      {/* Contenido principal */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <ProductGrid
-          productos={productosDisponibles}
-          onAgregarProducto={agregarProducto}
-          busqueda={busquedaProducto}
-          onCambioBusqueda={setBusquedaProducto}
-        />
-      </div>
+      <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex gap-6 h-[calc(100vh-8rem)]">
+          <div className="flex-1 overflow-hidden">
+            <ProductGrid
+              productos={productosDisponibles}
+              onAgregarProducto={agregarProducto}
+              busqueda={busquedaProducto}
+              onCambioBusqueda={setBusquedaProducto}
+              filtroStock={filtroStock}
+              onCambioFiltroStock={setFiltroStock}
+              filtroCategoria={filtroCategoria}
+              onCambioFiltroCategoria={setFiltroCategoria}
+              ordenPrecio={ordenPrecio}
+              onCambioOrdenPrecio={setOrdenPrecio}
+              filtroVenta={filtroVenta}
+              onCambioFiltroVenta={setFiltroVenta}
+            />
+          </div>
 
-      {/* Panel del carrito flotante */}
-      <CartPanel
-        productos={productos}
-        onActualizarCantidad={actualizarCantidad}
-        onEliminarProducto={eliminarProducto}
-        onProcesarVenta={procesarVenta}
-        onImprimirTicket={imprimirTicket}
-        clientes={clientes}
-        clienteSeleccionado={clienteSeleccionado}
-        onSeleccionarCliente={setClienteSeleccionado}
-        metodoPago={metodoPago}
-        onCambiarMetodoPago={setMetodoPago}
-        descuento={descuento}
-        onCambiarDescuento={setDescuento}
-        observaciones={observaciones}
-        onCambiarObservaciones={setObservaciones}
-        ventaCredito={ventaCredito}
-        onCambiarVentaCredito={setVentaCredito}
-        isMinimized={cartMinimized}
-        onToggleMinimize={() => setCartMinimized(!cartMinimized)}
-      />
+          {/* Columna derecha - Carrito */}
+          <div className="w-96 flex-shrink-0">
+            <CartPanel
+              productos={productos}
+              onActualizarCantidad={actualizarCantidad}
+              onEliminarProducto={eliminarProducto}
+              onProcesarVenta={procesarVenta}
+              onImprimirTicket={imprimirTicket}
+              clientes={clientes}
+              clienteSeleccionado={clienteSeleccionado}
+              onSeleccionarCliente={setClienteSeleccionado}
+              metodoPago={metodoPago}
+              onCambiarMetodoPago={setMetodoPago}
+              descuento={descuento}
+              onCambiarDescuento={setDescuento}
+              observaciones={observaciones}
+              onCambiarObservaciones={setObservaciones}
+              ventaCredito={ventaCredito}
+              onCambiarVentaCredito={setVentaCredito}
+              isMinimized={cartMinimized}
+              onToggleMinimize={() => setCartMinimized(!cartMinimized)}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -72,21 +72,8 @@ export default function CartPanel({
   const total = subtotal - descuento;
   const totalItems = productos.reduce((total, p) => total + p.cantidad, 0);
 
-  if (productos.length === 0) {
-    return (
-      <div className="fixed bottom-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[300px]">
-        <div className="flex items-center gap-2 text-gray-500">
-          <ShoppingCart className="h-5 w-5" />
-          <span className="text-sm">Carrito vacío</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={`fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-300 ${
-      isMinimized ? 'w-64' : 'w-96'
-    } max-h-[calc(100vh-2rem)] flex flex-col`}>
+    <div className="bg-white border border-gray-200 rounded-lg shadow-lg h-full flex flex-col">
       {/* Header del carrito */}
       <div className="flex items-center justify-between p-4 border-b bg-blue-50">
         <div className="flex items-center gap-2">
@@ -95,18 +82,29 @@ export default function CartPanel({
             Carrito ({totalItems} {totalItems === 1 ? 'item' : 'items'})
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            className="h-8 w-8 p-0"
-            onClick={onToggleMinimize}
-          >
-            <ChevronRight className={`h-4 w-4 transition-transform ${isMinimized ? 'rotate-180' : ''}`} />
-          </Button>
-        </div>
+        {productos.length > 0 && (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              onClick={onToggleMinimize}
+            >
+              <ChevronRight className={`h-4 w-4 transition-transform ${isMinimized ? 'rotate-180' : ''}`} />
+            </Button>
+          </div>
+        )}
       </div>
 
-      {isMinimized ? (
+      {productos.length === 0 ? (
+        // Estado vacío
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center text-gray-500">
+            <ShoppingCart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Carrito vacío</h3>
+            <p className="text-sm">Agregar productos para comenzar a vender</p>
+          </div>
+        </div>
+      ) : isMinimized ? (
         // Vista minimizada
         <div className="p-4">
           <div className="space-y-2">
@@ -143,10 +141,10 @@ export default function CartPanel({
                   </div>
                   <Button
                     variant="ghost"
-                    className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
+                    className="h-12 w-12 text-red-600 hover:bg-red-50"
                     onClick={() => onEliminarProducto(p.id)}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-auto w-10 text-red-600" />
                   </Button>
                 </div>
 
@@ -159,7 +157,7 @@ export default function CartPanel({
                       className="h-6 w-6 p-0"
                       onClick={() => onActualizarCantidad(p.id, p.cantidad - (p.ventaFraccionada ? 0.1 : 1))}
                     >
-                      <Minus className="h-3 w-3" />
+                      -
                     </Button>
                     <input
                       type="number"
@@ -171,10 +169,10 @@ export default function CartPanel({
                     />
                     <Button
                       variant="outline"
-                      className="h-6 w-6 p-0"
+                      className="h-6 w-6"
                       onClick={() => onActualizarCantidad(p.id, p.cantidad + (p.ventaFraccionada ? 0.1 : 1))}
                     >
-                      <Plus className="h-3 w-3" />
+                      +
                     </Button>
                   </div>
                   

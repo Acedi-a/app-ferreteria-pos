@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
   Home,
   Menu,
@@ -36,9 +38,10 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
 
-  const NavItems = () => (
+  const NavItems = ({ collapsed = false }: { collapsed?: boolean }) => (
     <>
       {navigation.map((item) => {
         const Icon = item.icon;
@@ -52,7 +55,8 @@ export default function Layout({ children }: LayoutProps) {
                 isActive
                   ? "bg-gray-100 text-gray-900 shadow-sm border border-gray-200 transform scale-[1.01]"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+              } ${collapsed ? "justify-center px-2 relative" : ""}`}
+              title={collapsed ? item.name : undefined}
             >
               <div className={`p-1.5 rounded-lg transition-all duration-300 ${
                 isActive 
@@ -63,7 +67,7 @@ export default function Layout({ children }: LayoutProps) {
                   isActive ? "text-red-600" : "text-gray-500 group-hover:text-gray-700"
                 }`} />
               </div>
-              <span className="font-medium tracking-wide">{item.name}</span>
+              {!collapsed && <span className="font-medium tracking-wide">{item.name}</span>}
             </Link>
         );
       })}
@@ -73,40 +77,62 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar fijo (desktop) */}
-      <aside className="fixed left-0 top-0 z-40 h-screen w-72 hidden md:flex flex-col bg-white border-r border-gray-200 shadow-lg">
+      <aside className={`fixed left-0 top-0 z-40 h-screen hidden md:flex flex-col bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ${
+        sidebarCollapsed ? 'w-20' : 'w-72'
+      }`}>
         {/* Header del sidebar */}
-        <div className="flex h-20 items-center justify-center border-b border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800">
-          <Link to="/" className="flex items-center gap-3 text-white">
+        <div className="flex h-20 items-center justify-center border-b border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800 relative">
+          {sidebarCollapsed ? (
             <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
               <Store className="h-7 w-7 text-white" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-light tracking-wide text-white">Ferreteria</span>
-              <span className="text-xs opacity-80 font-light text-gray-300">Sistema de Gestión</span>
-            </div>
-          </Link>
+          ) : (
+            <Link to="/" className="flex items-center gap-3 text-white">
+              <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
+                <Store className="h-7 w-7 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-light tracking-wide text-white">Ferreteria</span>
+                <span className="text-xs opacity-80 font-light text-gray-300">Sistema de Gestión</span>
+              </div>
+            </Link>
+          )}
+          
+          {/* Botón de colapsar */}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="absolute -right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors shadow-md"
+          >
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-3 w-3 text-gray-600" />
+            ) : (
+              <ChevronLeft className="h-3 w-3 text-gray-600" />
+            )}
+          </button>
         </div>
 
         {/* Navegación */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          <NavItems />
+        <nav className={`flex-1 py-6 space-y-1 overflow-y-auto ${sidebarCollapsed ? 'px-2' : 'px-4'}`}>
+          <NavItems collapsed={sidebarCollapsed} />
         </nav>
         
         {/* Footer del sidebar */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-xs font-medium text-gray-700">Sistema Activo</span>
+        {!sidebarCollapsed && (
+          <div className="p-4 border-t border-gray-200">
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs font-medium text-gray-700">Sistema Activo</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-1">Versión 1.0.0</p>
+              <p className="text-xs text-gray-400">© 2024 Ferreteria</p>
             </div>
-            <p className="text-xs text-gray-500 mb-1">Versión 1.0.0</p>
-            <p className="text-xs text-gray-400">© 2024 Ferreteria</p>
           </div>
-        </div>
+        )}
       </aside>
 
       {/* Contenido principal */}
-      <div className="md:ml-72">
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-72'}`}>
         {/* Header móvil */}
         <header className="flex h-20 items-center gap-4 border-b border-gray-200 bg-white px-6 md:hidden shadow-sm">
           <button
