@@ -16,8 +16,16 @@ interface Producto {
   categoria?: string;
 }
 
+interface Categoria {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  activo: boolean;
+}
+
 interface ProductGridProps {
   productos: Producto[];
+  categorias?: Categoria[];
   onAgregarProducto: (producto: Producto) => void;
   busqueda: string;
   onCambioBusqueda: (busqueda: string) => void;
@@ -33,6 +41,7 @@ interface ProductGridProps {
 
 export default function ProductGrid({ 
   productos, 
+  categorias = [],
   onAgregarProducto, 
   busqueda, 
   onCambioBusqueda,
@@ -118,8 +127,10 @@ export default function ProductGrid({
 
   const hayFiltrosActivos = busqueda.trim() || filtroStock !== "todos" || filtroCategoria !== "todas" || ordenPrecio !== "ninguno" || filtroVenta !== "todos";
 
-  // Obtener categorías únicas
-  const categoriasDisponibles = Array.from(new Set(productos.map(p => p.categoria).filter(Boolean)));
+  // Obtener categorías disponibles (usar las de props si están disponibles, sino extraer de productos)
+  const categoriasDisponibles = categorias && categorias.length > 0 
+    ? categorias.map(c => c.nombre)
+    : Array.from(new Set(productos.map(p => p.categoria).filter(Boolean)));
 
   return (
     <div className="space-y-6">

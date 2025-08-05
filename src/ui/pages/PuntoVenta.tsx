@@ -1,10 +1,10 @@
 // src/pages/PuntoVenta.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "../components/ui/use-toast";
 import ProductGrid from "../components/punto-venta/ProductGrid";
 import CartPanel from "../components/punto-venta/CartPanel";
-
-
+import { PuntoVentaService } from "../services/punto-venta-service";
+import type { Producto as ProductoBase, Cliente as ClienteBase, Categoria } from "../services/punto-venta-service";
 
 /* ---------- tipos ---------- */
 interface ProductoVenta {
@@ -36,108 +36,34 @@ interface Producto {
   categoria?: string;
 }
 
-/* ---------- datos de ejemplo ---------- */
-const productosDisponibles: Producto[] = [
-  {
-    id: 1,
-    codigo: "P001",
-    codigoBarras: "1234567890",
-    nombre: "Martillo de Carpintero",
-    precio: 45.50,
-    stock: 25,
-    ventaFraccionada: false,
-    unidadMedida: "unidad",
-    categoria: "Herramientas",
-  },
-  {
-    id: 2,
-    codigo: "P002",
-    codigoBarras: "1234567891",
-    nombre: "Cable Eléctrico por Metro",
-    precio: 8.75,
-    stock: 150,
-    ventaFraccionada: true,
-    unidadMedida: "metro",
-    categoria: "Electricidad",
-  },
-  {
-    id: 3,
-    codigo: "P003",
-    codigoBarras: "1234567892",
-    nombre: "Cemento Portland",
-    precio: 35.00,
-    stock: 8,
-    ventaFraccionada: false,
-    unidadMedida: "bolsa",
-    categoria: "Construcción",
-  },
-  {
-    id: 4,
-    codigo: "P004",
-    codigoBarras: "1234567893",
-    nombre: "Destornillador Phillips",
-    precio: 12.25,
-    stock: 40,
-    ventaFraccionada: false,
-    unidadMedida: "unidad",
-    categoria: "Herramientas",
-  },
-  {
-    id: 5,
-    codigo: "P005",
-    codigoBarras: "1234567894",
-    nombre: "Tubo PVC 4 pulgadas",
-    precio: 28.90,
-    stock: 20,
-    ventaFraccionada: true,
-    unidadMedida: "metro",
-    categoria: "Plomería",
-  },
-  {
-    id: 6,
-    codigo: "P006",
-    codigoBarras: "1234567895",
-    nombre: "Pintura Blanca",
-    precio: 55.00,
-    stock: 15,
-    ventaFraccionada: false,
-    unidadMedida: "galón",
-    categoria: "Pinturas",
-  },
-  {
-    id: 7,
-    codigo: "P007",
-    codigoBarras: "1234567896",
-    nombre: "Tornillos para Madera",
-    precio: 18.50,
-    stock: 100,
-    ventaFraccionada: false,
-    unidadMedida: "caja",
-    categoria: "Ferretería",
-  },
-  {
-    id: 8,
-    codigo: "P008",
-    codigoBarras: "1234567897",
-    nombre: "Alambre de Acero",
-    precio: 3.25,
-    stock: 200,
-    ventaFraccionada: true,
-    unidadMedida: "kilogramo",
-    categoria: "Construcción",
-  }
-];
+/* ---------- función para convertir producto de BD a local ---------- */
+const convertirProductoBase = (producto: ProductoBase): Producto => ({
+  id: producto.id,
+  codigo: producto.codigo_interno || producto.codigo_barras || '',
+  codigoBarras: producto.codigo_barras || '',
+  nombre: producto.nombre,
+  precio: producto.precio_venta,
+  stock: producto.stock_actual,
+  ventaFraccionada: Boolean(producto.venta_fraccionada),
+  unidadMedida: 'unidad', // Valor por defecto
+  categoria: producto.categoria_nombre
+});
 
-const clientes: Cliente[] = [
-  { id: 1, nombre: "Juan Pérez", codigo: "C001" },
-  { id: 2, nombre: "María García", codigo: "C002" },
-  { id: 3, nombre: "Carlos López", codigo: "C003" },
-  { id: 4, nombre: "Ana Rodríguez", codigo: "C004" },
-];
+const convertirClienteBase = (cliente: ClienteBase): Cliente => ({
+  id: cliente.id,
+  nombre: `${cliente.nombre} ${cliente.apellido}`,
+  codigo: cliente.codigo
+});
 
 /* ---------- componente principal ---------- */
 export default function PuntoVenta() {
   const { toast } = useToast();
+  
+  // Estados de datos
+  const [productosDisponibles, setProductosDisponibles] = useState<Producto[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // Estados del carrito
   const [productos, setProductos] = useState<ProductoVenta[]>([]);
@@ -155,24 +81,72 @@ export default function PuntoVenta() {
   const [ordenPrecio, setOrdenPrecio] = useState("ninguno");
   const [filtroVenta, setFiltroVenta] = useState("todos");
 
+  /* ---------- carga inicial de datos ---------- */
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    setLoading(true);
+    try {
+      const [productosData, clientesData, categoriasData] = await Promise.all([
+        PuntoVentaService.obtenerProductos(),
+        PuntoVentaService.obtenerClientes(),
+        PuntoVentaService.obtenerCategorias()
+      ]);
+
+      setProductosDisponibles(productosData.map(convertirProductoBase));
+      setClientes(clientesData.map(convertirClienteBase));
+      setCategorias(categoriasData);
+
+      console.log('Productos cargados:', productosData);
+      console.log('Productos convertidos:', productosData.map(convertirProductoBase));
+
+      toast({
+        title: "Datos cargados",
+        description: `${productosData.length} productos y ${clientesData.length} clientes disponibles`
+      });
+    } catch (error) {
+      console.error('Error al cargar datos:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los datos. Usando datos de ejemplo.",
+        variant: "destructive"
+      });
+      
+      // Datos de respaldo en caso de error
+      setProductosDisponibles([]);
+      setClientes([]);
+      setCategorias([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   /* ---------- lógica del carrito ---------- */
   const agregarProducto = (producto: Producto) => {
+    console.log('Agregando producto al carrito:', producto);
+    
     const existente = productos.find((p) => p.id === producto.id);
     if (existente) {
       actualizarCantidad(producto.id, existente.cantidad + 1);
     } else {
+      const nuevoProducto = {
+        id: producto.id,
+        codigo: producto.codigo,
+        nombre: producto.nombre,
+        precio: producto.precio,
+        cantidad: 1,
+        subtotal: producto.precio,
+        ventaFraccionada: producto.ventaFraccionada,
+        unidadMedida: producto.unidadMedida,
+      };
+      
+      console.log('Producto a agregar al carrito:', nuevoProducto);
+      
       setProductos([
         ...productos,
-        {
-          id: producto.id,
-          codigo: producto.codigo,
-          nombre: producto.nombre,
-          precio: producto.precio,
-          cantidad: 1,
-          subtotal: producto.precio,
-          ventaFraccionada: producto.ventaFraccionada,
-          unidadMedida: producto.unidadMedida,
-        },
+        nuevoProducto,
       ]);
     }
     
@@ -202,7 +176,7 @@ export default function PuntoVenta() {
     });
   };
 
-  const procesarVenta = () => {
+  const procesarVenta = async () => {
     if (productos.length === 0) {
       toast({ 
         title: "Error", 
@@ -223,27 +197,65 @@ export default function PuntoVenta() {
     const subtotal = productos.reduce((s, p) => s + p.subtotal, 0);
     const total = subtotal - descuento;
 
-    console.log("Venta procesada", { 
-      productos, 
-      clienteSeleccionado, 
-      metodoPago, 
-      descuento, 
-      total, 
-      ventaCredito, 
-      observaciones 
-    });
-    
-    toast({ 
-      title: "Venta procesada", 
-      description: `Total: Bs ${total.toFixed(2)}` 
-    });
-    
-    // Limpiar el carrito
-    setProductos([]);
-    setClienteSeleccionado(null);
-    setDescuento(0);
-    setObservaciones("");
-    setVentaCredito(false);
+    try {
+      // Validar que todos los productos tengan ID válido
+      const productosInvalidos = productos.filter(p => !p.id || p.id === null || p.id === undefined);
+      if (productosInvalidos.length > 0) {
+        console.error('Productos con ID inválido:', productosInvalidos);
+        toast({ 
+          title: "Error en productos", 
+          description: "Algunos productos no tienen ID válido. Refresque la página e intente nuevamente.", 
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      // Preparar datos para la venta
+      const nuevaVenta = {
+        cliente_id: clienteSeleccionado?.id,
+        metodo_pago: metodoPago,
+        subtotal,
+        descuento,
+        total,
+        observaciones: observaciones || undefined,
+        detalles: productos.map(p => ({
+          producto_id: p.id,
+          producto_nombre: p.nombre,
+          cantidad: p.cantidad,
+          precio_unitario: p.precio,
+          subtotal: p.subtotal,
+          es_fraccionado: p.ventaFraccionada
+        }))
+      };
+
+      console.log('Datos de venta a enviar:', nuevaVenta);
+
+      // Crear venta en la base de datos
+      const ventaId = await PuntoVentaService.crearVenta(nuevaVenta);
+      
+      toast({ 
+        title: "Venta procesada exitosamente", 
+        description: `Venta #${ventaId} - Total: Bs ${total.toFixed(2)}` 
+      });
+      
+      // Limpiar el carrito
+      setProductos([]);
+      setClienteSeleccionado(null);
+      setDescuento(0);
+      setObservaciones("");
+      setVentaCredito(false);
+
+      // Actualizar lista de productos para reflejar el nuevo stock
+      await cargarDatos();
+
+    } catch (error) {
+      console.error('Error al procesar venta:', error);
+      toast({ 
+        title: "Error al procesar venta", 
+        description: "Ocurrió un error al guardar la venta. Intente nuevamente.", 
+        variant: "destructive" 
+      });
+    }
   };
 
   const imprimirTicket = () => {
@@ -271,20 +283,30 @@ export default function PuntoVenta() {
       <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex gap-6 h-[calc(100vh-8rem)]">
           <div className="flex-1 overflow-hidden">
-            <ProductGrid
-              productos={productosDisponibles}
-              onAgregarProducto={agregarProducto}
-              busqueda={busquedaProducto}
-              onCambioBusqueda={setBusquedaProducto}
-              filtroStock={filtroStock}
-              onCambioFiltroStock={setFiltroStock}
-              filtroCategoria={filtroCategoria}
-              onCambioFiltroCategoria={setFiltroCategoria}
-              ordenPrecio={ordenPrecio}
-              onCambioOrdenPrecio={setOrdenPrecio}
-              filtroVenta={filtroVenta}
-              onCambioFiltroVenta={setFiltroVenta}
-            />
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Cargando productos...</p>
+                </div>
+              </div>
+            ) : (
+              <ProductGrid
+                productos={productosDisponibles}
+                categorias={categorias}
+                onAgregarProducto={agregarProducto}
+                busqueda={busquedaProducto}
+                onCambioBusqueda={setBusquedaProducto}
+                filtroStock={filtroStock}
+                onCambioFiltroStock={setFiltroStock}
+                filtroCategoria={filtroCategoria}
+                onCambioFiltroCategoria={setFiltroCategoria}
+                ordenPrecio={ordenPrecio}
+                onCambioOrdenPrecio={setOrdenPrecio}
+                filtroVenta={filtroVenta}
+                onCambioFiltroVenta={setFiltroVenta}
+              />
+            )}
           </div>
 
           {/* Columna derecha - Carrito */}

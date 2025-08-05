@@ -2,8 +2,6 @@
 import {
   ShoppingCart,
   Trash2,
-  Plus,
-  Minus,
   Printer,
   ChevronRight,
 } from "lucide-react";
