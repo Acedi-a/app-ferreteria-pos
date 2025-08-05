@@ -40,7 +40,7 @@ app.on("ready",()=> {
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            preload: path.join(__dirname, '../dist-electron/preload.cjs')
+            preload: path.join(__dirname, 'preload.cjs')
         }
     });
     

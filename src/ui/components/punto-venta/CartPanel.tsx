@@ -1,0 +1,298 @@
+// src/components/punto-venta/CartPanel.tsx
+import {
+  ShoppingCart,
+  Trash2,
+  Plus,
+  Minus,
+  Printer,
+  ChevronRight,
+} from "lucide-react";
+
+import { Button } from "../ui/Button";
+
+interface ProductoVenta {
+  id: number;
+  codigo: string;
+  nombre: string;
+  precio: number;
+  cantidad: number;
+  subtotal: number;
+  ventaFraccionada: boolean;
+  unidadMedida: string;
+}
+
+interface Cliente {
+  id: number;
+  nombre: string;
+  codigo: string;
+}
+
+interface CartPanelProps {
+  productos: ProductoVenta[];
+  onActualizarCantidad: (id: number, cantidad: number) => void;
+  onEliminarProducto: (id: number) => void;
+  onProcesarVenta: () => void;
+  onImprimirTicket: () => void;
+  clientes: Cliente[];
+  clienteSeleccionado: Cliente | null;
+  onSeleccionarCliente: (cliente: Cliente | null) => void;
+  metodoPago: string;
+  onCambiarMetodoPago: (metodo: string) => void;
+  descuento: number;
+  onCambiarDescuento: (descuento: number) => void;
+  observaciones: string;
+  onCambiarObservaciones: (observaciones: string) => void;
+  ventaCredito: boolean;
+  onCambiarVentaCredito: (ventaCredito: boolean) => void;
+  isMinimized: boolean;
+  onToggleMinimize: () => void;
+}
+
+export default function CartPanel({
+  productos,
+  onActualizarCantidad,
+  onEliminarProducto,
+  onProcesarVenta,
+  onImprimirTicket,
+  clientes,
+  clienteSeleccionado,
+  onSeleccionarCliente,
+  metodoPago,
+  onCambiarMetodoPago,
+  descuento,
+  onCambiarDescuento,
+  observaciones,
+  onCambiarObservaciones,
+  ventaCredito,
+  onCambiarVentaCredito,
+  isMinimized,
+  onToggleMinimize,
+}: CartPanelProps) {
+  const subtotal = productos.reduce((s, p) => s + p.subtotal, 0);
+  const total = subtotal - descuento;
+  const totalItems = productos.reduce((total, p) => total + p.cantidad, 0);
+
+  if (productos.length === 0) {
+    return (
+      <div className="fixed bottom-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[300px]">
+        <div className="flex items-center gap-2 text-gray-500">
+          <ShoppingCart className="h-5 w-5" />
+          <span className="text-sm">Carrito vacío</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-300 ${
+      isMinimized ? 'w-64' : 'w-96'
+    } max-h-[calc(100vh-2rem)] flex flex-col`}>
+      {/* Header del carrito */}
+      <div className="flex items-center justify-between p-4 border-b bg-blue-50">
+        <div className="flex items-center gap-2">
+          <ShoppingCart className="h-5 w-5 text-blue-600" />
+          <span className="font-semibold text-blue-900">
+            Carrito ({totalItems} {totalItems === 1 ? 'item' : 'items'})
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            className="h-8 w-8 p-0"
+            onClick={onToggleMinimize}
+          >
+            <ChevronRight className={`h-4 w-4 transition-transform ${isMinimized ? 'rotate-180' : ''}`} />
+          </Button>
+        </div>
+      </div>
+
+      {isMinimized ? (
+        // Vista minimizada
+        <div className="p-4">
+          <div className="space-y-2">
+            {productos.slice(0, 2).map((p) => (
+              <div key={p.id} className="flex justify-between text-sm">
+                <span className="truncate">{p.nombre}</span>
+                <span className="font-medium">{p.cantidad}x</span>
+              </div>
+            ))}
+            {productos.length > 2 && (
+              <div className="text-xs text-gray-500">
+                +{productos.length - 2} más...
+              </div>
+            )}
+          </div>
+          <div className="mt-3 pt-3 border-t">
+            <div className="flex justify-between font-bold">
+              <span>Total:</span>
+              <span>Bs {total.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        // Vista completa
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Lista de productos */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {productos.map((p) => (
+              <div key={p.id} className="border rounded-lg p-3 bg-gray-50">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-sm">{p.nombre}</h4>
+                    <p className="text-xs text-gray-500">{p.codigo}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
+                    onClick={() => onEliminarProducto(p.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Bs {p.precio.toFixed(2)}</span>
+                  
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      className="h-6 w-6 p-0"
+                      onClick={() => onActualizarCantidad(p.id, p.cantidad - (p.ventaFraccionada ? 0.1 : 1))}
+                    >
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                    <input
+                      type="number"
+                      value={p.cantidad}
+                      onChange={(e) => onActualizarCantidad(p.id, Number.parseFloat(e.target.value) || 0)}
+                      className="w-12 text-center text-xs border border-gray-300 rounded"
+                      step={p.ventaFraccionada ? "0.1" : "1"}
+                      min="0"
+                    />
+                    <Button
+                      variant="outline"
+                      className="h-6 w-6 p-0"
+                      onClick={() => onActualizarCantidad(p.id, p.cantidad + (p.ventaFraccionada ? 0.1 : 1))}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  
+                  <span className="text-sm font-bold">Bs {p.subtotal.toFixed(2)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Panel de checkout */}
+          <div className="border-t bg-white p-4 space-y-4">
+            {/* Cliente */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Cliente</label>
+              <select
+                value={clienteSeleccionado?.id ?? ""}
+                onChange={(e) => {
+                  const c = clientes.find((c) => c.id.toString() === e.target.value) ?? null;
+                  onSeleccionarCliente(c);
+                }}
+                className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+              >
+                <option value="">Cliente general</option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Método de pago */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Método de pago</label>
+              <select
+                value={metodoPago}
+                onChange={(e) => onCambiarMetodoPago(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+              >
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="mixto">Mixto</option>
+              </select>
+            </div>
+
+            {/* Descuento */}
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">Descuento:</label>
+              <input
+                type="number"
+                value={descuento}
+                onChange={(e) => onCambiarDescuento(Number.parseFloat(e.target.value) || 0)}
+                className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
+                min="0"
+                step="0.01"
+              />
+            </div>
+
+            {/* Venta a crédito */}
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">Venta a crédito:</label>
+              <input
+                type="checkbox"
+                checked={ventaCredito}
+                onChange={(e) => onCambiarVentaCredito(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+            </div>
+
+            {/* Observaciones */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Observaciones</label>
+              <textarea
+                value={observaciones}
+                onChange={(e) => onCambiarObservaciones(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded px-2 py-1 resize-none"
+                rows={2}
+                placeholder="Observaciones adicionales..."
+              />
+            </div>
+
+            {/* Totales */}
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span>Subtotal:</span>
+                <span>Bs {subtotal.toFixed(2)}</span>
+              </div>
+              {descuento > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Descuento:</span>
+                  <span>-Bs {descuento.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-lg border-t pt-1">
+                <span>Total:</span>
+                <span>Bs {total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="space-y-2">
+              <Button onClick={onProcesarVenta} className="w-full bg-green-600 hover:bg-green-700 text-white">
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Procesar Venta
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={onImprimirTicket}
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Imprimir Ticket
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

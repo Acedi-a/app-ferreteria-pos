@@ -179,7 +179,7 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Contenido de la página */}
         <main className="min-h-screen p-6">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto ">
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
               {children}
             </div>

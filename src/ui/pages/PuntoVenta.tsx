@@ -1,23 +1,10 @@
 // src/pages/PuntoVenta.tsx
 import { useState } from "react";
-import {
-  Search,
-  ShoppingCart,
-  Trash2,
-  Plus,
-  Minus,
-  Calculator,
-  Printer,
-  User,
-  CreditCard,
-  Table,
-} from "lucide-react";
+import { useToast } from "../components/ui/use-toast";
+import ProductGrid from "../components/punto-venta/ProductGrid";
+import CartPanel from "../components/punto-venta/CartPanel";
 
-import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
 
-import { Badge } from "../components/ui/Badge";
-import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/Table";
 
 /* ---------- tipos ---------- */
 interface ProductoVenta {
@@ -37,15 +24,26 @@ interface Cliente {
   codigo: string;
 }
 
+interface Producto {
+  id: number;
+  codigo: string;
+  codigoBarras: string;
+  nombre: string;
+  precio: number;
+  stock: number;
+  ventaFraccionada: boolean;
+  unidadMedida: string;
+}
+
 /* ---------- datos de ejemplo ---------- */
-const productosDisponibles = [
+const productosDisponibles: Producto[] = [
   {
     id: 1,
     codigo: "P001",
     codigoBarras: "1234567890",
-    nombre: "Producto A",
-    precio: 25.5,
-    stock: 100,
+    nombre: "Martillo de Carpintero",
+    precio: 45.50,
+    stock: 25,
     ventaFraccionada: false,
     unidadMedida: "unidad",
   },
@@ -53,9 +51,9 @@ const productosDisponibles = [
     id: 2,
     codigo: "P002",
     codigoBarras: "1234567891",
-    nombre: "Tela por Metro",
-    precio: 15.75,
-    stock: 50,
+    nombre: "Cable Eléctrico por Metro",
+    precio: 8.75,
+    stock: 150,
     ventaFraccionada: true,
     unidadMedida: "metro",
   },
@@ -63,40 +61,89 @@ const productosDisponibles = [
     id: 3,
     codigo: "P003",
     codigoBarras: "1234567892",
-    nombre: "Arroz por Kg",
+    nombre: "Cemento Portland",
+    precio: 35.00,
+    stock: 8,
+    ventaFraccionada: false,
+    unidadMedida: "bolsa",
+  },
+  {
+    id: 4,
+    codigo: "P004",
+    codigoBarras: "1234567893",
+    nombre: "Destornillador Phillips",
+    precio: 12.25,
+    stock: 40,
+    ventaFraccionada: false,
+    unidadMedida: "unidad",
+  },
+  {
+    id: 5,
+    codigo: "P005",
+    codigoBarras: "1234567894",
+    nombre: "Tubo PVC 4 pulgadas",
+    precio: 28.90,
+    stock: 20,
+    ventaFraccionada: true,
+    unidadMedida: "metro",
+  },
+  {
+    id: 6,
+    codigo: "P006",
+    codigoBarras: "1234567895",
+    nombre: "Pintura Blanca",
+    precio: 55.00,
+    stock: 15,
+    ventaFraccionada: false,
+    unidadMedida: "galón",
+  },
+  {
+    id: 7,
+    codigo: "P007",
+    codigoBarras: "1234567896",
+    nombre: "Tornillos para Madera",
+    precio: 18.50,
+    stock: 100,
+    ventaFraccionada: false,
+    unidadMedida: "caja",
+  },
+  {
+    id: 8,
+    codigo: "P008",
+    codigoBarras: "1234567897",
+    nombre: "Alambre de Acero",
     precio: 3.25,
     stock: 200,
     ventaFraccionada: true,
     unidadMedida: "kilogramo",
-  },
+  }
 ];
 
-const clientes = [
+const clientes: Cliente[] = [
   { id: 1, nombre: "Juan Pérez", codigo: "C001" },
   { id: 2, nombre: "María García", codigo: "C002" },
   { id: 3, nombre: "Carlos López", codigo: "C003" },
+  { id: 4, nombre: "Ana Rodríguez", codigo: "C004" },
 ];
 
-import { useToast } from "../components/ui/use-toast";
-
-/* ---------- helpers para toasts (simplificado) ---------- */
-// const toast = ({ title, description }: { title: string; description: string; variant?: string }) => {
-//   alert(`${title}: ${description}`);
-// };
-
 /* ---------- componente principal ---------- */
-  export default function PuntoVenta() {
-    const { toast } = useToast();
-    const [productos, setProductos] = useState<ProductoVenta[]>([]);
-  const [busquedaProducto, setBusquedaProducto] = useState("");
+export default function PuntoVenta() {
+  const { toast } = useToast();
+  
+  // Estados del carrito
+  const [productos, setProductos] = useState<ProductoVenta[]>([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
   const [metodoPago, setMetodoPago] = useState("efectivo");
   const [descuento, setDescuento] = useState(0);
   const [observaciones, setObservaciones] = useState("");
   const [ventaCredito, setVentaCredito] = useState(false);
+  
+  // Estados de la interfaz
+  const [busquedaProducto, setBusquedaProducto] = useState("");
+  const [cartMinimized, setCartMinimized] = useState(false);
 
-  /* ---------- lógica ---------- */
-  const agregarProducto = (producto: typeof productosDisponibles[0]) => {
+  /* ---------- lógica del carrito ---------- */
+  const agregarProducto = (producto: Producto) => {
     const existente = productos.find((p) => p.id === producto.id);
     if (existente) {
       actualizarCantidad(producto.id, existente.cantidad + 1);
@@ -115,7 +162,11 @@ import { useToast } from "../components/ui/use-toast";
         },
       ]);
     }
-    setBusquedaProducto("");
+    
+    toast({ 
+      title: "Producto agregado", 
+      description: `${producto.nombre} agregado al carrito` 
+    });
   };
 
   const actualizarCantidad = (id: number, nueva: number) => {
@@ -130,23 +181,51 @@ import { useToast } from "../components/ui/use-toast";
     );
   };
 
-  const eliminarProducto = (id: number) =>
+  const eliminarProducto = (id: number) => {
     setProductos(productos.filter((p) => p.id !== id));
-
-  const subtotal = productos.reduce((s, p) => s + p.subtotal, 0);
-  const total = subtotal - descuento;
+    toast({ 
+      title: "Producto eliminado", 
+      description: "Producto removido del carrito" 
+    });
+  };
 
   const procesarVenta = () => {
     if (productos.length === 0) {
-      toast({ title: "Error", description: "Debe agregar al menos un producto", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: "Debe agregar al menos un producto", 
+        variant: "destructive" 
+      });
       return;
     }
     if (ventaCredito && !clienteSeleccionado) {
-      toast({ title: "Error", description: "Debe seleccionar un cliente para venta a crédito", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: "Debe seleccionar un cliente para venta a crédito", 
+        variant: "destructive" 
+      });
       return;
     }
-    console.log("Venta procesada", { productos, clienteSeleccionado, metodoPago, descuento, total, ventaCredito, observaciones });
-    toast({ title: "Venta procesada", description: `Total: Bs ${total.toFixed(2)}` });
+
+    const subtotal = productos.reduce((s, p) => s + p.subtotal, 0);
+    const total = subtotal - descuento;
+
+    console.log("Venta procesada", { 
+      productos, 
+      clienteSeleccionado, 
+      metodoPago, 
+      descuento, 
+      total, 
+      ventaCredito, 
+      observaciones 
+    });
+    
+    toast({ 
+      title: "Venta procesada", 
+      description: `Total: Bs ${total.toFixed(2)}` 
+    });
+    
+    // Limpiar el carrito
     setProductos([]);
     setClienteSeleccionado(null);
     setDescuento(0);
@@ -155,280 +234,58 @@ import { useToast } from "../components/ui/use-toast";
   };
 
   const imprimirTicket = () => {
-    toast({ title: "Imprimiendo ticket", description: "Enviando ticket a la impresora..." });
+    toast({ 
+      title: "Imprimiendo ticket", 
+      description: "Enviando ticket a la impresora..." 
+    });
   };
-
-  const productosEncontrados = productosDisponibles.filter(
-    (p) =>
-      p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase()) ||
-      p.codigo.toLowerCase().includes(busquedaProducto.toLowerCase()) ||
-      p.codigoBarras.includes(busquedaProducto)
-  );
 
   /* ---------- render ---------- */
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Punto de Venta</h1>
-          <p className="text-sm text-slate-500">Procesar nueva venta</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Punto de Venta</h1>
+              <p className="text-sm text-gray-600">Gestiona tus ventas de forma rápida y eficiente</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 2 columnas en lg */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* ----------- columna izquierda ----------- */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Búsqueda */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Search className="h-4 w-4" />
-                Buscar Producto
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                <input
-                  placeholder="Buscar por nombre, código o código de barras..."
-                  value={busquedaProducto}
-                  onChange={(e) => setBusquedaProducto(e.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 pl-8 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                />
-              </div>
-
-              {busquedaProducto && (
-                <div className="mt-2 max-h-48 overflow-y-auto rounded-md border">
-                  {productosEncontrados.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between border-b p-3 last:border-0 hover:bg-slate-100 cursor-pointer"
-                      onClick={() => agregarProducto(p)}
-                    >
-                      <div>
-                        <p className="font-medium">{p.nombre}</p>
-                        <p className="text-xs text-slate-500">
-                          {p.codigo} | Stock: {p.stock}
-                          {p.ventaFraccionada && (
-                            <Badge className="ml-2">{p.unidadMedida}</Badge>
-                          )}
-                        </p>
-                      </div>
-                      <span className="font-bold">Bs {p.precio.toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Tabla de productos agregados */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4" />
-                Productos en Venta
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {productos.length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-500">
-                  No hay productos agregados
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Producto</TableHead>
-                      <TableHead>Precio</TableHead>
-                      <TableHead>Cantidad</TableHead>
-                      <TableHead>Subtotal</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {productos.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell>
-                          <p className="font-medium">{p.nombre}</p>
-                          <p className="text-xs text-slate-500">{p.codigo}</p>
-                        </TableCell>
-                        <TableCell>Bs {p.precio.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="outline"
-                              className="h-8 w-8 bg-transparent"
-                              onClick={() => actualizarCantidad(p.id, p.cantidad - (p.ventaFraccionada ? 0.1 : 1))}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <input
-                              type="number"
-                              value={p.cantidad}
-                              onChange={(e) =>
-                                actualizarCantidad(p.id, Number.parseFloat(e.target.value) || 0)
-                              }
-                              className="w-16 border border-slate-300 text-center text-sm rounded"
-                              step={p.ventaFraccionada ? "0.1" : "1"}
-                              min="0"
-                            />
-                            <Button
-                              variant="outline"
-                              className="h-8 w-8 bg-transparent"
-                              onClick={() => actualizarCantidad(p.id, p.cantidad + (p.ventaFraccionada ? 0.1 : 1))}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          {p.ventaFraccionada && (
-                            <p className="text-xs text-slate-500">{p.unidadMedida}</p>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">Bs {p.subtotal.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" onClick={() => eliminarProducto(p.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ----------- columna derecha ----------- */}
-        <div className="space-y-6">
-          {/* Cliente */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Cliente
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <select
-                value={clienteSeleccionado?.id ?? ""}
-                onChange={(e) => {
-                  const c = clientes.find((c) => c.id.toString() === e.target.value) ?? null;
-                  setClienteSeleccionado(c);
-                }}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-              >
-                <option value="">Seleccionar cliente (opcional)</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre} ({c.codigo})
-                  </option>
-                ))}
-              </select>
-
-              <div className="flex items-center gap-2">
-                <input
-                  id="venta-credito"
-                  type="checkbox"
-                  checked={ventaCredito}
-                  onChange={(e) => setVentaCredito(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300"
-                />
-                <label htmlFor="venta-credito" className="text-sm font-medium">
-                  Venta a crédito
-                </label>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Método de pago */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Método de Pago
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <select
-                value={metodoPago}
-                onChange={(e) => setMetodoPago(e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-              >
-                <option value="efectivo">Efectivo</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="mixto">Mixto</option>
-              </select>
-            </CardContent>
-          </Card>
-
-          {/* Resumen */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calculator className="h-4 w-4" />
-                Resumen
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>Bs {subtotal.toFixed(2)}</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label htmlFor="descuento" className="text-sm font-medium">
-                  Descuento:
-                </label>
-                <input
-                  id="descuento"
-                  type="number"
-                  value={descuento}
-                  onChange={(e) => setDescuento(Number.parseFloat(e.target.value) || 0)}
-                  className="w-20 rounded border border-slate-300 px-2 py-1 text-right text-sm"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <hr />
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total:</span>
-                <span>Bs {total.toFixed(2)}</span>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Observaciones:</label>
-                <textarea
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                  placeholder="Observaciones adicionales..."
-                  rows={3}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
-                />
-              </div>
-
-              <Button onClick={procesarVenta} className="w-full" disabled={productos.length === 0}>
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Procesar Venta
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full bg-transparent"
-                onClick={imprimirTicket}
-                disabled={productos.length === 0}
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                Imprimir Ticket
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Contenido principal */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <ProductGrid
+          productos={productosDisponibles}
+          onAgregarProducto={agregarProducto}
+          busqueda={busquedaProducto}
+          onCambioBusqueda={setBusquedaProducto}
+        />
       </div>
+
+      {/* Panel del carrito flotante */}
+      <CartPanel
+        productos={productos}
+        onActualizarCantidad={actualizarCantidad}
+        onEliminarProducto={eliminarProducto}
+        onProcesarVenta={procesarVenta}
+        onImprimirTicket={imprimirTicket}
+        clientes={clientes}
+        clienteSeleccionado={clienteSeleccionado}
+        onSeleccionarCliente={setClienteSeleccionado}
+        metodoPago={metodoPago}
+        onCambiarMetodoPago={setMetodoPago}
+        descuento={descuento}
+        onCambiarDescuento={setDescuento}
+        observaciones={observaciones}
+        onCambiarObservaciones={setObservaciones}
+        ventaCredito={ventaCredito}
+        onCambiarVentaCredito={setVentaCredito}
+        isMinimized={cartMinimized}
+        onToggleMinimize={() => setCartMinimized(!cartMinimized)}
+      />
     </div>
   );
 }
