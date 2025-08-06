@@ -292,6 +292,30 @@ export class CuentasPorCobrarService {
 
       await this.executeRun(updateCuentaQuery, [nuevoSaldo, nuevoEstado, datosPago.cuenta_id]);
 
+      // Si la cuenta se completó, actualizar el estado de la venta
+      if (nuevoSaldo <= 0) {
+        // Obtener la venta asociada
+        const ventaQuery = `
+          SELECT venta_id 
+          FROM cuentas_por_cobrar 
+          WHERE id = ?
+        `;
+        
+        const ventaInfo = await this.executeGet(ventaQuery, [datosPago.cuenta_id]);
+        
+        if (ventaInfo && ventaInfo.venta_id) {
+          // Actualizar estado de venta a completada
+          const updateVentaQuery = `
+            UPDATE ventas 
+            SET estado = 'completada'
+            WHERE id = ?
+          `;
+          
+          await this.executeRun(updateVentaQuery, [ventaInfo.venta_id]);
+          console.log(`Venta ${ventaInfo.venta_id} marcada como completada - Crédito totalmente pagado`);
+        }
+      }
+
       // Actualizar saldo pendiente del cliente
       const updateClienteQuery = `
         UPDATE clientes 

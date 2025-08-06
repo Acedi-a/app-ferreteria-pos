@@ -72,6 +72,7 @@ export default function PuntoVenta() {
   const [descuento, setDescuento] = useState(0);
   const [observaciones, setObservaciones] = useState("");
   const [ventaCredito, setVentaCredito] = useState(false);
+  const [pagoInicial, setPagoInicial] = useState(0);
   
   // Estados de la interfaz
   const [busquedaProducto, setBusquedaProducto] = useState("");
@@ -197,6 +198,16 @@ export default function PuntoVenta() {
     const subtotal = productos.reduce((s, p) => s + p.subtotal, 0);
     const total = subtotal - descuento;
 
+    // Validar pago inicial para ventas a crédito
+    if (ventaCredito && pagoInicial > total) {
+      toast({ 
+        title: "Error", 
+        description: "El pago inicial no puede ser mayor al total de la venta", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     try {
       // Validar que todos los productos tengan ID válido
       const productosInvalidos = productos.filter(p => !p.id || p.id === null || p.id === undefined);
@@ -218,6 +229,8 @@ export default function PuntoVenta() {
         descuento,
         total,
         observaciones: observaciones || undefined,
+        es_credito: ventaCredito,
+        pago_inicial: ventaCredito ? pagoInicial : undefined,
         detalles: productos.map(p => ({
           producto_id: p.id,
           producto_nombre: p.nombre,
@@ -233,9 +246,12 @@ export default function PuntoVenta() {
       // Crear venta en la base de datos
       const ventaId = await PuntoVentaService.crearVenta(nuevaVenta);
       
+      const tipoVenta = ventaCredito ? "crédito" : "contado";
+      const pagoInicialText = ventaCredito && pagoInicial > 0 ? ` (Pago inicial: Bs ${pagoInicial.toFixed(2)})` : "";
+      
       toast({ 
         title: "Venta procesada exitosamente", 
-        description: `Venta #${ventaId} - Total: Bs ${total.toFixed(2)}` 
+        description: `Venta ${tipoVenta} #${ventaId} - Total: Bs ${total.toFixed(2)}${pagoInicialText}` 
       });
       
       // Limpiar el carrito
@@ -244,6 +260,7 @@ export default function PuntoVenta() {
       setDescuento(0);
       setObservaciones("");
       setVentaCredito(false);
+      setPagoInicial(0);
 
       // Actualizar lista de productos para reflejar el nuevo stock
       await cargarDatos();
@@ -328,6 +345,8 @@ export default function PuntoVenta() {
               onCambiarObservaciones={setObservaciones}
               ventaCredito={ventaCredito}
               onCambiarVentaCredito={setVentaCredito}
+              pagoInicial={pagoInicial}
+              onCambiarPagoInicial={setPagoInicial}
               isMinimized={cartMinimized}
               onToggleMinimize={() => setCartMinimized(!cartMinimized)}
             />

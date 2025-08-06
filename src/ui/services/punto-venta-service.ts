@@ -61,6 +61,8 @@ export interface NuevaVenta {
   total: number;
   observaciones?: string;
   detalles: VentaDetalle[];
+  es_credito?: boolean;
+  pago_inicial?: number;
 }
 
 export interface Venta {
@@ -111,79 +113,6 @@ export class PuntoVentaService {
     }
   }
 
-  static async obtenerProductoPorId(id: number): Promise<Producto | null> {
-    try {
-      const query = `
-        SELECT 
-          COALESCE(p.id, p.rowid) as id,
-          p.codigo_barras,
-          p.codigo_interno,
-          p.nombre,
-          p.descripcion,
-          p.precio_venta,
-          p.stock_actual,
-          p.stock_minimo,
-          p.venta_fraccionada,
-          p.activo,
-          p.fecha_creacion,
-          c.nombre as categoria_nombre
-        FROM productos p
-        LEFT JOIN categorias c ON p.categoria_id = c.id
-        WHERE (p.id = ? OR p.rowid = ?) AND p.activo = 1
-      `;
-      
-      return window.electronAPI.db.get(query, [id, id]);
-    } catch (error) {
-      console.error('Error al obtener producto por ID:', error);
-      throw error;
-    }
-  }
-
-  static async buscarProductos(termino: string): Promise<Producto[]> {
-    try {
-      const query = `
-        SELECT 
-          p.*,
-          c.nombre as categoria_nombre
-        FROM productos p
-        LEFT JOIN categorias c ON p.categoria_id = c.id
-        WHERE p.activo = 1 
-        AND (
-          p.nombre LIKE ? OR 
-          p.codigo_barras LIKE ? OR 
-          p.codigo_interno LIKE ? OR
-          p.descripcion LIKE ?
-        )
-        ORDER BY p.nombre ASC
-      `;
-      
-      const termSearch = `%${termino}%`;
-      return window.electronAPI.db.query(query, [termSearch, termSearch, termSearch, termSearch]);
-    } catch (error) {
-      console.error('Error al buscar productos:', error);
-      throw error;
-    }
-  }
-
-  static async obtenerProductosPorCategoria(categoriaId: number): Promise<Producto[]> {
-    try {
-      const query = `
-        SELECT 
-          p.*,
-          c.nombre as categoria_nombre
-        FROM productos p
-        LEFT JOIN categorias c ON p.categoria_id = c.id
-        WHERE p.categoria_id = ? AND p.activo = 1
-        ORDER BY p.nombre ASC
-      `;
-      
-      return window.electronAPI.db.query(query, [categoriaId]);
-    } catch (error) {
-      console.error('Error al obtener productos por categoría:', error);
-      throw error;
-    }
-  }
-
   // Categorías
   static async obtenerCategorias(): Promise<Categoria[]> {
     try {
@@ -216,56 +145,49 @@ export class PuntoVentaService {
     }
   }
 
-  static async buscarClientes(termino: string): Promise<Cliente[]> {
-    try {
-      const query = `
-        SELECT * FROM clientes 
-        WHERE activo = 1 
-        AND (
-          nombre LIKE ? OR 
-          apellido LIKE ? OR 
-          codigo LIKE ? OR
-          documento LIKE ?
-        )
-        ORDER BY nombre ASC, apellido ASC
-      `;
-      
-      const termSearch = `%${termino}%`;
-      return window.electronAPI.db.query(query, [termSearch, termSearch, termSearch, termSearch]);
-    } catch (error) {
-      console.error('Error al buscar clientes:', error);
-      throw error;
-    }
-  }
-
   // Ventas
   static async crearVenta(venta: NuevaVenta): Promise<number> {
     try {
       console.log('Datos de venta recibidos en servicio:', venta);
       
-      // Generar número de venta
-      const numeroVenta = await this.generarNumeroVenta();
+      // Determinar estado de la venta
+      const estadoVenta = venta.es_credito ? 'credito' : 'completada';
 
-      // Insertar venta principal
+      // Insertar venta principal primero sin numero_venta
       const ventaQuery = `
         INSERT INTO ventas (
           numero_venta, cliente_id, almacen_id, fecha_venta, metodo_pago, 
           subtotal, descuento, total, estado, observaciones, usuario
-        ) VALUES (?, ?, 1, datetime('now'), ?, ?, ?, ?, 'completada', ?, 'POS')
+        ) VALUES (?, ?, 1, datetime('now'), ?, ?, ?, ?, ?, ?, 'POS')
       `;
 
+      // Generar número temporal para obtener el ID
+      const numeroTemporal = 'TEMP';
+
       const ventaResult = await window.electronAPI.db.run(ventaQuery, [
-        numeroVenta,
+        numeroTemporal,
         venta.cliente_id || null,
         venta.metodo_pago,
         venta.subtotal,
         venta.descuento,
         venta.total,
+        estadoVenta,
         venta.observaciones || null
       ]);
 
       const ventaId = ventaResult.id!;
       console.log('Venta creada con ID:', ventaId);
+
+      // Ahora generar el número de venta único usando el ID
+      const numeroVenta = this.generarNumeroVentaConId(ventaId);
+
+      // Actualizar la venta con el número correcto
+      await window.electronAPI.db.run(
+        'UPDATE ventas SET numero_venta = ? WHERE id = ?',
+        [numeroVenta, ventaId]
+      );
+
+      console.log('Número de venta asignado:', numeroVenta);
 
       // Insertar detalles de venta
       for (const detalle of venta.detalles) {
@@ -293,6 +215,11 @@ export class PuntoVentaService {
         await this.actualizarStockProducto(detalle.producto_id, detalle.cantidad);
       }
 
+      // Si es venta a crédito, crear cuenta por cobrar
+      if (venta.es_credito && venta.cliente_id) {
+        await this.crearCuentaPorCobrar(ventaId, venta, numeroVenta);
+      }
+
       return ventaId;
 
     } catch (error) {
@@ -301,25 +228,49 @@ export class PuntoVentaService {
     }
   }
 
-  private static async generarNumeroVenta(): Promise<string> {
+  // Crear cuenta por cobrar para ventas a crédito
+  private static async crearCuentaPorCobrar(ventaId: number, venta: NuevaVenta, numeroVenta: string) {
     try {
-      const query = `
-        SELECT COUNT(*) as total 
-        FROM ventas 
-        WHERE DATE(fecha_venta) = DATE('now')
-      `;
-      
-      const result = await window.electronAPI.db.get(query);
-      const ventasHoy = result?.total || 0;
-      
-      const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const numero = String(ventasHoy + 1).padStart(4, '0');
-      
-      return `V${fecha}${numero}`;
+      const pagoInicial = venta.pago_inicial || 0;
+      const montoAdeudado = venta.total - pagoInicial;
+
+      // Solo crear cuenta por cobrar si hay monto adeudado
+      if (montoAdeudado > 0) {
+        const cuentaQuery = `
+          INSERT INTO cuentas_por_cobrar (
+            cliente_id, venta_id, monto, saldo, fecha_vencimiento, estado, observaciones
+          ) VALUES (?, ?, ?, ?, date('now', '+30 days'), 'pendiente', ?)
+        `;
+
+        const observacionesCuenta = `Venta a crédito - ${numeroVenta}` + 
+          (pagoInicial > 0 ? ` (Pago inicial: Bs ${pagoInicial.toFixed(2)})` : '');
+
+        await window.electronAPI.db.run(cuentaQuery, [
+          venta.cliente_id,
+          ventaId,
+          venta.total,        // El monto total de la venta
+          montoAdeudado,      // El saldo pendiente (total - pago inicial)
+          observacionesCuenta
+        ]);
+
+        console.log(`Cuenta por cobrar creada:
+          - Monto total: Bs ${venta.total.toFixed(2)}
+          - Pago inicial: Bs ${pagoInicial.toFixed(2)}
+          - Saldo pendiente: Bs ${montoAdeudado.toFixed(2)}`);
+      }
     } catch (error) {
-      console.error('Error al generar número de venta:', error);
+      console.error('Error al crear cuenta por cobrar:', error);
       throw error;
     }
+  }
+
+  private static generarNumeroVentaConId(ventaId: number): string {
+    const hoy = new Date();
+    const año = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    
+    return `V-${año}${mes}${dia}-${ventaId}`;
   }
 
   private static async actualizarStockProducto(productoId: number, cantidadVendida: number): Promise<void> {
@@ -339,77 +290,61 @@ export class PuntoVentaService {
     }
   }
 
-  static async obtenerVentas(limite: number = 50): Promise<Venta[]> {
+  // Actualizar estado de venta cuando se complete el pago
+  static async actualizarEstadoVentaSiCompletada(cuentaId: number): Promise<void> {
     try {
-      const query = `
-        SELECT 
-          v.*,
-          c.nombre || ' ' || c.apellido as cliente_nombre
-        FROM ventas v
-        LEFT JOIN clientes c ON v.cliente_id = c.id
-        ORDER BY v.fecha_venta DESC
-        LIMIT ?
-      `;
-      
-      return window.electronAPI.db.query(query, [limite]);
+      // Obtener información de la cuenta por cobrar
+      const cuenta = await window.electronAPI.db.get(`
+        SELECT venta_id, saldo 
+        FROM cuentas_por_cobrar 
+        WHERE id = ?
+      `, [cuentaId]);
+
+      if (cuenta && cuenta.saldo <= 0) {
+        // Si el saldo es 0 o negativo, marcar la venta como completada
+        await window.electronAPI.db.run(`
+          UPDATE ventas 
+          SET estado = 'completada'
+          WHERE id = ?
+        `, [cuenta.venta_id]);
+
+        // También actualizar el estado de la cuenta por cobrar
+        await window.electronAPI.db.run(`
+          UPDATE cuentas_por_cobrar 
+          SET estado = 'pagada'
+          WHERE id = ?
+        `, [cuentaId]);
+
+        console.log(`Venta ${cuenta.venta_id} marcada como completada - Crédito totalmente pagado`);
+      }
     } catch (error) {
-      console.error('Error al obtener ventas:', error);
+      console.error('Error al actualizar estado de venta:', error);
       throw error;
     }
   }
 
-  static async obtenerDetallesVenta(ventaId: number): Promise<VentaDetalle[]> {
+  // Registrar pago y actualizar saldo
+  static async registrarPagoCredito(cuentaId: number, montoPago: number, metodoPago: string, observaciones?: string): Promise<void> {
     try {
-      const query = `
-        SELECT 
-          vd.*,
-          p.nombre as producto_nombre
-        FROM venta_detalles vd
-        INNER JOIN productos p ON vd.producto_id = p.id
-        WHERE vd.venta_id = ?
-        ORDER BY vd.id ASC
-      `;
-      
-      return window.electronAPI.db.query(query, [ventaId]);
+      // Registrar el pago
+      await window.electronAPI.db.run(`
+        INSERT INTO pagos_cuentas (cuenta_id, monto, metodo_pago, observaciones)
+        VALUES (?, ?, ?, ?)
+      `, [cuentaId, montoPago, metodoPago, observaciones || '']);
+
+      // Actualizar el saldo de la cuenta
+      await window.electronAPI.db.run(`
+        UPDATE cuentas_por_cobrar 
+        SET saldo = saldo - ?
+        WHERE id = ?
+      `, [montoPago, cuentaId]);
+
+      // Verificar si la venta debe marcarse como completada
+      await this.actualizarEstadoVentaSiCompletada(cuentaId);
+
+      console.log(`Pago registrado: Bs ${montoPago.toFixed(2)} para cuenta ${cuentaId}`);
     } catch (error) {
-      console.error('Error al obtener detalles de venta:', error);
-      throw error;
-    }
-  }
-
-  // Estadísticas y reportes
-  static async obtenerEstadisticasVentas(): Promise<any> {
-    try {
-      const ventasHoy = await window.electronAPI.db.get(`
-        SELECT 
-          COUNT(*) as cantidad,
-          COALESCE(SUM(total), 0) as total
-        FROM ventas 
-        WHERE DATE(fecha_venta) = DATE('now')
-      `);
-
-      const ventasMes = await window.electronAPI.db.get(`
-        SELECT 
-          COUNT(*) as cantidad,
-          COALESCE(SUM(total), 0) as total
-        FROM ventas 
-        WHERE strftime('%Y-%m', fecha_venta) = strftime('%Y-%m', 'now')
-      `);
-
-      const bajoStock = await window.electronAPI.db.get(`
-        SELECT COUNT(*) as cantidad
-        FROM productos 
-        WHERE activo = 1 
-        AND stock_actual <= stock_minimo
-      `);
-
-      return {
-        ventasHoy: ventasHoy || { cantidad: 0, total: 0 },
-        ventasMes: ventasMes || { cantidad: 0, total: 0 },
-        productosConBajoStock: bajoStock?.cantidad || 0
-      };
-    } catch (error) {
-      console.error('Error al obtener estadísticas:', error);
+      console.error('Error al registrar pago:', error);
       throw error;
     }
   }

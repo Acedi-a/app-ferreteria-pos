@@ -42,6 +42,8 @@ interface CartPanelProps {
   onCambiarObservaciones: (observaciones: string) => void;
   ventaCredito: boolean;
   onCambiarVentaCredito: (ventaCredito: boolean) => void;
+  pagoInicial: number;
+  onCambiarPagoInicial: (pagoInicial: number) => void;
   isMinimized: boolean;
   onToggleMinimize: () => void;
 }
@@ -63,6 +65,8 @@ export default function CartPanel({
   onCambiarObservaciones,
   ventaCredito,
   onCambiarVentaCredito,
+  pagoInicial,
+  onCambiarPagoInicial,
   isMinimized,
   onToggleMinimize,
 }: CartPanelProps) {
@@ -240,6 +244,33 @@ export default function CartPanel({
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
             </div>
+
+            {/* Pago inicial - solo mostrar si es venta a crédito */}
+            {ventaCredito && (
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Pago inicial (opcional)
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Bs</span>
+                  <input
+                    type="number"
+                    value={pagoInicial}
+                    onChange={(e) => onCambiarPagoInicial(Number.parseFloat(e.target.value) || 0)}
+                    className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
+                    min="0"
+                    max={total}
+                    step="0.01"
+                    placeholder="0.00"
+                  />
+                </div>
+                {pagoInicial > 0 && (
+                  <div className="mt-1 text-xs text-gray-600">
+                    Saldo pendiente: Bs {(total - pagoInicial).toFixed(2)}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Observaciones */}
             <div>
