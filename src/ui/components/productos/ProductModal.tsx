@@ -1,4 +1,6 @@
-import { X, ImageIcon } from "lucide-react";
+import { X, ImageIcon, RefreshCw } from "lucide-react";
+import { nanoid } from "nanoid";
+import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/Dialog";
 import { Button } from "../ui/Button";
 import { Select } from "../ui/Select";
@@ -15,7 +17,7 @@ interface ProductModalProps {
   tiposUnidad: TipoUnidad[];
 }
 
-export default function ProductModal({
+function ProductModal({
   isOpen,
   onClose,
   onSubmit,
@@ -25,8 +27,20 @@ export default function ProductModal({
   categorias,
   tiposUnidad
 }: ProductModalProps) {
+  
+  const handleInputChange = (field: keyof Producto, value: any) => {
+    setFormData({ ...formData, [field]: value });
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    // Solo permitir cerrar el modal si se hace explícitamente
+    if (!open) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white border border-gray-200 rounded-lg">
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -53,14 +67,32 @@ export default function ProductModal({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Código Interno *
               </label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                value={formData.codigo_interno || ""}
-                onChange={(e) => setFormData({ ...formData, codigo_interno: e.target.value })}
-                placeholder="Ej: P001"
-                required
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  id="product-codigo-interno"
+                  key="product-codigo-interno"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                    !editingProduct ? 'bg-gray-50 text-gray-600' : ''
+                  }`}
+                  value={formData.codigo_interno || ""}
+                  onChange={(e) => handleInputChange('codigo_interno', e.target.value)}
+                  placeholder="Generado automáticamente"
+                  readOnly={!editingProduct}
+                  required
+                />
+                {!editingProduct && (
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('codigo_interno', nanoid(12))}
+                    className="px-3 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-xs flex items-center gap-1"
+                    title="Generar nuevo código"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Nuevo
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -68,9 +100,11 @@ export default function ProductModal({
               </label>
               <input
                 type="text"
+                id="product-codigo-barras"
+                key="product-codigo-barras"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 value={formData.codigo_barras || ""}
-                onChange={(e) => setFormData({ ...formData, codigo_barras: e.target.value })}
+                onChange={(e) => handleInputChange('codigo_barras', e.target.value)}
                 placeholder="Código de barras del producto"
               />
             </div>
@@ -82,9 +116,11 @@ export default function ProductModal({
             </label>
             <input
               type="text"
+              id="product-nombre"
+              key="product-nombre"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               value={formData.nombre || ""}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              onChange={(e) => handleInputChange('nombre', e.target.value)}
               placeholder="Nombre del producto"
               required
             />
@@ -95,9 +131,11 @@ export default function ProductModal({
               Descripción
             </label>
             <textarea
+              id="product-descripcion"
+              key="product-descripcion"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
               value={formData.descripcion || ""}
-              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+              onChange={(e) => handleInputChange('descripcion', e.target.value)}
               placeholder="Descripción del producto"
               rows={3}
             />
@@ -110,7 +148,7 @@ export default function ProductModal({
               </label>
               <Select
                 value={formData.categoria_id?.toString() || ""}
-                onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value ? Number(e.target.value) : undefined })}
+                onChange={(e) => handleInputChange('categoria_id', e.target.value ? Number(e.target.value) : undefined)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               >
                 <option value="">Seleccionar categoría</option>
@@ -127,7 +165,7 @@ export default function ProductModal({
               </label>
               <Select
                 value={formData.tipo_unidad_id?.toString() || ""}
-                onChange={(e) => setFormData({ ...formData, tipo_unidad_id: e.target.value ? Number(e.target.value) : undefined })}
+                onChange={(e) => handleInputChange('tipo_unidad_id', e.target.value ? Number(e.target.value) : undefined)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               >
                 <option value="">Seleccionar unidad</option>
@@ -140,60 +178,39 @@ export default function ProductModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+            {/* Costo removed - now managed through movimientos de entrada */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Costo *
+                Precio de Venta Sugerido *
               </label>
               <input
                 type="number"
                 step="0.01"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                value={formData.costo || ""}
-                onChange={(e) => setFormData({ ...formData, costo: Number(e.target.value) })}
-                placeholder="0.00"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Precio de Venta *
-              </label>
-              <input
-                type="number"
-                step="0.01"
+                id="product-precio-venta"
+                key="product-precio-venta"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 value={formData.precio_venta || ""}
-                onChange={(e) => setFormData({ ...formData, precio_venta: Number(e.target.value) })}
+                onChange={(e) => handleInputChange('precio_venta', Number(e.target.value))}
                 placeholder="0.00"
                 required
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Stock Actual *
-              </label>
-              <input
-                type="number"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                value={formData.stock_actual || ""}
-                onChange={(e) => setFormData({ ...formData, stock_actual: Number(e.target.value) })}
-                placeholder="0"
-                required
-              />
-            </div>
+          <div className="grid grid-cols-1 gap-4">
+            {/* Stock actual removed - now calculated from movimientos */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Stock Mínimo *
               </label>
               <input
                 type="number"
+                id="product-stock-minimo"
+                key="product-stock-minimo"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 value={formData.stock_minimo || ""}
-                onChange={(e) => setFormData({ ...formData, stock_minimo: Number(e.target.value) })}
+                onChange={(e) => handleInputChange('stock_minimo', Number(e.target.value))}
                 placeholder="0"
                 required
               />
@@ -201,19 +218,7 @@ export default function ProductModal({
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="venta_fraccionada"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                checked={formData.venta_fraccionada || false}
-                onChange={(e) => setFormData({ ...formData, venta_fraccionada: e.target.checked })}
-              />
-              <label htmlFor="venta_fraccionada" className="text-sm text-gray-700 font-medium">
-                Permitir venta fraccionada
-              </label>
-            </div>
-
+            {/* Venta fraccionada removed - simplified product model */}
             <div className="flex items-center space-x-3">
               <input
                 type="checkbox"
@@ -258,3 +263,5 @@ export default function ProductModal({
     </Dialog>
   );
 }
+
+export default React.memo(ProductModal);

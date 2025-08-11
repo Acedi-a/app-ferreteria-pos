@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Building2, Shield, TrendingUp } from "lucide-react";
+import { nanoid } from "nanoid";
  import { useToast } from "../components/ui/use-toast";
 import { Button } from "../components/ui/Button";
 import { SearchBar } from "../components/ui/SearchBar";
@@ -117,18 +118,15 @@ const { toast } = useToast();
     setEditingProduct(null);
     setFormData({
       codigo_barras: "",
-      codigo_interno: "",
+      codigo_interno: nanoid(12), // Generar código automáticamente con 12 caracteres
       nombre: "",
       descripcion: "",
-      costo: 0,
       precio_venta: 0,
-      stock_actual: 0,
       stock_minimo: 0,
-      venta_fraccionada: false,
       categoria_id: undefined,
       tipo_unidad_id: undefined,
-      activo: true,
-      fotos: ""
+      unidad_medida: "",
+      activo: true
     });
     setShowModal(true);
   };
@@ -140,15 +138,12 @@ const { toast } = useToast();
       codigo_interno: producto.codigo_interno,
       nombre: producto.nombre,
       descripcion: producto.descripcion || "",
-      costo: producto.costo,
       precio_venta: producto.precio_venta,
-      stock_actual: producto.stock_actual,
       stock_minimo: producto.stock_minimo,
-      venta_fraccionada: producto.venta_fraccionada,
       categoria_id: producto.categoria_id,
       tipo_unidad_id: producto.tipo_unidad_id,
-      activo: producto.activo,
-      fotos: producto.fotos || ""
+      unidad_medida: producto.unidad_medida || "",
+      activo: producto.activo
     });
     setShowModal(true);
   };
@@ -162,32 +157,8 @@ const { toast } = useToast();
     }
 
     try {
-      // Solo validar códigos únicos si realmente se cambió el código interno o de barras
-      const isEditing = editingProduct && editingProduct.id;
-
-      // Validar código interno solo si es nuevo producto o si el usuario lo cambió y no está vacío
-      if (!isEditing || (typeof formData.codigo_interno === 'string' && formData.codigo_interno.trim() !== '' && formData.codigo_interno !== editingProduct?.codigo_interno)) {
-        const codigoInternoValido = await productosService.validarCodigoInterno(
-          formData.codigo_interno!,
-          editingProduct?.id
-        );
-        if (!codigoInternoValido) {
-          toast({ title: "Error", description: "El código interno ya existe", variant: "destructive" });
-          return;
-        }
-      }
-
-      // Validar código de barras solo si existe, no está vacía y es nuevo producto o si el usuario la cambió
-      if (typeof formData.codigo_barras === 'string' && formData.codigo_barras.trim() !== '' && (!isEditing || (formData.codigo_barras !== editingProduct?.codigo_barras))) {
-        const codigoBarrasValido = await productosService.validarCodigoBarras(
-          formData.codigo_barras,
-          editingProduct?.id
-        );
-        if (!codigoBarrasValido) {
-          toast({ title: "Error", description: "El código de barras ya existe", variant: "destructive" });
-          return;
-        }
-      }
+      // TODO: Add validation for duplicate codes if needed
+      // For now, we rely on database constraints
 
       if (editingProduct) {
         // Actualizar producto existente
@@ -195,7 +166,7 @@ const { toast } = useToast();
         toast({ title: "Éxito", description: "Producto actualizado exitosamente", variant: "success" });
       } else {
         // Crear nuevo producto
-        await productosService.crearProducto(formData as Omit<Producto, 'id' | 'fecha_creacion' | 'fecha_modificacion'>);
+        await productosService.crearProducto(formData as Omit<Producto, 'id' | 'fecha_creacion' | 'fecha_actualizacion'>);
         toast({ title: "Éxito", description: "Producto creado exitosamente", variant: "success" });
       }
 

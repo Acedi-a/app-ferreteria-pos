@@ -11,8 +11,7 @@ interface ProductTableProps {
   onDelete: (id: number) => void;
 }
 
-const calcMargen = (costo: number, precio: number) =>
-  costo === 0 ? "0" : (((precio - costo) / costo) * 100).toFixed(1);
+// Margen calculation removed - cost not available in master data
 
 export default function ProductTable({ products, loading, searchTerm, onEdit, onDelete }: ProductTableProps) {
   if (loading) {
@@ -79,24 +78,23 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                 {product.categoria_nombre || 'Sin categoría'}
               </TableCell>
               <TableCell className="py-4 px-6 text-sm font-medium text-gray-900">
-                Bs {product.costo.toFixed(2)}
+                {/* Costo removed - now shown from inventario_actual */}
+                - 
               </TableCell>
               <TableCell className="py-4 px-6 text-sm font-medium text-gray-900">
                 Bs {product.precio_venta.toFixed(2)}
               </TableCell>
               <TableCell className="py-4 px-6">
                 <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-gray-100/80 text-gray-700 border border-gray-200/50">
-                  {calcMargen(product.costo, product.precio_venta)}%
+                  {/* Margen calculation removed - no cost in master data */}
+                  -
                 </span>
               </TableCell>
               <TableCell className="py-4 px-6">
                 <div>
-                  <div className={`text-sm font-medium ${
-                    product.stock_actual <= product.stock_minimo 
-                      ? "text-red-600" 
-                      : "text-gray-900"
-                  }`}>
-                    {product.stock_actual}
+                  <div className="text-sm font-medium text-gray-900">
+                    {/* Stock actual removed - now shown from inventario_actual */}
+                    -
                   </div>
                   <div className="text-xs text-gray-500">Min: {product.stock_minimo}</div>
                 </div>
