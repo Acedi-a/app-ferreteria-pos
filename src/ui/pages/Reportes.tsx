@@ -10,6 +10,7 @@ import { TopProductos } from "../components/reportes/TopProductos";
 import { MejoresClientes } from "../components/reportes/MejoresClientes";
 import { InventarioPorCategoria } from "../components/reportes/InventarioPorCategoria";
 import { ResumenFinanciero } from "../components/reportes/ResumenFinanciero";
+import { ExportService, type ColumnDef } from "../services/export-service";
 import { ReportesService, type RangoFechas } from "../services/reportes-service";
 
 interface ReportType {
@@ -294,6 +295,64 @@ export default function Reportes() {
     }
   };
 
+  const onExport = (fmt: 'csv' | 'xlsx' | 'pdf') => {
+    const range = { desde: rango.desde, hasta: rango.hasta };
+    if (selectedReport === 'ventas') {
+      const cols: ColumnDef<SalesData>[] = [
+        { header: 'Fecha', accessor: 'fecha' },
+        { header: 'Ventas', accessor: 'ventas' },
+        { header: 'Total', accessor: (r) => r.total },
+        { header: 'Promedio', accessor: (r) => r.promedio },
+      ];
+      if (fmt === 'csv') ExportService.exportCSV(salesData, cols, 'ventas_por_dia', range);
+      if (fmt === 'xlsx') ExportService.exportExcel(salesData, cols, 'ventas_por_dia', range);
+      if (fmt === 'pdf') ExportService.exportPDF(salesData, cols, 'Ventas por día', range);
+    } else if (selectedReport === 'productos') {
+      const cols: ColumnDef<ProductData>[] = [
+        { header: 'Producto', accessor: 'nombre' },
+        { header: 'Vendidos', accessor: 'vendidos' },
+        { header: 'Ingresos', accessor: 'ingresos' },
+      ];
+      if (fmt === 'csv') ExportService.exportCSV(topProducts, cols, 'top_productos', range);
+      if (fmt === 'xlsx') ExportService.exportExcel(topProducts, cols, 'top_productos', range);
+      if (fmt === 'pdf') ExportService.exportPDF(topProducts, cols, 'Top productos', range);
+    } else if (selectedReport === 'clientes') {
+      const cols: ColumnDef<ClientData>[] = [
+        { header: 'Cliente', accessor: 'nombre' },
+        { header: 'Compras', accessor: 'compras' },
+        { header: 'Total', accessor: 'total' },
+        { header: 'Última', accessor: 'ultima' },
+      ];
+      if (fmt === 'csv') ExportService.exportCSV(clientData, cols, 'mejores_clientes', range);
+      if (fmt === 'xlsx') ExportService.exportExcel(clientData, cols, 'mejores_clientes', range);
+      if (fmt === 'pdf') ExportService.exportPDF(clientData, cols, 'Mejores clientes', range);
+    } else if (selectedReport === 'inventario') {
+      const cols: ColumnDef<InventoryData>[] = [
+        { header: 'Categoría', accessor: 'categoria' },
+        { header: 'Productos', accessor: 'productos' },
+        { header: 'Valor', accessor: 'valor' },
+        { header: 'Stock bajo', accessor: 'stock_bajo' },
+      ];
+      if (fmt === 'csv') ExportService.exportCSV(inventoryData, cols, 'inventario_por_categoria', range);
+      if (fmt === 'xlsx') ExportService.exportExcel(inventoryData, cols, 'inventario_por_categoria', range);
+      if (fmt === 'pdf') ExportService.exportPDF(inventoryData, cols, 'Inventario por categoría', range);
+    } else if (selectedReport === 'financiero' && financialData) {
+      const row = [financialData];
+      const cols: ColumnDef<FinancialData>[] = [
+        { header: 'Ingresos', accessor: 'ingresos' },
+        { header: 'Costos', accessor: 'costos' },
+        { header: 'Utilidad bruta', accessor: 'utilidad_bruta' },
+        { header: 'Gastos', accessor: 'gastos' },
+        { header: 'Utilidad neta', accessor: 'utilidad_neta' },
+        { header: 'Margen bruto %', accessor: 'margen_bruto' },
+        { header: 'Margen neto %', accessor: 'margen_neto' },
+      ];
+      if (fmt === 'csv') ExportService.exportCSV(row, cols, 'resumen_financiero', range);
+      if (fmt === 'xlsx') ExportService.exportExcel(row, cols, 'resumen_financiero', range);
+      if (fmt === 'pdf') ExportService.exportPDF(row, cols, 'Resumen financiero', range);
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       {/* Header */}
@@ -303,13 +362,16 @@ export default function Reportes() {
           <p className="text-sm text-slate-500">Analiza el rendimiento de tu ferretería</p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" disabled={loading}>
+          <Button variant="outline" disabled={loading} onClick={() => onExport('pdf')}>
             <FileText className="mr-2 h-4 w-4" />
             Exportar PDF
           </Button>
-          <Button disabled={loading}>
+          <Button disabled={loading} onClick={() => onExport('xlsx')}>
             <Download className="mr-2 h-4 w-4" />
             Exportar Excel
+          </Button>
+          <Button disabled={loading} onClick={() => onExport('csv')}>
+            CSV
           </Button>
         </div>
       </div>
