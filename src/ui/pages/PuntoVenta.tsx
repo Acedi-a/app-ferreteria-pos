@@ -129,44 +129,65 @@ export default function PuntoVenta() {
     console.log('Agregando producto al carrito:', producto);
     
     const existente = productos.find((p) => p.id === producto.id);
+    const stock = Number(producto.stock) || 0;
+
+    if (stock <= 0) {
+      toast({ title: "Sin stock", description: `${producto.nombre} no tiene stock disponible`, variant: "destructive" });
+      return;
+    }
+
     if (existente) {
-      actualizarCantidad(producto.id, existente.cantidad + 1);
+      const siguiente = existente.cantidad + 1;
+      if (siguiente > stock) {
+        toast({ title: "Stock insuficiente", description: `Solo hay ${stock} en stock para ${producto.nombre}.`, variant: "destructive" });
+        return;
+      }
+      actualizarCantidad(producto.id, siguiente);
+      toast({ title: "Cantidad actualizada", description: `Ahora: ${siguiente} x ${producto.nombre}` });
     } else {
+      const cantidadInicial = Math.min(1, stock);
       const nuevoProducto = {
         id: producto.id,
         codigo: producto.codigo,
         nombre: producto.nombre,
         precio: producto.precio,
-        cantidad: 1,
-        subtotal: producto.precio,
+        cantidad: cantidadInicial,
+        subtotal: producto.precio * cantidadInicial,
         ventaFraccionada: producto.ventaFraccionada,
         unidadMedida: producto.unidadMedida,
       };
       
       console.log('Producto a agregar al carrito:', nuevoProducto);
-      
-      setProductos([
-        ...productos,
-        nuevoProducto,
-      ]);
+      setProductos([...productos, nuevoProducto]);
+      toast({ title: "Producto agregado", description: `${producto.nombre} agregado al carrito` });
     }
-    
-    toast({ 
-      title: "Producto agregado", 
-      description: `${producto.nombre} agregado al carrito` 
-    });
   };
 
   const actualizarCantidad = (id: number, nueva: number) => {
-    if (nueva <= 0) {
+    const prod = productos.find(p => p.id === id);
+    if (!prod) return;
+
+    const base = productosDisponibles.find(p => p.id === id);
+    const stock = Number(base?.stock) || 0;
+
+    // Normalizar a 0 si NaN
+    const cantidadSolicitada = isNaN(nueva) ? 0 : nueva;
+
+    if (cantidadSolicitada <= 0) {
       setProductos(productos.filter((p) => p.id !== id));
       return;
     }
-    setProductos(
-      productos.map((p) =>
-        p.id === id ? { ...p, cantidad: nueva, subtotal: p.precio * nueva } : p
-      )
-    );
+
+    // No permitir superar stock
+    if (cantidadSolicitada > stock) {
+      const ajustada = stock;
+      setProductos(productos.map(p => p.id === id ? { ...p, cantidad: ajustada, subtotal: p.precio * ajustada } : p));
+      toast({ title: "Stock insuficiente", description: `Se ajustó la cantidad de ${prod.nombre} a ${stock} (stock disponible).`, variant: "destructive" });
+      return;
+    }
+
+    // Actualización normal dentro de stock
+    setProductos(productos.map(p => p.id === id ? { ...p, cantidad: cantidadSolicitada, subtotal: p.precio * cantidadSolicitada } : p));
   };
 
   const eliminarProducto = (id: number) => {

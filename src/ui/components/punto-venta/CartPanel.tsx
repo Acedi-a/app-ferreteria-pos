@@ -157,14 +157,14 @@ export default function CartPanel({
                     <Button
                       variant="outline"
                       className="h-6 w-6 p-0"
-                      onClick={() => onActualizarCantidad(p.id, p.cantidad - (p.ventaFraccionada ? 0.1 : 1))}
+                      onClick={() => onActualizarCantidad(p.id, Math.max(0, p.cantidad - (p.ventaFraccionada ? 0.1 : 1)))}
                     >
                       -
                     </Button>
                     <input
                       type="number"
                       value={p.cantidad}
-                      onChange={(e) => onActualizarCantidad(p.id, Number.parseFloat(e.target.value) || 0)}
+                      onChange={(e) => onActualizarCantidad(p.id, Number.isNaN(parseFloat(e.target.value)) ? 0 : parseFloat(e.target.value))}
                       className="w-12 text-center text-xs border border-gray-300 rounded"
                       step={p.ventaFraccionada ? "0.1" : "1"}
                       min="0"
