@@ -12,6 +12,11 @@ import { InventarioPorCategoria } from "../components/reportes/InventarioPorCate
 import { ResumenFinanciero } from "../components/reportes/ResumenFinanciero";
 import { ExportService, type ColumnDef } from "../services/export-service";
 import { ReportesService, type RangoFechas } from "../services/reportes-service";
+import { VentasDetalladas, type VentaCabecera, type VentaItem } from "../components/reportes/detallados/VentasDetalladas";
+import { ComprasDetalladas, type CompraItem } from "../components/reportes/detallados/ComprasDetalladas";
+import { CuentasPorCobrarDetalle, type CxCRow } from "../components/reportes/detallados/CuentasPorCobrarDetalle";
+import { VentasPorUsuario, type VentasUsuarioRow } from "../components/reportes/detallados/VentasPorUsuario";
+import { MargenPorProducto, type MargenProductoRow } from "../components/reportes/detallados/MargenPorProducto";
 
 interface ReportType {
   id: string;
@@ -108,6 +113,13 @@ export default function Reportes() {
   const [clientData, setClientData] = useState<ClientData[]>([]);
   const [inventoryData, setInventoryData] = useState<InventoryData[]>([]);
   const [financialData, setFinancialData] = useState<FinancialData | null>(null);
+  // Detallados
+  const [ventasCab, setVentasCab] = useState<VentaCabecera[]>([]);
+  const [ventasItems, setVentasItems] = useState<VentaItem[]>([]);
+  const [comprasItems, setComprasItems] = useState<CompraItem[]>([]);
+  const [cxcRows, setCxcRows] = useState<CxCRow[]>([]);
+  const [ventasUsuario, setVentasUsuario] = useState<VentasUsuarioRow[]>([]);
+  const [margenProducto, setMargenProducto] = useState<MargenProductoRow[]>([]);
 
   const rango = useMemo<RangoFechas>(() => (
     rangoPorSeleccion(dateRange, customDesde || undefined, customHasta || undefined)
@@ -117,18 +129,30 @@ export default function Reportes() {
     const cargar = async () => {
       setLoading(true);
       try {
-        const [v, t, c, i, f] = await Promise.all([
+        const [v, t, c, i, f, vc, vi, ci, cx, vu, mp] = await Promise.all([
           ReportesService.ventasPorDia(rango),
           ReportesService.topProductos(rango, 10),
           ReportesService.mejoresClientes(rango, 10),
           ReportesService.inventarioPorCategoria(),
           ReportesService.resumenFinanciero(rango),
+          ReportesService.ventasCabecera(rango),
+          ReportesService.ventasItems(rango),
+          ReportesService.comprasItems(rango),
+          ReportesService.cxcDetalle(rango),
+          ReportesService.ventasPorUsuario(rango),
+          ReportesService.margenPorProducto(rango, 50),
         ]);
         setSalesData(v as SalesData[]);
         setTopProducts(t as ProductData[]);
         setClientData(c as ClientData[]);
         setInventoryData(i as InventoryData[]);
         setFinancialData(f as FinancialData);
+        setVentasCab(vc as VentaCabecera[]);
+        setVentasItems(vi as VentaItem[]);
+        setComprasItems(ci as CompraItem[]);
+        setCxcRows(cx as CxCRow[]);
+        setVentasUsuario(vu as VentasUsuarioRow[]);
+        setMargenProducto(mp as MargenProductoRow[]);
       } finally {
         setLoading(false);
       }
@@ -185,14 +209,31 @@ export default function Reportes() {
       </div>
 
   <VentasPorDia datos={salesData} />
+  <VentasDetalladas cabeceras={ventasCab} items={ventasItems} />
+  <VentasPorUsuario rows={ventasUsuario} />
     </div>
   );
 
-  const renderProductsReport = () => <div className="space-y-6"><TopProductos datos={topProducts} /></div>;
+  const renderProductsReport = () => (
+    <div className="space-y-6">
+      <TopProductos datos={topProducts} />
+      <MargenPorProducto rows={margenProducto} />
+    </div>
+  );
 
-  const renderClientsReport = () => <div className="space-y-6"><MejoresClientes datos={clientData} /></div>;
+  const renderClientsReport = () => (
+    <div className="space-y-6">
+      <MejoresClientes datos={clientData} />
+      <CuentasPorCobrarDetalle rows={cxcRows} />
+    </div>
+  );
 
-  const renderInventoryReport = () => <div className="space-y-6"><InventarioPorCategoria datos={inventoryData} /></div>;
+  const renderInventoryReport = () => (
+    <div className="space-y-6">
+      <InventarioPorCategoria datos={inventoryData} />
+      <ComprasDetalladas items={comprasItems} />
+    </div>
+  );
 
   const renderFinancialReport = () => (
     <div className="space-y-6">
@@ -307,6 +348,43 @@ export default function Reportes() {
       if (fmt === 'csv') ExportService.exportCSV(salesData, cols, 'ventas_por_dia', range);
       if (fmt === 'xlsx') ExportService.exportExcel(salesData, cols, 'ventas_por_dia', range);
       if (fmt === 'pdf') ExportService.exportPDF(salesData, cols, 'Ventas por día', range);
+      // adicionales
+      const cabCols: ColumnDef<VentaCabecera>[] = [
+        { header: 'Fecha', accessor: 'fecha' },
+        { header: 'N° Venta', accessor: 'numero_venta' },
+        { header: 'Cliente', accessor: 'cliente' },
+        { header: 'Método', accessor: (r) => r.metodo_pago ?? '-' },
+        { header: 'Subtotal', accessor: 'subtotal' },
+        { header: 'Desc.', accessor: 'descuento' },
+        { header: 'Impuestos', accessor: 'impuestos' },
+        { header: 'Total', accessor: 'total' },
+        { header: 'Items', accessor: 'items' },
+      ];
+      const itemCols: ColumnDef<VentaItem>[] = [
+        { header: 'Fecha', accessor: 'fecha' },
+        { header: 'N° Venta', accessor: 'numero_venta' },
+        { header: 'Producto', accessor: 'producto' },
+        { header: 'Und.', accessor: (r) => r.unidad ?? '-' },
+        { header: 'Cantidad', accessor: 'cantidad' },
+        { header: 'P. Unit', accessor: 'precio_unitario' },
+        { header: 'Desc.', accessor: 'descuento' },
+        { header: 'Subtotal', accessor: 'subtotal' },
+        { header: 'Cliente', accessor: 'cliente' },
+      ];
+      const baseCab = 'ventas_cabeceras';
+      const baseIt = 'ventas_items';
+      if (fmt === 'csv') {
+        ExportService.exportCSV(ventasCab, cabCols, baseCab, range);
+        ExportService.exportCSV(ventasItems, itemCols, baseIt, range);
+      }
+      if (fmt === 'xlsx') {
+        ExportService.exportExcel(ventasCab, cabCols, baseCab, range);
+        ExportService.exportExcel(ventasItems, itemCols, baseIt, range);
+      }
+      if (fmt === 'pdf') {
+        ExportService.exportPDF(ventasCab, cabCols, 'Ventas - cabeceras', range);
+        ExportService.exportPDF(ventasItems, itemCols, 'Ventas - items', range);
+      }
     } else if (selectedReport === 'productos') {
       const cols: ColumnDef<ProductData>[] = [
         { header: 'Producto', accessor: 'nombre' },
@@ -316,6 +394,19 @@ export default function Reportes() {
       if (fmt === 'csv') ExportService.exportCSV(topProducts, cols, 'top_productos', range);
       if (fmt === 'xlsx') ExportService.exportExcel(topProducts, cols, 'top_productos', range);
       if (fmt === 'pdf') ExportService.exportPDF(topProducts, cols, 'Top productos', range);
+      const margenCols: ColumnDef<MargenProductoRow>[] = [
+        { header: 'Producto', accessor: 'producto' },
+        { header: 'Und.', accessor: (r) => r.unidad ?? '-' },
+        { header: 'Vendidos', accessor: 'vendidos' },
+        { header: 'Ingresos', accessor: 'ingresos' },
+        { header: 'Costo prom.', accessor: 'costo_promedio' },
+        { header: 'Costo est.', accessor: 'costo_estimado' },
+        { header: 'Margen', accessor: 'margen' },
+        { header: 'Margen %', accessor: 'margen_pct' },
+      ];
+      if (fmt === 'csv') ExportService.exportCSV(margenProducto, margenCols, 'margen_por_producto', range);
+      if (fmt === 'xlsx') ExportService.exportExcel(margenProducto, margenCols, 'margen_por_producto', range);
+      if (fmt === 'pdf') ExportService.exportPDF(margenProducto, margenCols, 'Margen por producto', range);
     } else if (selectedReport === 'clientes') {
       const cols: ColumnDef<ClientData>[] = [
         { header: 'Cliente', accessor: 'nombre' },
@@ -326,6 +417,20 @@ export default function Reportes() {
       if (fmt === 'csv') ExportService.exportCSV(clientData, cols, 'mejores_clientes', range);
       if (fmt === 'xlsx') ExportService.exportExcel(clientData, cols, 'mejores_clientes', range);
       if (fmt === 'pdf') ExportService.exportPDF(clientData, cols, 'Mejores clientes', range);
+      const cxcCols: ColumnDef<CxCRow>[] = [
+        { header: 'Fecha', accessor: 'fecha' },
+        { header: 'Cliente', accessor: 'cliente' },
+        { header: 'Monto', accessor: 'monto' },
+        { header: 'Pagado', accessor: 'pagado' },
+        { header: 'Saldo', accessor: 'saldo' },
+        { header: 'Estado', accessor: 'estado' },
+        { header: 'Vence', accessor: (r) => r.fecha_vencimiento ?? '-' },
+        { header: 'Días venc.', accessor: (r) => r.dias_vencido ?? '-' },
+        { header: 'Venta', accessor: (r) => r.numero_venta ?? '-' },
+      ];
+      if (fmt === 'csv') ExportService.exportCSV(cxcRows, cxcCols, 'cuentas_por_cobrar', range);
+      if (fmt === 'xlsx') ExportService.exportExcel(cxcRows, cxcCols, 'cuentas_por_cobrar', range);
+      if (fmt === 'pdf') ExportService.exportPDF(cxcRows, cxcCols, 'Cuentas por cobrar', range);
     } else if (selectedReport === 'inventario') {
       const cols: ColumnDef<InventoryData>[] = [
         { header: 'Categoría', accessor: 'categoria' },
@@ -336,6 +441,20 @@ export default function Reportes() {
       if (fmt === 'csv') ExportService.exportCSV(inventoryData, cols, 'inventario_por_categoria', range);
       if (fmt === 'xlsx') ExportService.exportExcel(inventoryData, cols, 'inventario_por_categoria', range);
       if (fmt === 'pdf') ExportService.exportPDF(inventoryData, cols, 'Inventario por categoría', range);
+      const compCols: ColumnDef<CompraItem>[] = [
+        { header: 'Fecha', accessor: 'fecha' },
+        { header: 'N° Compra', accessor: 'numero_compra' },
+        { header: 'Producto', accessor: 'producto' },
+        { header: 'Und.', accessor: (r) => r.unidad ?? '-' },
+        { header: 'Cantidad', accessor: 'cantidad' },
+        { header: 'C. Unit', accessor: 'costo_unitario' },
+        { header: 'Desc.', accessor: 'descuento' },
+        { header: 'Subtotal', accessor: 'subtotal' },
+        { header: 'Proveedor', accessor: 'proveedor' },
+      ];
+      if (fmt === 'csv') ExportService.exportCSV(comprasItems, compCols, 'compras_detalladas', range);
+      if (fmt === 'xlsx') ExportService.exportExcel(comprasItems, compCols, 'compras_detalladas', range);
+      if (fmt === 'pdf') ExportService.exportPDF(comprasItems, compCols, 'Compras detalladas', range);
     } else if (selectedReport === 'financiero' && financialData) {
       const row = [financialData];
       const cols: ColumnDef<FinancialData>[] = [
