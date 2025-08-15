@@ -134,25 +134,7 @@ export default function Inventario() {
   const handleCostoChange = useCallback((v: number) => setAjusteCosto(v), []);
   const handleProveedorIdChange = useCallback((v: number | undefined) => setAjusteProveedorId(v), []);
 
-  const AdjustModal = () => (
-    <AdjustStockModal
-      open={showAdjustModal}
-      product={adjustingProduct}
-      tipo={ajusteTipo}
-      cantidad={ajusteCantidad}
-      observaciones={ajusteObserv}
-      costo={ajusteCosto}
-      proveedorId={ajusteProveedorId}
-      proveedores={proveedores}
-      onClose={handleModalClose}
-      onTipo={handleTipoChange}
-      onCantidad={handleCantidadChange}
-      onObservaciones={handleObservacionesChange}
-      onCosto={handleCostoChange}
-      onProveedorId={handleProveedorIdChange}
-      onAplicar={aplicarAjuste}
-    />
-  );
+  // Nota: Evitar declarar componentes anidados (como AdjustModal) dentro del render para no forzar remounts
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -213,7 +195,25 @@ export default function Inventario() {
         </CardContent>
       </Card>
 
-  {showAdjustModal && <AdjustModal />}
+  {showAdjustModal && (
+        <AdjustStockModal
+          open={showAdjustModal}
+          product={adjustingProduct}
+          tipo={ajusteTipo}
+          cantidad={ajusteCantidad}
+          observaciones={ajusteObserv}
+          costo={ajusteCosto}
+          proveedorId={ajusteProveedorId}
+          proveedores={proveedores}
+          onClose={handleModalClose}
+          onTipo={handleTipoChange}
+          onCantidad={handleCantidadChange}
+          onObservaciones={handleObservacionesChange}
+          onCosto={handleCostoChange}
+          onProveedorId={handleProveedorIdChange}
+          onAplicar={aplicarAjuste}
+        />
+      )}
     </div>
   );
 }

@@ -82,25 +82,27 @@ export interface Venta {
   detalles?: VentaDetalle[];
 }
 
+import { InventarioService } from './inventario-service';
+
 export class PuntoVentaService {
   // Productos
   static async obtenerProductos(): Promise<Producto[]> {
     try {
       const query = `
         SELECT 
-          COALESCE(p.id, p.rowid) as id,
+          p.id,
           p.codigo_barras,
           p.codigo_interno,
           p.nombre,
           p.descripcion,
           p.precio_venta,
-          p.stock_actual,
-          p.stock_minimo,
-          p.venta_fraccionada,
+          ia.stock_actual,
+          ia.stock_minimo,
           p.activo,
           p.fecha_creacion,
           c.nombre as categoria_nombre
-        FROM productos p
+        FROM inventario_actual ia
+        INNER JOIN productos p ON p.id = ia.id
         LEFT JOIN categorias c ON p.categoria_id = c.id
         WHERE p.activo = 1 AND p.nombre IS NOT NULL
         ORDER BY p.nombre ASC
@@ -189,7 +191,7 @@ export class PuntoVentaService {
 
       console.log('Número de venta asignado:', numeroVenta);
 
-      // Insertar detalles de venta
+  // Insertar detalles de venta
       for (const detalle of venta.detalles) {
         console.log('Insertando detalle:', detalle);
         
@@ -211,8 +213,13 @@ export class PuntoVentaService {
           detalle.subtotal
         ]);
 
-        // Actualizar stock del producto
-        await this.actualizarStockProducto(detalle.producto_id, detalle.cantidad);
+        // Registrar salida de inventario como movimiento
+        await InventarioService.registrarMovimiento({
+          producto_id: detalle.producto_id,
+          tipo_movimiento: 'salida',
+          cantidad: detalle.cantidad,
+          observaciones: `Venta ${numeroVenta}`,
+        });
       }
 
       // Si es venta a crédito, crear cuenta por cobrar
@@ -273,22 +280,7 @@ export class PuntoVentaService {
     return `V-${año}${mes}${dia}-${ventaId}`;
   }
 
-  private static async actualizarStockProducto(productoId: number, cantidadVendida: number): Promise<void> {
-    try {
-      const updateQuery = `
-        UPDATE productos 
-        SET 
-          stock_actual = stock_actual - ?,
-          fecha_actualizacion = datetime('now')
-        WHERE (id = ? OR rowid = ?)
-      `;
-
-      await window.electronAPI.db.run(updateQuery, [cantidadVendida, productoId, productoId]);
-    } catch (error) {
-      console.error('Error al actualizar stock:', error);
-      throw error;
-    }
-  }
+  // El stock ahora se gestiona mediante la vista inventario_actual y la tabla movimientos
 
   // Actualizar estado de venta cuando se complete el pago
   static async actualizarEstadoVentaSiCompletada(cuentaId: number): Promise<void> {

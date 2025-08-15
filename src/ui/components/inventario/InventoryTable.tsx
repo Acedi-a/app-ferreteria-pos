@@ -65,8 +65,8 @@ export function InventoryTable({ items, onAdjust }: InventoryTableProps) {
                 </Badge>
               </TableCell>
               <TableCell>
-                <Button variant="ghost" onClick={() => onAdjust(item)} className="h-8 w-8 p-0">
-                  <Settings className="h-4 w-4" />
+                <Button variant="ghost" onClick={() => onAdjust(item)} className="h-12 w-12 p-0">
+                  <Settings className="h-10 w-10" />
                 </Button>
               </TableCell>
             </TableRow>

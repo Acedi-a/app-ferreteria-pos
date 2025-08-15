@@ -80,15 +80,27 @@ export interface Venta {
   detalles?: VentaDetalle[];
 }
 
+
 export class PuntoVentaService {
   // Productos
   static async obtenerProductos(): Promise<Producto[]> {
     try {
       const query = `
         SELECT 
-          p.*,
+          p.id,
+          p.codigo_barras,
+          p.codigo_interno,
+          p.nombre,
+          p.descripcion,
+          p.precio_venta,
+          ia.stock_actual,
+          ia.stock_minimo,
+          p.venta_fraccionada,
+          p.activo,
+          p.fecha_creacion,
           c.nombre as categoria_nombre
-        FROM productos p
+        FROM inventario_actual ia
+        INNER JOIN productos p ON p.id = ia.id
         LEFT JOIN categorias c ON p.categoria_id = c.id
         WHERE p.activo = 1
         ORDER BY p.nombre ASC
@@ -261,8 +273,7 @@ export class PuntoVentaService {
           detalle.subtotal
         ]);
 
-        // Actualizar stock del producto
-        await this.actualizarStockProducto(detalle.producto_id, detalle.cantidad);
+  // Nota: el stock se actualiza mediante movimientos en la capa UI
       }
 
       return ventaId;
@@ -294,22 +305,7 @@ export class PuntoVentaService {
     }
   }
 
-  private static async actualizarStockProducto(productoId: number, cantidadVendida: number): Promise<void> {
-    try {
-      const updateQuery = `
-        UPDATE productos 
-        SET 
-          stock_actual = stock_actual - ?,
-          fecha_modificacion = datetime('now')
-        WHERE id = ?
-      `;
-
-      await window.electronAPI.db.run(updateQuery, [cantidadVendida, productoId]);
-    } catch (error) {
-      console.error('Error al actualizar stock:', error);
-      throw error;
-    }
-  }
+  // El stock se gestiona por movimientos e inventario_actual
 
   static async obtenerVentas(limite: number = 50): Promise<Venta[]> {
     try {
