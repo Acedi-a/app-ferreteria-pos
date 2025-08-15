@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Download, FileText, Package, Users, DollarSign, TrendingUp } from "lucide-react";
 
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../components/ui/Table";
-import { Badge } from "../components/ui/Badge";
+// tablas internas se manejan en componentes
+import { FiltrosReportes, type Preset } from "../components/reportes/FiltrosReportes";
+import { VentasPorDia } from "../components/reportes/VentasPorDia";
+import { TopProductos } from "../components/reportes/TopProductos";
+import { MejoresClientes } from "../components/reportes/MejoresClientes";
+import { InventarioPorCategoria } from "../components/reportes/InventarioPorCategoria";
+import { ResumenFinanciero } from "../components/reportes/ResumenFinanciero";
+import { ReportesService, type RangoFechas } from "../services/reportes-service";
 
 interface ReportType {
   id: string;
@@ -49,7 +55,7 @@ interface FinancialData {
   margen_neto: number;
 }
 
-/* --- Datos --- */
+/* --- Config --- */
 const reportTypes: ReportType[] = [
   { id: "ventas", name: "Reporte de Ventas", icon: <DollarSign className="h-6 w-6" /> },
   { id: "productos", name: "Análisis de Productos", icon: <Package className="h-6 w-6" /> },
@@ -57,52 +63,77 @@ const reportTypes: ReportType[] = [
   { id: "inventario", name: "Estado de Inventario", icon: <BarChart3 className="h-6 w-6" /> },
   { id: "financiero", name: "Reporte Financiero", icon: <TrendingUp className="h-6 w-6" /> },
 ];
-
-const salesData: SalesData[] = [
-  { fecha: "2024-01-20", ventas: 15, total: 2847.5, promedio: 189.83 },
-  { fecha: "2024-01-19", ventas: 12, total: 2156.75, promedio: 179.73 },
-  { fecha: "2024-01-18", ventas: 18, total: 3421.25, promedio: 190.07 },
-  { fecha: "2024-01-17", ventas: 9, total: 1678.9, promedio: 186.54 },
-  { fecha: "2024-01-16", ventas: 14, total: 2789.6, promedio: 199.26 },
-];
-
-const topProducts: ProductData[] = [
-  { nombre: 'Tornillos 1/4"', vendidos: 450, ingresos: 112.5 },
-  { nombre: "Pintura Blanca 1L", vendidos: 35, ingresos: 446.25 },
-  { nombre: "Cable 12 AWG", vendidos: 120, ingresos: 216.0 },
-  { nombre: 'Tubo PVC 2"', vendidos: 28, ingresos: 182.0 },
-  { nombre: "Cemento 50kg", vendidos: 15, ingresos: 225.0 },
-];
-
-const clientData: ClientData[] = [
-  { nombre: "Juan Carlos Pérez", compras: 8, total: 1245.75, ultima: "2024-01-20" },
-  { nombre: "María Elena García", compras: 5, total: 892.5, ultima: "2024-01-19" },
-  { nombre: "Carlos López", compras: 12, total: 2156.25, ultima: "2024-01-18" },
-  { nombre: "Ana Martínez", compras: 3, total: 456.8, ultima: "2024-01-17" },
-  { nombre: "Pedro González", compras: 7, total: 1089.45, ultima: "2024-01-16" },
-];
-
-const inventoryData: InventoryData[] = [
-  { categoria: "Tornillería", productos: 45, valor: 2456.75, stock_bajo: 3 },
-  { categoria: "Pinturas", productos: 28, valor: 3421.5, stock_bajo: 2 },
-  { categoria: "Eléctricos", productos: 67, valor: 4567.25, stock_bajo: 5 },
-  { categoria: "Plomería", productos: 34, valor: 2890.8, stock_bajo: 1 },
-  { categoria: "Herramientas", productos: 23, valor: 5678.9, stock_bajo: 0 },
-];
-
-const financialData: FinancialData = {
-  ingresos: 15420.75,
-  costos: 9876.5,
-  utilidad_bruta: 5544.25,
-  gastos: 1234.6,
-  utilidad_neta: 4309.65,
-  margen_bruto: 35.9,
-  margen_neto: 27.9,
-};
+function toISO(d: Date) { return d.toISOString().slice(0, 10); }
+function rangoPorSeleccion(sel: string, desde?: string, hasta?: string): RangoFechas {
+  const hoy = new Date();
+  const startOfWeek = () => {
+    const d = new Date(hoy);
+    const day = d.getDay() || 7; // Monday=1..Sunday=7
+    if (day !== 1) d.setDate(d.getDate() - (day - 1));
+    return d;
+  }
+  const startOfMonth = () => new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const startOfQuarter = () => {
+    const q = Math.floor(hoy.getMonth() / 3) * 3;
+    return new Date(hoy.getFullYear(), q, 1);
+  }
+  const startOfYear = () => new Date(hoy.getFullYear(), 0, 1);
+  switch (sel) {
+    case 'today':
+      return { desde: toISO(hoy), hasta: toISO(hoy) };
+    case 'week':
+      return { desde: toISO(startOfWeek()), hasta: toISO(hoy) };
+    case 'month':
+      return { desde: toISO(startOfMonth()), hasta: toISO(hoy) };
+    case 'quarter':
+      return { desde: toISO(startOfQuarter()), hasta: toISO(hoy) };
+    case 'year':
+      return { desde: toISO(startOfYear()), hasta: toISO(hoy) };
+    case 'custom':
+    default:
+      return { desde, hasta };
+  }
+}
 
 export default function Reportes() {
   const [selectedReport, setSelectedReport] = useState("ventas");
-  const [dateRange, setDateRange] = useState("today");
+  const [dateRange, setDateRange] = useState<Preset>("today");
+  const [customDesde, setCustomDesde] = useState<string>("");
+  const [customHasta, setCustomHasta] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
+  const [salesData, setSalesData] = useState<SalesData[]>([]);
+  const [topProducts, setTopProducts] = useState<ProductData[]>([]);
+  const [clientData, setClientData] = useState<ClientData[]>([]);
+  const [inventoryData, setInventoryData] = useState<InventoryData[]>([]);
+  const [financialData, setFinancialData] = useState<FinancialData | null>(null);
+
+  const rango = useMemo<RangoFechas>(() => (
+    rangoPorSeleccion(dateRange, customDesde || undefined, customHasta || undefined)
+  ), [dateRange, customDesde, customHasta]);
+
+  useEffect(() => {
+    const cargar = async () => {
+      setLoading(true);
+      try {
+        const [v, t, c, i, f] = await Promise.all([
+          ReportesService.ventasPorDia(rango),
+          ReportesService.topProductos(rango, 10),
+          ReportesService.mejoresClientes(rango, 10),
+          ReportesService.inventarioPorCategoria(),
+          ReportesService.resumenFinanciero(rango),
+        ]);
+        setSalesData(v as SalesData[]);
+        setTopProducts(t as ProductData[]);
+        setClientData(c as ClientData[]);
+        setInventoryData(i as InventoryData[]);
+        setFinancialData(f as FinancialData);
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargar();
+  }, [rango.desde, rango.hasta]);
 
   const renderSalesReport = () => (
     <div className="space-y-6">
@@ -140,182 +171,27 @@ export default function Reportes() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              $
-              {(
-                salesData.reduce((sum, day) => sum + day.total, 0) / 
-                salesData.reduce((sum, day) => sum + day.ventas, 0)
-              ).toFixed(2)}
+              Bs
+              {(() => {
+                const total = salesData.reduce((sum, day) => sum + day.total, 0);
+                const cnt = salesData.reduce((sum, day) => sum + day.ventas, 0);
+                return (cnt > 0 ? total / cnt : 0).toFixed(2);
+              })()}
             </div>
             <p className="text-xs text-slate-600">Promedio por venta</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Ventas por Día</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Ventas</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Promedio</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {salesData.map((day, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    {new Date(day.fecha).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>{day.ventas}</TableCell>
-                  <TableCell className="font-medium">
-                    Bs {day.total.toFixed(2)}
-                  </TableCell>
-                  <TableCell>Bs {day.promedio.toFixed(2)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+  <VentasPorDia datos={salesData} />
     </div>
   );
 
-  const renderProductsReport = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Productos Más Vendidos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Producto</TableHead>
-                <TableHead>Cantidad Vendida</TableHead>
-                <TableHead>Ingresos</TableHead>
-                <TableHead>Participación</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {topProducts.map((product, index) => {
-                const totalIngresos = topProducts.reduce((sum, p) => sum + p.ingresos, 0);
-                const participacion = ((product.ingresos / totalIngresos) * 100).toFixed(1);
-                return (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{product.nombre}</TableCell>
-                    <TableCell>{product.vendidos}</TableCell>
-                    <TableCell className="font-medium">
-                      Bs {product.ingresos.toFixed(2)}
-                    </TableCell>
-                    <TableCell>{participacion}%</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  const renderProductsReport = () => <div className="space-y-6"><TopProductos datos={topProducts} /></div>;
 
-  const renderClientsReport = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Mejores Clientes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Compras</TableHead>
-                <TableHead>Total Gastado</TableHead>
-                <TableHead>Promedio</TableHead>
-                <TableHead>Última Compra</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {clientData.map((client, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{client.nombre}</TableCell>
-                  <TableCell>{client.compras}</TableCell>
-                  <TableCell className="font-medium">
-                    Bs {client.total.toFixed(2)}
-                  </TableCell>
-                  <TableCell>
-                    Bs {(client.total / client.compras).toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-slate-500">
-                    {new Date(client.ultima).toLocaleDateString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  const renderClientsReport = () => <div className="space-y-6"><MejoresClientes datos={clientData} /></div>;
 
-  const renderInventoryReport = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventario por Categoría</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Categoría</TableHead>
-                <TableHead>Productos</TableHead>
-                <TableHead>Valor Total</TableHead>
-                <TableHead>Stock Bajo</TableHead>
-                <TableHead>Estado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {inventoryData.map((category, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">
-                    {category.categoria}
-                  </TableCell>
-                  <TableCell>{category.productos}</TableCell>
-                  <TableCell className="font-medium">
-                    Bs {category.valor.toFixed(2)}
-                  </TableCell>
-                  <TableCell>{category.stock_bajo}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        category.stock_bajo === 0
-                          ? "success"
-                          : category.stock_bajo <= 2
-                          ? "default"
-                          : "destructive"
-                      }
-                    >
-                      {category.stock_bajo === 0 
-                        ? "Óptimo" 
-                        : category.stock_bajo <= 2 
-                        ? "Atención" 
-                        : "Crítico"}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  const renderInventoryReport = () => <div className="space-y-6"><InventarioPorCategoria datos={inventoryData} /></div>;
 
   const renderFinancialReport = () => (
     <div className="space-y-6">
@@ -329,31 +205,31 @@ export default function Reportes() {
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
                 <span className="text-sm font-medium text-slate-600">Ingresos Totales</span>
                 <span className="text-sm font-bold text-green-600">
-                  Bs {financialData.ingresos.toFixed(2)}
+                  Bs {(financialData?.ingresos ?? 0).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
                 <span className="text-sm font-medium text-slate-600">Costos de Ventas</span>
                 <span className="text-sm font-bold text-red-600">
-                  -Bs {financialData.costos.toFixed(2)}
+                  -Bs {(financialData?.costos ?? 0).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
                 <span className="text-sm font-medium text-slate-600">Utilidad Bruta</span>
                 <span className="text-sm font-bold text-blue-600">
-                  Bs {financialData.utilidad_bruta.toFixed(2)}
+                  Bs {(financialData?.utilidad_bruta ?? 0).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
                 <span className="text-sm font-medium text-slate-600">Gastos Operativos</span>
                 <span className="text-sm font-bold text-red-600">
-                  -Bs {financialData.gastos.toFixed(2)}
+                  -Bs {(financialData?.gastos ?? 0).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-t-2 border-slate-300">
                 <span className="text-base font-bold text-slate-900">Utilidad Neta</span>
                 <span className="text-base font-bold text-green-600">
-                  Bs {financialData.utilidad_neta.toFixed(2)}
+                  Bs {(financialData?.utilidad_neta ?? 0).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -370,13 +246,13 @@ export default function Reportes() {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-slate-600">Margen Bruto</span>
                   <span className="text-sm font-bold text-blue-600">
-                    {financialData.margen_bruto}%
+                    {(financialData?.margen_bruto ?? 0)}%
                   </span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
                   <div 
                     className="bg-blue-600 h-2 rounded-full" 
-                    style={{ width: `${financialData.margen_bruto}%` }}
+                    style={{ width: `${financialData?.margen_bruto ?? 0}%` }}
                   />
                 </div>
               </div>
@@ -384,13 +260,13 @@ export default function Reportes() {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-slate-600">Margen Neto</span>
                   <span className="text-sm font-bold text-green-600">
-                    {financialData.margen_neto}%
+                    {(financialData?.margen_neto ?? 0)}%
                   </span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
                   <div 
                     className="bg-green-600 h-2 rounded-full" 
-                    style={{ width: `${financialData.margen_neto}%` }}
+                    style={{ width: `${financialData?.margen_neto ?? 0}%` }}
                   />
                 </div>
               </div>
@@ -423,15 +299,15 @@ export default function Reportes() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Reportes y Análisis</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Reportes y Análisis {loading && <span className="ml-2 text-sm text-slate-400">(cargando...)</span>}</h1>
           <p className="text-sm text-slate-500">Analiza el rendimiento de tu ferretería</p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline">
+          <Button variant="outline" disabled={loading}>
             <FileText className="mr-2 h-4 w-4" />
             Exportar PDF
           </Button>
-          <Button>
+          <Button disabled={loading}>
             <Download className="mr-2 h-4 w-4" />
             Exportar Excel
           </Button>
@@ -463,54 +339,17 @@ export default function Reportes() {
       </Card>
 
       {/* Date Range Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Período de Análisis
-              </label>
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="today">Hoy</option>
-                <option value="week">Esta Semana</option>
-                <option value="month">Este Mes</option>
-                <option value="quarter">Este Trimestre</option>
-                <option value="year">Este Año</option>
-                <option value="custom">Personalizado</option>
-              </select>
-            </div>
-            {dateRange === "custom" && (
-              <div className="flex gap-2">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Desde
-                  </label>
-                  <input
-                    type="date"
-                    className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Hasta
-                  </label>
-                  <input
-                    type="date"
-                    className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <FiltrosReportes
+        preset={dateRange}
+        setPreset={(p) => setDateRange(p)}
+        rango={{ desde: customDesde || undefined, hasta: customHasta || undefined }}
+        setRango={(r) => { setCustomDesde(r.desde || ""); setCustomHasta(r.hasta || ""); }}
+        loading={loading}
+      />
 
-      {/* Report Content */}
-      {renderReport()}
+  {/* Report Content */}
+  <ResumenFinanciero datos={financialData} />
+  {renderReport()}
     </div>
   );
 }
