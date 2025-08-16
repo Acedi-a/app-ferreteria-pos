@@ -1,6 +1,12 @@
 {
     "appId": "com.electron.ferreteria-pos",
     "files": ["dist-electron","dist-react"],
+    "extraResources": [
+        {
+            "from": "db.sqlite",
+            "to": "db.sqlite"
+        }
+    ],
     "icon": "./desktopIcon.png",
     "mac":{
         "target": "dmg"

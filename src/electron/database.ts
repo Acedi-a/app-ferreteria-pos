@@ -10,7 +10,21 @@ export class DatabaseService {
   }
 
   private initDatabase() {
-    const dbPath = path.join(app.getAppPath(), 'db.sqlite');
+    // En desarrollo, usar la ruta del proyecto
+    // En producción, usar userData para que sea escribible
+    const isDev = process.env.NODE_ENV === 'development';
+    const dbPath = isDev 
+      ? path.join(app.getAppPath(), 'db.sqlite')
+      : path.join(app.getPath('userData'), 'db.sqlite');
+    
+    // Si es producción y no existe la DB, copiar desde recursos
+    if (!isDev) {
+      const fs = require('fs');
+      const resourceDbPath = path.join(process.resourcesPath, 'db.sqlite');
+      if (!fs.existsSync(dbPath) && fs.existsSync(resourceDbPath)) {
+        fs.copyFileSync(resourceDbPath, dbPath);
+      }
+    }
     
     this.db = new sqlite3.Database(dbPath, (err) => {
       if (err) {

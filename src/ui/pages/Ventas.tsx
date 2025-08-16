@@ -162,7 +162,6 @@ export default function Ventas() {
     } catch (e: any) {
       toast({ title: "Error al imprimir", description: e?.message || String(e), variant: 'destructive' });
     }
-  }
   };
 
   const limpiarFiltros = () => {
