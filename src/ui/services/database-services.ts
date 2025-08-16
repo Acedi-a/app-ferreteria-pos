@@ -156,7 +156,7 @@ export class ProductoService {
 
   static async obtenerStockBajo(): Promise<Producto[]> {
     return window.electronAPI.db.query(
-      'SELECT * FROM productos WHERE activo = 1 AND stock_actual <= stock_minimo ORDER BY stock_actual'
+      'SELECT p.*, ia.stock_actual FROM productos p JOIN inventario_actual ia ON p.id = ia.id WHERE p.activo = 1 AND ia.stock_actual <= p.stock_minimo ORDER BY ia.stock_actual'
     );
   }
 }

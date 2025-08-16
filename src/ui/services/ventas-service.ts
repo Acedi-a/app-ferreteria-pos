@@ -1,4 +1,4 @@
-    // Servicio para gestionar las ventas
+// Servicio para gestionar las ventas
     export interface VentaDetalle {
     id: number;
     venta_id: number;
@@ -219,14 +219,32 @@
 
         await window.electronAPI.db.run(query, [motivo || 'Sin motivo especificado', ventaId]);
 
-        // Restaurar stock de los productos
+        // Restaurar stock de los productos creando movimientos de entrada
         const detalles = await this.obtenerDetallesVenta(ventaId);
         for (const detalle of detalles) {
+            // Obtener el stock actual antes del movimiento
+            const stockAnterior = await window.electronAPI.db.get(`
+                SELECT COALESCE(stock_actual, 0) as stock_actual 
+                FROM inventario_actual 
+                WHERE id = ?
+            `, [detalle.producto_id]);
+            
+            const stockPrevio = stockAnterior?.stock_actual || 0;
+            const stockNuevo = stockPrevio + detalle.cantidad;
+            
+            // Crear movimiento de entrada para restaurar el stock
             await window.electronAPI.db.run(`
-            UPDATE productos 
-            SET stock_actual = stock_actual + ?
-            WHERE (id = ? OR rowid = ?)
-            `, [detalle.cantidad, detalle.producto_id, detalle.producto_id]);
+                INSERT INTO movimientos (
+                    producto_id, almacen_id, tipo_movimiento, cantidad,
+                    stock_anterior, stock_nuevo, observaciones, usuario
+                ) VALUES (?, 1, 'entrada', ?, ?, ?, ?, 'sistema')
+            `, [
+                detalle.producto_id,
+                detalle.cantidad,
+                stockPrevio,
+                stockNuevo,
+                `Restauración por cancelación de venta #${ventaId}`
+            ]);
         }
         } catch (error) {
         console.error('Error al cancelar venta:', error);

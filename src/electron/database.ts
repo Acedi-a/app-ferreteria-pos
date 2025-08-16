@@ -40,6 +40,63 @@ export class DatabaseService {
     } catch (e) {
       console.error('Migration check/add costo_unitario failed:', e);
     }
+
+    // Crear tabla cuentas_por_pagar si no existe
+    try {
+      await this.run(`
+        CREATE TABLE IF NOT EXISTS cuentas_por_pagar (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          proveedor_id INTEGER NOT NULL,
+          compra_id INTEGER,
+          monto DECIMAL(10,2) NOT NULL,
+          saldo DECIMAL(10,2) NOT NULL,
+          fecha_vencimiento DATE,
+          estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'vencida', 'pagada')),
+          observaciones TEXT,
+          fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+          fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (proveedor_id) REFERENCES proveedores(id)
+        )
+      `);
+      console.log('Migration done: cuentas_por_pagar table created');
+    } catch (e) {
+      console.error('Migration create cuentas_por_pagar failed:', e);
+    }
+
+    // Crear tabla pagos_proveedores si no existe
+    try {
+      await this.run(`
+        CREATE TABLE IF NOT EXISTS pagos_proveedores (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          cuenta_id INTEGER NOT NULL,
+          monto DECIMAL(10,2) NOT NULL,
+          metodo_pago TEXT NOT NULL,
+          fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP,
+          observaciones TEXT,
+          FOREIGN KEY (cuenta_id) REFERENCES cuentas_por_pagar(id)
+        )
+      `);
+      console.log('Migration done: pagos_proveedores table created');
+    } catch (e) {
+      console.error('Migration create pagos_proveedores failed:', e);
+    }
+
+    // Agregar columna saldo_pendiente a proveedores si no existe
+    try {
+      const hasProvCol: any[] = await this.query(
+        "PRAGMA table_info('proveedores')"
+      );
+      const existsProv = hasProvCol.some((c: any) => c.name === 'saldo_pendiente');
+      if (!existsProv) {
+        console.log('Migrating: adding proveedores.saldo_pendiente ...');
+        await this.run(
+          "ALTER TABLE proveedores ADD COLUMN saldo_pendiente DECIMAL(10,2) DEFAULT 0"
+        );
+        console.log('Migration done: proveedores.saldo_pendiente');
+      }
+    } catch (e) {
+      console.error('Migration check/add saldo_pendiente to proveedores failed:', e);
+    }
   }
 
   // Método genérico para ejecutar consultas SELECT

@@ -35,12 +35,16 @@ ipcMain.handle('db-get', async (event, sql: string, params: any[] = []) => {
 });
 
 app.on("ready",()=> {
-    // IMPORTANTE: El preload debe estar en CommonJS y ubicado en dist-electron/preload.cjs
+    // Usar preload CommonJS. En desarrollo cargamos directamente desde src; en producción desde dist-electron
+    const preloadPath = isDev()
+      ? path.join(process.cwd(), 'src', 'electron', 'preload.cjs')
+      : path.join(__dirname, 'preload.cjs');
+
     const mainWindow = new BrowserWindow({
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            preload: path.join(__dirname, 'preload.cjs')
+            preload: preloadPath
         }
     });
     
