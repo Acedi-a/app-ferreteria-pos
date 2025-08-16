@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Building2, Shield, TrendingUp } from "lucide-react";
+import { Link } from "react-router-dom";
 import { nanoid } from "nanoid";
  import { useToast } from "../components/ui/use-toast";
 import { Button } from "../components/ui/Button";
@@ -23,6 +24,7 @@ export default function Productos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  
   const [editingProduct, setEditingProduct] = useState<Producto | null>(null);
   const [formData, setFormData] = useState<Partial<Producto>>({});
 
@@ -127,7 +129,8 @@ const { toast } = useToast();
       categoria_id: undefined,
       tipo_unidad_id: undefined,
       unidad_medida: "",
-      activo: true
+  activo: true,
+  imagen_url: undefined
     });
     setShowModal(true);
   };
@@ -145,7 +148,8 @@ const { toast } = useToast();
       categoria_id: producto.categoria_id,
       tipo_unidad_id: producto.tipo_unidad_id,
       unidad_medida: producto.unidad_medida || "",
-      activo: producto.activo
+  activo: producto.activo,
+  imagen_url: producto.imagen_url
     });
     setShowModal(true);
   };
@@ -187,7 +191,12 @@ const { toast } = useToast();
     }
 
     try {
+      const prod = productos.find(p => p.id === id);
       await productosService.eliminarProducto(id);
+      // Intentar borrar la imagen asociada si era gestionada por la app
+      if (prod?.imagen_url && prod.imagen_url.startsWith('file://')) {
+        try { await window.electronAPI.deleteImage(prod.imagen_url); } catch {}
+      }
       toast({ title: "Éxito", description: "Producto eliminado exitosamente", variant: "success" });
       await cargarProductos();
       await cargarEstadisticas();
@@ -220,6 +229,13 @@ const { toast } = useToast();
                 <Shield className="h-4 w-4 text-gray-600" />
                 <span className="text-xs font-medium text-gray-700">Sistema Seguro</span>
               </div>
+              <Link
+                to="/productos/masivos"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border border-slate-300 hover:bg-slate-100 text-slate-900"
+              >
+                Registros masivos en productos
+              </Link>
+              
               <Button 
                 onClick={handleNewProduct}
                 className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-black focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors"
@@ -313,6 +329,8 @@ const { toast } = useToast();
         categorias={categorias}
         tiposUnidad={tiposUnidad}
       />
+
+      
     </div>
   );
 }

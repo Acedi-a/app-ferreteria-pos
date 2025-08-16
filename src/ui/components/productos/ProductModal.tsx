@@ -1,4 +1,4 @@
-import { X, ImageIcon, RefreshCw } from "lucide-react";
+import { X, ImageIcon, RefreshCw, Trash2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/Dialog";
@@ -28,6 +28,8 @@ function ProductModal({
   tiposUnidad
 }: ProductModalProps) {
   
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+
   const handleInputChange = (field: keyof Producto, value: any) => {
     setFormData({ ...formData, [field]: value });
   };
@@ -38,6 +40,39 @@ function ProductModal({
       onClose();
     }
   };
+
+  const handleImportImage = async () => {
+    try {
+      const res = await window.electronAPI.importImage();
+      if (res && res.url) {
+        const old = formData.imagen_url;
+        // Si había una imagen previa gestionada por la app, eliminarla antes de asignar la nueva (evita condiciones de carrera)
+        if (old && old.startsWith('file://') && old !== res.url) {
+          try { await window.electronAPI.deleteImage(old); } catch {}
+        }
+        setFormData({ ...formData, imagen_url: res.url });
+      }
+    } catch (e) {
+      console.error('Error importando imagen:', e);
+    }
+  };
+
+  // Resolver preview entre data URL y rutas file://
+  React.useEffect(() => {
+    let active = true;
+    const src = formData.imagen_url;
+    const run = async () => {
+      if (!src) { setPreviewUrl(null); return; }
+      if (src.startsWith('file://')) {
+        const data = await window.electronAPI.imageToDataUrl(src);
+        if (active) setPreviewUrl(data);
+      } else {
+        setPreviewUrl(src);
+      }
+    };
+    run();
+    return () => { active = false; };
+  }, [formData.imagen_url]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
@@ -248,17 +283,47 @@ function ProductModal({
             </div>
           </div>
 
-          {/* Placeholder para fotos */}
+          {/* Imagen del producto */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Fotos del Producto
+              Imagen del Producto
             </label>
-            <div className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center bg-gray-50">
-              <div className="bg-white rounded-lg p-3 w-fit mx-auto mb-3">
-                <ImageIcon className="h-6 w-6 text-gray-400" />
+    {formData.imagen_url ? (
+              <div className="flex items-start gap-4">
+                <img
+      src={previewUrl || ''}
+                  alt="Producto"
+                  className="w-28 h-28 object-cover rounded border"
+                />
+                <div className="flex flex-col gap-2">
+                  <Button type="button" variant="outline" onClick={handleImportImage}>
+                    Cambiar imagen
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-red-600 hover:bg-red-50 w-fit"
+                    onClick={async () => {
+                      if (formData.imagen_url && formData.imagen_url.startsWith('file://')) {
+                        try { await window.electronAPI.deleteImage(formData.imagen_url); } catch {}
+                      }
+                      setPreviewUrl(null);
+                      setFormData({ ...formData, imagen_url: undefined });
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" /> Quitar imagen
+                  </Button>
+                </div>
               </div>
-              <p className="text-sm text-gray-500">Subir fotos (próximamente)</p>
-            </div>
+            ) : (
+              <div className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center bg-gray-50">
+                <div className="bg-white rounded-lg p-3 w-fit mx-auto mb-3">
+                  <ImageIcon className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="text-sm text-gray-600 mb-3">No hay imagen seleccionada</p>
+                <Button type="button" onClick={handleImportImage}>Seleccionar imagen…</Button>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

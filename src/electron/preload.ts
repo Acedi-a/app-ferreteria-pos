@@ -7,20 +7,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     query: (sql: string, params?: any[]) => ipcRenderer.invoke('db-query', sql, params),
     run: (sql: string, params?: any[]) => ipcRenderer.invoke('db-run', sql, params),
     get: (sql: string, params?: any[]) => ipcRenderer.invoke('db-get', sql, params)
-  }
+  },
+  importImage: (): Promise<{ path: string; url: string } | null> => ipcRenderer.invoke('image-import'),
+  imageToDataUrl: (fileRef: string): Promise<string | null> => ipcRenderer.invoke('image-read-dataurl', fileRef),
+  deleteImage: (fileRef: string): Promise<{ deleted: boolean; reason?: string; error?: string }> => ipcRenderer.invoke('image-delete', fileRef),
 });
 
-// Tipos para TypeScript
-export interface ElectronAPI {
-  db: {
-    query: (sql: string, params?: any[]) => Promise<any[]>;
-    run: (sql: string, params?: any[]) => Promise<{ id?: number; changes: number }>;
-    get: (sql: string, params?: any[]) => Promise<any>;
-  };
-}
-
-declare global {
-  interface Window {
-    electronAPI: ElectronAPI;
-  }
-}
+// Tipado global provisto desde src/ui/types/electron.d.ts

@@ -13,6 +13,7 @@ export interface Producto {
   activo: boolean;
   fecha_creacion?: string;
   fecha_actualizacion?: string;
+  imagen_url?: string; // nueva columna para imagen
   // Campos calculados/join
   categoria_nombre?: string;
   tipo_unidad_nombre?: string;
@@ -107,6 +108,12 @@ class ProductosService {
       placeholders.push('?');
     }
 
+    if (producto.imagen_url) {
+      campos.push('imagen_url');
+      valores.push(producto.imagen_url);
+      placeholders.push('?');
+    }
+
     if (producto.descripcion) {
       campos.push('descripcion');
       valores.push(producto.descripcion);
@@ -165,6 +172,10 @@ class ProductosService {
       campos.push('costo_unitario = ?');
       valores.push(producto.costo_unitario);
     }
+    if (producto.imagen_url !== undefined) {
+      campos.push('imagen_url = ?');
+      valores.push(producto.imagen_url || null);
+    }
     if (producto.stock_minimo !== undefined) {
       campos.push('stock_minimo = ?');
       valores.push(producto.stock_minimo);
@@ -201,7 +212,7 @@ class ProductosService {
 
   async eliminarProducto(id: number): Promise<boolean> {
     const result = await window.electronAPI.db.run(
-      'UPDATE productos SET activo = 0 WHERE id = ?',
+      'UPDATE productos SET activo = 0, imagen_url = NULL WHERE id = ?',
       [id]
     );
     return result.changes > 0;
@@ -242,7 +253,7 @@ class ProductosService {
     const result = await window.electronAPI.db.get(`
       SELECT 
         COUNT(*) as totalProductos,
-        COUNT(CASE WHEN ia.stock_actual <= ia.stock_minimo THEN 1 END) as stockBajo,
+        COUNT(CASE WHEN ia.stock_actual <= p.stock_minimo THEN 1 END) as stockBajo,
         COALESCE(SUM(ia.valor_total), 0) as valorInventario,
         COUNT(CASE WHEN p.activo = 1 THEN 1 END) as productosActivos
       FROM inventario_actual ia

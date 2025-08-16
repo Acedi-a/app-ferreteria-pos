@@ -5,6 +5,9 @@ export interface ElectronAPI {
     run: (sql: string, params?: any[]) => Promise<{ id?: number; changes: number }>;
     get: (sql: string, params?: any[]) => Promise<any>;
   };
+  importImage: () => Promise<{ path: string; url: string } | null>;
+  imageToDataUrl: (fileRef: string) => Promise<string | null>;
+  deleteImage: (fileRef: string) => Promise<{ deleted: boolean; reason?: string; error?: string }>;
 }
 
 declare global {
