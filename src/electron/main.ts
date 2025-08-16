@@ -135,12 +135,14 @@ app.on("ready",()=> {
         }
     });
     
-    if (isDev()){
-        mainWindow.loadURL('http://localhost:5123')
-    }
-    else{
-        mainWindow.loadFile(path.join(app.getAppPath(), '/dist-react/index.html'));
-    }
+  if (isDev()){
+    mainWindow.loadURL('http://localhost:5123')
+  }
+  else{
+    // En producción, app.getAppPath() apunta dentro del asar; usar ruta relativa a __dirname
+    const indexProd = path.join(__dirname, '..', 'dist-react', 'index.html');
+    mainWindow.loadFile(indexProd);
+  }
 })
 
 app.on('window-all-closed', () => {

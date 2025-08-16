@@ -4,7 +4,8 @@
     "extraResources": [
         {
             "from": "db.sqlite",
-            "to": "db.sqlite"
+            "to": ".",
+            "filter": ["db.sqlite"]
         }
     ],
     "icon": "./desktopIcon.png",
