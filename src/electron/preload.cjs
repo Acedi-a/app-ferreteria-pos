@@ -9,4 +9,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   importImage: () => ipcRenderer.invoke('image-import'),
   imageToDataUrl: (fileRef) => ipcRenderer.invoke('image-read-dataurl', fileRef)
   ,deleteImage: (fileRef) => ipcRenderer.invoke('image-delete', fileRef)
+  ,printHtml: (payload) => ipcRenderer.invoke('print-html', payload)
 });

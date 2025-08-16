@@ -6,6 +6,7 @@ import VentasTable from "../components/ventas/VentasTable";
 import VentasFilters from "../components/ventas/VentasFilters";
 import VentaDetalleModal from "../components/ventas/VentaDetalleModal";
 import { VentasService } from "../services/ventas-service";
+import { printTicket } from "../components/ventas/TicketRenderer";
 import type { Venta, VentaDetalle, FiltrosVenta } from "../services/ventas-service";
 
 export default function Ventas() {
@@ -130,12 +131,17 @@ export default function Ventas() {
     }
   };
 
-  const imprimirTicket = (venta: Venta) => {
-    toast({
-      title: "Imprimiendo ticket",
-      description: `Enviando ticket de la venta ${venta.numero_venta} a la impresora...`
-    });
-    // Aquí se implementaría la lógica de impresión
+  const imprimirTicket = async (venta: Venta) => {
+    try {
+      const detalles = await VentasService.obtenerDetallesVenta(venta.id);
+      const res = await printTicket(venta, detalles);
+      if (!res.ok) {
+        throw new Error(res.error || 'Error de impresión');
+      }
+      toast({ title: "Ticket enviado", description: `Venta ${venta.numero_venta}` });
+    } catch (e: any) {
+      toast({ title: "Error al imprimir", description: e?.message || String(e), variant: 'destructive' });
+    }
   };
 
   const limpiarFiltros = () => {

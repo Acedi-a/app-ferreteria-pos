@@ -8,6 +8,7 @@ export interface ElectronAPI {
   importImage: () => Promise<{ path: string; url: string } | null>;
   imageToDataUrl: (fileRef: string) => Promise<string | null>;
   deleteImage: (fileRef: string) => Promise<{ deleted: boolean; reason?: string; error?: string }>;
+  printHtml: (payload: { html: string; widthMm?: number; deviceName?: string; silent?: boolean; title?: string }) => Promise<{ ok: boolean; error?: string }>;
 }
 
 declare global {

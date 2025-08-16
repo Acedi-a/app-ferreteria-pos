@@ -145,3 +145,39 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+// IPC para imprimir HTML en impresora térmica (80mm por defecto)
+ipcMain.handle('print-html', async (event, payload: { html: string; widthMm?: number; deviceName?: string; silent?: boolean; title?: string }) => {
+  const { html, widthMm = 80, deviceName, silent = true, title = 'Ticket' } = payload || {};
+  if (!html) return { ok: false, error: 'missing-html' };
+  // Crear una ventana oculta para cargar el contenido
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: true,
+    },
+    autoHideMenuBar: true,
+    title
+  });
+
+  const content = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+  await win.loadURL(content);
+
+  return new Promise((resolve) => {
+    const mmToMicrons = (mm: number) => Math.max(1, Math.round(mm * 1000));
+    // Altura dinámica grande; la impresora corta según contenido
+    const printOpts: Electron.WebPreferences & any = {
+      silent,
+      printBackground: true,
+      deviceName: deviceName || undefined,
+      margins: { marginType: 'none' },
+      pageSize: { width: mmToMicrons(widthMm), height: mmToMicrons(297) },
+    };
+    win.webContents.print(printOpts, (success, failureReason) => {
+      try { win.close(); } catch {}
+      if (!success) return resolve({ ok: false, error: failureReason || 'print-failed' });
+      resolve({ ok: true });
+    });
+  });
+});
