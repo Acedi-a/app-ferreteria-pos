@@ -1,3 +1,4 @@
+import React from "react";
 import { Edit, Trash2, Loader2, Package } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/Table";
@@ -14,6 +15,32 @@ interface ProductTableProps {
 // Margen calculation removed - cost not available in master data
 
 export default function ProductTable({ products, loading, searchTerm, onEdit, onDelete }: ProductTableProps) {
+  const [previews, setPreviews] = React.useState<Record<number, string>>({});
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const entries = await Promise.all(
+        products
+          .filter(p => !!p.imagen_url && !!p.id)
+          .map(async (p) => {
+            const src = p.imagen_url as string;
+            if (src.startsWith('file://')) {
+              const data = await window.electronAPI.imageToDataUrl(src);
+              return [p.id as number, data || ''] as const;
+            }
+            return [p.id as number, src] as const;
+          })
+      );
+      if (!cancelled) {
+        const rec: Record<number, string> = {};
+        for (const [id, url] of entries) rec[id] = url;
+        setPreviews(rec);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [products]);
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -49,7 +76,8 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
         <TableHeader>
           <TableRow className="border-gray-200/50 bg-gray-50/50">
             <TableHead className="w-[15%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Código</TableHead>
-            <TableHead className="w-[25%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Producto</TableHead>
+            <TableHead className="w-[6%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Imagen</TableHead>
+            <TableHead className="w-[22%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Producto</TableHead>
             <TableHead className="w-[12%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Categoría</TableHead>
             <TableHead className="w-[10%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Costo</TableHead>
             <TableHead className="w-[10%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Precio</TableHead>
@@ -67,6 +95,13 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                   <div className="font-medium text-gray-900 text-sm">{product.codigo_interno}</div>
                   <div className="text-xs text-gray-500">{product.codigo_barras || 'Sin código'}</div>
                 </div>
+              </TableCell>
+              <TableCell className="py-4 px-6">
+                {product.imagen_url ? (
+                  <img src={(product.id && previews[product.id]) || ''} alt={product.nombre} className="w-10 h-10 object-cover rounded border" />
+                ) : (
+                  <div className="w-10 h-10 rounded bg-gray-100 border" />
+                )}
               </TableCell>
               <TableCell className="py-4 px-6">
                 <div>

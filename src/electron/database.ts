@@ -40,6 +40,19 @@ export class DatabaseService {
     } catch (e) {
       console.error('Migration check/add costo_unitario failed:', e);
     }
+
+    // Agregar columna imagen_url a productos si no existe
+    try {
+      const cols: any[] = await this.query("PRAGMA table_info('productos')");
+      const hasImagen = cols.some((c: any) => c.name === 'imagen_url');
+      if (!hasImagen) {
+        console.log('Migrating: adding productos.imagen_url ...');
+        await this.run("ALTER TABLE productos ADD COLUMN imagen_url TEXT");
+        console.log('Migration done: productos.imagen_url');
+      }
+    } catch (e) {
+      console.error('Migration check/add imagen_url failed:', e);
+    }
   }
 
   // Método genérico para ejecutar consultas SELECT

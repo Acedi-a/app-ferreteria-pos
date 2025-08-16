@@ -127,7 +127,8 @@ const { toast } = useToast();
       categoria_id: undefined,
       tipo_unidad_id: undefined,
       unidad_medida: "",
-      activo: true
+  activo: true,
+  imagen_url: undefined
     });
     setShowModal(true);
   };
@@ -145,7 +146,8 @@ const { toast } = useToast();
       categoria_id: producto.categoria_id,
       tipo_unidad_id: producto.tipo_unidad_id,
       unidad_medida: producto.unidad_medida || "",
-      activo: producto.activo
+  activo: producto.activo,
+  imagen_url: producto.imagen_url
     });
     setShowModal(true);
   };
@@ -187,7 +189,12 @@ const { toast } = useToast();
     }
 
     try {
+      const prod = productos.find(p => p.id === id);
       await productosService.eliminarProducto(id);
+      // Intentar borrar la imagen asociada si era gestionada por la app
+      if (prod?.imagen_url && prod.imagen_url.startsWith('file://')) {
+        try { await window.electronAPI.deleteImage(prod.imagen_url); } catch {}
+      }
       toast({ title: "Éxito", description: "Producto eliminado exitosamente", variant: "success" });
       await cargarProductos();
       await cargarEstadisticas();
