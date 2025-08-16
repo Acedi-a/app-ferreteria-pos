@@ -315,7 +315,7 @@ export default function BulkProductManual({ isOpen, onClose, categorias, tiposUn
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {rows.map((r, index) => {
+                {rows.map((r) => {
                   const hasError = r._status === 'error';
                   const isComplete = r._status === 'ok';
                   const isProcessing = r._status === 'saving';

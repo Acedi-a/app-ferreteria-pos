@@ -87,9 +87,9 @@ export class ConfiguracionService {
   // Configuraciones de tickets
   static async obtenerConfiguracionTickets() {
     const claves = [
-      'ticket_ancho', 'ticket_impresora', 'ticket_encabezado', 
-      'ticket_pie_pagina', 'ticket_mostrar_logo', 'ticket_auto_imprimir', 
-      'ticket_mostrar_barcode'
+  'ticket_ancho', 'ticket_impresora', 'ticket_encabezado', 
+  'ticket_pie_pagina', 'ticket_mostrar_logo', 'ticket_auto_imprimir', 
+  'ticket_mostrar_barcode', 'ticket_logo_path', 'ticket_logo_width', 'ticket_tipo_comprobante'
     ];
     return this.obtenerMultiples(claves);
   }
@@ -145,6 +145,9 @@ export class ConfiguracionService {
       { clave: 'ticket_mostrar_logo', valor: 'true', descripcion: 'Mostrar logo en ticket' },
       { clave: 'ticket_auto_imprimir', valor: 'true', descripcion: 'Imprimir automáticamente' },
       { clave: 'ticket_mostrar_barcode', valor: 'false', descripcion: 'Mostrar código de barras' },
+  { clave: 'ticket_logo_path', valor: '', descripcion: 'Ruta/URL del logo para el ticket' },
+  { clave: 'ticket_logo_width', valor: '60', descripcion: 'Ancho del logo en px para el ticket' },
+  { clave: 'ticket_tipo_comprobante', valor: 'recibo', descripcion: 'Tipo de comprobante por defecto: recibo o factura' },
       { clave: 'iva_general', valor: '19.00', descripcion: 'IVA general en porcentaje' },
       { clave: 'iva_reducido', valor: '5.00', descripcion: 'IVA reducido en porcentaje' },
       { clave: 'retencion_fuente', valor: '2.50', descripcion: 'Retención en la fuente' },
