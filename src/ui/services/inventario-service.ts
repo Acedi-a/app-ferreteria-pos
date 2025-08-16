@@ -22,7 +22,6 @@ export interface Movimiento {
   producto_id: number;
   tipo_movimiento: TipoMovimiento;
   cantidad: number;
-  costo_unitario?: number | null; // requerido en entrada
   proveedor_id?: number | null; // opcional para entradas
   observaciones?: string | null;
 }
@@ -44,10 +43,10 @@ export class InventarioService {
   static async listarMovimientos(limit = 50): Promise<any[]> {
     return window.electronAPI.db.query(`
       SELECT 
-        m.*, 
+  m.id, m.producto_id, m.almacen_id, m.tipo_movimiento, m.cantidad,
+  m.stock_anterior, m.stock_nuevo, m.proveedor_id, m.observaciones, m.usuario, m.fecha_movimiento,
         p.nombre AS producto, 
         pr.nombre AS proveedor, 
-        m.costo_unitario,
         tu.abreviacion AS tipo_unidad_abrev,
         tu.nombre AS tipo_unidad_nombre
       FROM movimientos m
@@ -60,22 +59,17 @@ export class InventarioService {
   }
 
   static async calcularComprasRecientes(dias = 30): Promise<number> {
+    // Ahora se calcula desde compras/compra_detalles en el periodo
     const result = await window.electronAPI.db.get(`
-      SELECT COALESCE(SUM(cantidad * costo_unitario), 0) as total_compras
-      FROM movimientos 
-      WHERE tipo_movimiento = 'entrada' 
-        AND costo_unitario IS NOT NULL
-        AND fecha_movimiento >= datetime('now', '-${dias} days')
-    `);
+      SELECT COALESCE(SUM(cd.subtotal), 0) as total_compras
+      FROM compra_detalles cd
+      INNER JOIN compras c ON c.id = cd.compra_id
+      WHERE DATE(c.fecha_compra) >= DATE('now', '-' || ? || ' days')
+    `, [dias]);
     return result?.total_compras || 0;
   }
 
   static async registrarMovimiento(data: Movimiento): Promise<number> {
-    // Validaciones
-    if (data.tipo_movimiento === 'entrada' && (data.costo_unitario == null || isNaN(data.costo_unitario))) {
-      throw new Error('El costo_unitario es obligatorio para entradas');
-    }
-
     // Obtener stock actual para calcular anterior/nuevo
     const item = await this.obtenerItem(data.producto_id);
     const stockAnterior = item?.stock_actual ?? 0;
@@ -97,7 +91,7 @@ export class InventarioService {
       data.producto_id,
       data.tipo_movimiento,
       Math.abs(data.cantidad),
-      data.tipo_movimiento === 'entrada' ? data.costo_unitario : null,
+      null,
       stockAnterior,
       stockNuevo,
       data.proveedor_id ?? null,

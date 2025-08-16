@@ -78,16 +78,16 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                 {product.categoria_nombre || 'Sin categoría'}
               </TableCell>
               <TableCell className="py-4 px-6 text-sm font-medium text-gray-900">
-                {/* Costo removed - now shown from inventario_actual */}
-                - 
+                {typeof (product as any).costo_unitario === 'number' ? `Bs ${(product as any).costo_unitario.toFixed(2)}` : '-'}
               </TableCell>
               <TableCell className="py-4 px-6 text-sm font-medium text-gray-900">
                 Bs {product.precio_venta.toFixed(2)}
               </TableCell>
               <TableCell className="py-4 px-6">
                 <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-gray-100/80 text-gray-700 border border-gray-200/50">
-                  {/* Margen calculation removed - no cost in master data */}
-                  -
+                  {typeof (product as any).costo_unitario === 'number' && product.precio_venta > 0
+                    ? `${(((product.precio_venta - (product as any).costo_unitario) / product.precio_venta) * 100).toFixed(1)}%`
+                    : '-'}
                 </span>
               </TableCell>
               <TableCell className="py-4 px-6">

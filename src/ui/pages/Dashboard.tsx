@@ -61,7 +61,7 @@ export default function Dashboard() {
         {[
           { label: "Punto de Venta", icon: ShoppingCart, path: "/punto-venta" },
           { label: "Productos", icon: Package, path: "/productos" },
-          { label: "Cuentas por Cobrar", icon: CreditCard, path: "/cuentas-cobrar" },
+          { label: "Cuentas por Cobrar", icon: CreditCard, path: "/cuentas-por-cobrar" },
           { label: "Reportes", icon: BarChart3, path: "/reportes" },
         ].map(({ label, icon: Icon, path }) => (
           <Link key={path} to={path}>

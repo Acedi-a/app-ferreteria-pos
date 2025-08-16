@@ -7,7 +7,6 @@ export interface MovementRow {
   proveedor?: string | null;
   tipo_movimiento: "entrada" | "salida" | "ajuste";
   cantidad: number;
-  costo_unitario?: number | null;
   stock_anterior: number;
   stock_nuevo: number;
   fecha_movimiento: string;
@@ -24,8 +23,7 @@ export function MovementsTable({ rows }: { rows: MovementRow[] }) {
           <TableHead>Producto</TableHead>
           <TableHead>Tipo</TableHead>
           <TableHead>Cantidad</TableHead>
-          <TableHead>Costo Unit.</TableHead>
-          <TableHead>Total Gastado</TableHead>
+          {/* Columnas de costo retiradas */}
           <TableHead>Stock Anterior</TableHead>
           <TableHead>Stock Nuevo</TableHead>
           <TableHead>Proveedor</TableHead>
@@ -35,7 +33,6 @@ export function MovementsTable({ rows }: { rows: MovementRow[] }) {
       </TableHeader>
       <TableBody>
         {rows.map((mov) => {
-          const costoTotal = mov.costo_unitario ? (mov.costo_unitario * mov.cantidad) : null;
           return (
             <TableRow key={mov.id}>
               <TableCell className="font-medium">{mov.producto}</TableCell>
@@ -52,20 +49,7 @@ export function MovementsTable({ rows }: { rows: MovementRow[] }) {
                   </span>
                 </div>
               </TableCell>
-              <TableCell>
-                {mov.costo_unitario ? (
-                  <span className="text-green-600 font-medium">Bs {mov.costo_unitario.toFixed(2)}</span>
-                ) : (
-                  <span className="text-slate-400">-</span>
-                )}
-              </TableCell>
-              <TableCell>
-                {costoTotal ? (
-                  <span className="text-green-700 font-semibold">Bs {costoTotal.toFixed(2)}</span>
-                ) : (
-                  <span className="text-slate-400">-</span>
-                )}
-              </TableCell>
+              {/* Celdas de costo retiradas */}
               <TableCell>{mov.stock_anterior}</TableCell>
               <TableCell className="font-medium">{mov.stock_nuevo}</TableCell>
               <TableCell>{mov.proveedor || '-'}</TableCell>

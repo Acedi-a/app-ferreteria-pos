@@ -4,6 +4,7 @@ export interface Producto {
   codigo_interno: string;
   nombre: string;
   descripcion?: string;
+  costo_unitario?: number; // nuevo: costo base en maestro
   precio_venta: number; // precio de venta sugerido
   stock_minimo: number;
   categoria_id?: number;
@@ -100,6 +101,12 @@ class ProductosService {
     );
     placeholders.push('?', '?', '?', '?', '?');
 
+    if (producto.costo_unitario !== undefined) {
+      campos.push('costo_unitario');
+      valores.push(producto.costo_unitario);
+      placeholders.push('?');
+    }
+
     if (producto.descripcion) {
       campos.push('descripcion');
       valores.push(producto.descripcion);
@@ -153,6 +160,10 @@ class ProductosService {
     if (producto.precio_venta !== undefined) {
       campos.push('precio_venta = ?');
       valores.push(producto.precio_venta);
+    }
+    if (producto.costo_unitario !== undefined) {
+      campos.push('costo_unitario = ?');
+      valores.push(producto.costo_unitario);
     }
     if (producto.stock_minimo !== undefined) {
       campos.push('stock_minimo = ?');

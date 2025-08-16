@@ -17,8 +17,29 @@ export class DatabaseService {
         console.error('Error opening database:', err);
       } else {
         console.log('Connected to SQLite database');
+        // Ejecutar migraciones ligeras
+        this.migrate().catch((e) => console.error('DB migration error:', e));
       }
     });
+  }
+
+  private async migrate() {
+    // Agregar columna costo_unitario a productos si no existe
+    try {
+      const hasCol: any[] = await this.query(
+        "PRAGMA table_info('productos')"
+      );
+      const exists = hasCol.some((c: any) => c.name === 'costo_unitario');
+      if (!exists) {
+        console.log('Migrating: adding productos.costo_unitario ...');
+        await this.run(
+          "ALTER TABLE productos ADD COLUMN costo_unitario DECIMAL(10,2) DEFAULT 0"
+        );
+        console.log('Migration done: productos.costo_unitario');
+      }
+    } catch (e) {
+      console.error('Migration check/add costo_unitario failed:', e);
+    }
   }
 
   // Método genérico para ejecutar consultas SELECT

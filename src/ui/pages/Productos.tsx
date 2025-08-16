@@ -121,6 +121,7 @@ const { toast } = useToast();
       codigo_interno: nanoid(12), // Generar código automáticamente con 12 caracteres
       nombre: "",
       descripcion: "",
+  costo_unitario: 0,
       precio_venta: 0,
       stock_minimo: 0,
       categoria_id: undefined,
@@ -138,6 +139,7 @@ const { toast } = useToast();
       codigo_interno: producto.codigo_interno,
       nombre: producto.nombre,
       descripcion: producto.descripcion || "",
+  costo_unitario: (producto as any).costo_unitario ?? 0,
       precio_venta: producto.precio_venta,
       stock_minimo: producto.stock_minimo,
       categoria_id: producto.categoria_id,

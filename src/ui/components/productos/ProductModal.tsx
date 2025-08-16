@@ -179,7 +179,22 @@ function ProductModal({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-            {/* Costo removed - now managed through movimientos de entrada */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Costo Unitario (Base)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                id="product-costo-unitario"
+                key="product-costo-unitario"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                value={(formData as any).costo_unitario ?? ""}
+                onChange={(e) => handleInputChange('costo_unitario' as any, Number(e.target.value))}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-gray-500 mt-1">Este costo se usará por defecto en entradas y para cálculos de margen.</p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Precio de Venta Sugerido *

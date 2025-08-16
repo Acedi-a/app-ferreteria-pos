@@ -21,7 +21,6 @@ export default function Inventario() {
   const [ajusteTipo, setAjusteTipo] = useState<TipoMovimiento>("ajuste");
   const [ajusteCantidad, setAjusteCantidad] = useState<number>(0);
   const [ajusteObserv, setAjusteObserv] = useState<string>("");
-  const [ajusteCosto, setAjusteCosto] = useState<number>(0);
   const [ajusteProveedorId, setAjusteProveedorId] = useState<number | undefined>(undefined);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [totalComprasRecientes, setTotalComprasRecientes] = useState<number>(0);
@@ -92,7 +91,7 @@ export default function Inventario() {
     setAjusteTipo("ajuste");
     setAjusteCantidad(0);
     setAjusteObserv("");
-    setAjusteCosto(0);
+  // costo removido del flujo de ajustes
     setAjusteProveedorId(undefined);
     setShowAdjustModal(true);
   };
@@ -111,7 +110,7 @@ export default function Inventario() {
       producto_id: adjustingProduct.id,
       tipo_movimiento: ajusteTipo,
       cantidad: ajusteTipo === 'ajuste' ? ajusteCantidad : Math.abs(ajusteCantidad),
-      costo_unitario: ajusteTipo === 'entrada' ? ajusteCosto : undefined,
+  // sin costo_unitario: ahora se omite del movimiento
       proveedor_id: ajusteTipo === 'entrada' ? ajusteProveedorId : undefined,
       observaciones: ajusteObserv || null,
     });
@@ -119,7 +118,7 @@ export default function Inventario() {
     // Refrescar datos
     await cargarDatos();
     setShowAdjustModal(false);
-  }, [adjustingProduct, ajusteCantidad, ajusteTipo, ajusteProveedorId, ajusteCosto, ajusteObserv]);
+  }, [adjustingProduct, ajusteCantidad, ajusteTipo, ajusteProveedorId, ajusteObserv]);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -131,7 +130,7 @@ export default function Inventario() {
   const handleTipoChange = useCallback((v: TipoMovimiento) => setAjusteTipo(v), []);
   const handleCantidadChange = useCallback((v: number) => setAjusteCantidad(v), []);
   const handleObservacionesChange = useCallback((v: string) => setAjusteObserv(v), []);
-  const handleCostoChange = useCallback((v: number) => setAjusteCosto(v), []);
+  // costo removido del modal
   const handleProveedorIdChange = useCallback((v: number | undefined) => setAjusteProveedorId(v), []);
 
   // Nota: Evitar declarar componentes anidados (como AdjustModal) dentro del render para no forzar remounts
@@ -202,14 +201,12 @@ export default function Inventario() {
           tipo={ajusteTipo}
           cantidad={ajusteCantidad}
           observaciones={ajusteObserv}
-          costo={ajusteCosto}
           proveedorId={ajusteProveedorId}
           proveedores={proveedores}
           onClose={handleModalClose}
           onTipo={handleTipoChange}
           onCantidad={handleCantidadChange}
           onObservaciones={handleObservacionesChange}
-          onCosto={handleCostoChange}
           onProveedorId={handleProveedorIdChange}
           onAplicar={aplicarAjuste}
         />

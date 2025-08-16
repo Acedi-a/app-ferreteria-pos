@@ -17,21 +17,19 @@ export interface AdjustStockModalProps {
   tipo: TipoMovimiento;
   cantidad: number;
   observaciones: string;
-  costo: number;
   proveedorId?: number;
   proveedores: Proveedor[];
   onClose: () => void;
   onTipo: (v: TipoMovimiento) => void;
   onCantidad: (v: number) => void;
   onObservaciones: (v: string) => void;
-  onCosto: (v: number) => void;
   onProveedorId: (v: number | undefined) => void;
   onAplicar: () => Promise<void> | void;
 }
 
 function AdjustStockModal({ 
-  open, product, tipo, cantidad, observaciones, costo, proveedorId, proveedores,
-  onClose, onTipo, onCantidad, onObservaciones, onCosto, onProveedorId, onAplicar 
+  open, product, tipo, cantidad, observaciones, proveedorId, proveedores,
+  onClose, onTipo, onCantidad, onObservaciones, onProveedorId, onAplicar 
 }: AdjustStockModalProps) {
   
   // Handlers estables con useCallback para evitar re-renders
@@ -47,9 +45,7 @@ function AdjustStockModal({
     onCantidad(Number(e.target.value));
   }, [onCantidad]);
   
-  const handleCostoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onCosto(Number(e.target.value));
-  }, [onCosto]);
+  // costo removido del flujo de ajustes
   
   const handleObservacionesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onObservaciones(e.target.value);
@@ -105,9 +101,7 @@ function AdjustStockModal({
                   <div>
                     <span className="font-medium">Tipo Unidad:</span> {product.tipo_unidad_nombre || 'No definido'}
                   </div>
-                  <div>
-                    <span className="font-medium">Costo Unitario:</span> Bs {(product.costo_unitario_ultimo ?? 0).toFixed(2)}
-                  </div>
+                  {/* Se oculta costo unitario detallado en el modal de ajuste */}
                 </CardContent>
               </Card>
               
@@ -158,19 +152,7 @@ function AdjustStockModal({
                   />
                 </div>
                 
-                {/* Campo de costo - siempre renderizado pero oculto si no es entrada */}
-                <div className={tipo === 'entrada' ? 'block' : 'hidden'}>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Costo Unitario (Bs)</label>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    value={costo} 
-                    onChange={handleCostoChange} 
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                    placeholder="Costo por unidad"
-                    disabled={tipo !== 'entrada'}
-                  />
-                </div>
+                {/* Costo unitario retirado del flujo de movimientos */}
                 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Observaciones</label>

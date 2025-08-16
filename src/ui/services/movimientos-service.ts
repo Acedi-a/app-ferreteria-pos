@@ -32,8 +32,8 @@ export class MovimientosService {
    */
   static async registrarEntrada(entrada: {
     producto_id: number;
-    cantidad: number;
-    costo_unitario: number;
+  cantidad: number;
+  costo_unitario?: number;
     proveedor_id: number;
     observaciones?: string;
   }): Promise<number> {
@@ -45,6 +45,13 @@ export class MovimientosService {
     const stockAnterior = stockItem?.stock_actual || 0;
     const stockNuevo = stockAnterior + entrada.cantidad;
 
+    // Obtener costo base del producto si no se proporcionó
+    let costoUnit = entrada.costo_unitario;
+    if (costoUnit === undefined || costoUnit === null) {
+      const prod = await window.electronAPI.db.get(`SELECT costo_unitario FROM productos WHERE id = ?`, [entrada.producto_id]);
+      costoUnit = prod?.costo_unitario ?? 0;
+    }
+
     const result = await window.electronAPI.db.run(`
       INSERT INTO movimientos (
         producto_id, almacen_id, tipo_movimiento, cantidad, costo_unitario,
@@ -53,7 +60,7 @@ export class MovimientosService {
     `, [
       entrada.producto_id,
       entrada.cantidad,
-      entrada.costo_unitario,
+      costoUnit,
       stockAnterior,
       stockNuevo,
       entrada.proveedor_id,
