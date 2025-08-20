@@ -7,9 +7,11 @@ import { Button } from "../ui/Button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/Table";
 import { Select } from "../ui/Select";
 import type { Categoria, Producto, TipoUnidad } from "../../services/productos-service";
+import { MovimientosService } from "../../services/movimientos-service";
 import { productosService } from "../../services/productos-service";
 
-type ColumnKey = keyof Pick<Producto, 'codigo_interno' | 'codigo_barras' | 'nombre' | 'descripcion' | 'precio_venta' | 'costo_unitario' | 'stock_minimo' | 'categoria_id' | 'tipo_unidad_id' | 'unidad_medida' | 'activo' | 'imagen_url'>;
+// Claves soportadas en el import (incluye stock_actual que no es campo directo en productos)
+type ColumnKey = keyof Pick<Producto, 'codigo_interno' | 'codigo_barras' | 'nombre' | 'descripcion' | 'precio_venta' | 'costo_unitario' | 'stock_minimo' | 'categoria_id' | 'tipo_unidad_id' | 'unidad_medida' | 'activo' | 'imagen_url'> | 'stock_actual';
 
 interface BulkProductImportProps {
   isOpen: boolean;
@@ -32,6 +34,7 @@ const FIELD_LABELS: Record<ColumnKey, string> = {
   descripcion: 'Descripción',
   precio_venta: 'Precio Venta*',
   costo_unitario: 'Costo Unitario',
+  stock_actual: 'Stock Actual (carga inicial)',
   stock_minimo: 'Stock Mínimo*',
   categoria_id: 'Categoría (ID o Nombre)',
   tipo_unidad_id: 'Tipo Unidad (ID o Nombre)',
@@ -41,6 +44,11 @@ const FIELD_LABELS: Record<ColumnKey, string> = {
 };
 
 const REQUIRED_FIELDS: ColumnKey[] = ['codigo_interno', 'nombre', 'precio_venta', 'stock_minimo'];
+
+// Orden estable para generar plantilla CSV
+const TEMPLATE_ORDER: ColumnKey[] = [
+  'codigo_interno','codigo_barras','nombre','descripcion','precio_venta','costo_unitario','stock_actual','stock_minimo','categoria_id','tipo_unidad_id','unidad_medida','activo','imagen_url'
+];
 
 function guessMapping(headers: string[]): Partial<Record<ColumnKey, string>> {
   const map: Partial<Record<ColumnKey, string>> = {};
@@ -53,7 +61,9 @@ function guessMapping(headers: string[]): Partial<Record<ColumnKey, string>> {
     ['descripcion', ['descripcion', 'descripción', 'description', 'detalle']],
     ['precio_venta', ['precio_venta', 'precio', 'price', 'pvp', 'venta']],
     ['costo_unitario', ['costo_unitario', 'costo', 'cost', 'compra']],
-    ['stock_minimo', ['stock_minimo', 'stock min', 'minimo', 'mínimo', 'min stock']],
+  // Priorizar detectar 'stock' como stock_actual para evitar confundir con stock_minimo
+  ['stock_actual', ['stock_actual', 'stock', 'existencia', 'existencias', 'qty', 'cantidad']],
+  ['stock_minimo', ['stock_minimo', 'stock min', 'minimo', 'mínimo', 'min stock']],
     ['categoria_id', ['categoria', 'categoría', 'categoria_id', 'category']],
     ['tipo_unidad_id', ['tipo_unidad', 'unidad', 'tipo_unidad_id', 'unit', 'unidad_medida']],
     ['unidad_medida', ['unidad_medida', 'um', 'unidad', 'unit_name']],
@@ -126,11 +136,24 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
   };
 
   const downloadTemplateCSV = (withExample = true) => {
-    const headers = Object.keys(FIELD_LABELS) as ColumnKey[];
+    const headers = TEMPLATE_ORDER;
     const headerRow = headers.join(',');
-    const example = withExample
-      ? `\nSKU-0001,7751234567890,Martillo de carpintero,Martillo mango de madera,25.9,18.5,2,1,1,UNIDAD,true,`
-      : '';
+    const exampleValues: Record<ColumnKey, string> = {
+      codigo_interno: 'SKU-0001',
+      codigo_barras: '7751234567890',
+      nombre: 'Martillo de carpintero',
+      descripcion: 'Martillo mango de madera',
+      precio_venta: '25.9',
+      costo_unitario: '18.5',
+      stock_actual: '10',
+      stock_minimo: '2',
+      categoria_id: '1',
+      tipo_unidad_id: '1',
+      unidad_medida: 'UNIDAD',
+      activo: 'true',
+      imagen_url: ''
+    };
+    const example = withExample ? ('\n' + headers.map(h => exampleValues[h] ?? '').join(',')) : '';
     const csvContent = headerRow + example;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     saveAs(blob, withExample ? 'plantilla_productos_ejemplo.csv' : 'columnas_esperadas_productos.csv');
@@ -210,7 +233,21 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
           continue;
         }
 
-        await productosService.crearProducto(producto as Omit<Producto, 'id' | 'fecha_creacion' | 'fecha_actualizacion'>);
+        const prodId = await productosService.crearProducto(producto as Omit<Producto, 'id' | 'fecha_creacion' | 'fecha_actualizacion'>);
+
+        // Si se proporcionó stock_actual, registrar un ajuste de stock como carga inicial
+        const stockActualVal = m.stock_actual ? toNumber(r[m.stock_actual]) : undefined;
+        if (prodId && stockActualVal !== undefined && stockActualVal !== 0) {
+          try {
+            await MovimientosService.registrarAjuste({
+              producto_id: prodId,
+              cantidad: stockActualVal,
+              observaciones: 'Carga inicial (importación)'
+            });
+          } catch (e) {
+            console.warn('No se pudo registrar ajuste inicial de stock para producto', prodId, e);
+          }
+        }
         ok++;
       } catch (e: any) {
         console.error('Import error row', i, e);
