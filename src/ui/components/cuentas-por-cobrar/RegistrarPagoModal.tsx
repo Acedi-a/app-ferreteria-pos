@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { X, DollarSign, CreditCard, Clock } from "lucide-react";
 import { Button } from "../ui/Button";
+import { printPagoReceipt } from "./PaymentReceiptRenderer";
+import { CuentasPorCobrarService } from "../../services/cuentas-por-cobrar-service";
 import type { CuentaPorCobrar, RegistrarPagoData } from "../../services/cuentas-por-cobrar-service";
 
 interface RegistrarPagoModalProps {
@@ -23,6 +25,8 @@ export default function RegistrarPagoModal({
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [observaciones, setObservaciones] = useState('');
   const [error, setError] = useState('');
+  const [imprimir, setImprimir] = useState(true);
+  const [incluirHistorial, setIncluirHistorial] = useState(false);
 
   const resetForm = () => {
     setMonto('');
@@ -69,6 +73,18 @@ export default function RegistrarPagoModal({
         observaciones: observaciones.trim() || undefined
       });
       
+      // Impresión opcional del recibo
+      if (imprimir) {
+        const pagoParcial = { monto: montoNum, metodo_pago: metodoPago, observaciones, fecha_pago: new Date().toISOString() };
+        let historial = undefined;
+        if (incluirHistorial) {
+          try {
+            historial = await CuentasPorCobrarService.obtenerHistoricoPagos(cuenta.id);
+          } catch {}
+        }
+        await printPagoReceipt({ ...cuenta, saldo: cuenta.saldo - montoNum }, pagoParcial, { mostrarHistorial: incluirHistorial, historial });
+      }
+
       resetForm();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Error al registrar el pago');
@@ -251,6 +267,20 @@ export default function RegistrarPagoModal({
                 placeholder="Detalles adicionales del pago..."
                 disabled={loading}
               />
+            </div>
+
+            {/* Opciones de impresión */}
+            <div className="bg-gray-50 rounded-lg p-3 border">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={imprimir} onChange={(e) => setImprimir(e.target.checked)} />
+                Imprimir recibo de pago
+              </label>
+              {imprimir && (
+                <label className="mt-2 flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={incluirHistorial} onChange={(e) => setIncluirHistorial(e.target.checked)} />
+                  Incluir historial de pagos
+                </label>
+              )}
             </div>
 
             {/* Botones rápidos de monto */}

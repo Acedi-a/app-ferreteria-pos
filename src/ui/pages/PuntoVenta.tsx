@@ -5,6 +5,8 @@ import CartPanel from "../components/punto-venta/CartPanel";
 import { Button } from "../components/ui/Button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/Dialog";
 import { PuntoVentaService } from "../services/punto-venta-service";
+import { printTicket } from "../components/ventas/TicketRenderer";
+import type { Venta as VentaModel, VentaDetalle as VentaDetalleModel } from "../services/ventas-service";
 import type { Producto as ProductoBase, Cliente as ClienteBase, Categoria } from "../services/punto-venta-service";
 import { productosService } from "../services/productos-service";
 import { MovimientosService } from "../services/movimientos-service";
@@ -394,11 +396,56 @@ export default function PuntoVenta() {
     }
   };
 
-  const imprimirTicket = () => {
-    toast({ 
-      title: "Imprimiendo ticket", 
-      description: "Enviando ticket a la impresora..." 
-    });
+  const imprimirTicket = async () => {
+    if (productos.length === 0) {
+      toast({ title: "Carrito vacío", description: "Agrega productos antes de imprimir.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const subtotal = productos.reduce((s, p) => s + p.subtotal, 0);
+      const total = subtotal - descuento;
+      const ahora = new Date();
+      const num = `P-${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}${String(ahora.getDate()).padStart(2, '0')}-${String(ahora.getHours()).padStart(2, '0')}${String(ahora.getMinutes()).padStart(2, '0')}${String(ahora.getSeconds()).padStart(2, '0')}`;
+
+      const venta: VentaModel = {
+        id: 0,
+        numero_venta: num,
+        cliente_id: clienteSeleccionado?.id,
+        cliente_nombre: clienteSeleccionado?.nombre || 'Cliente general',
+        almacen_id: 1,
+        subtotal,
+        descuento,
+        impuestos: 0,
+        total,
+        metodo_pago: metodoPago,
+        estado: 'pendiente',
+        observaciones: observaciones || '',
+        fecha_venta: new Date().toISOString(),
+        usuario: 'POS',
+      };
+
+      const detalles: VentaDetalleModel[] = productos.map(p => ({
+        id: 0,
+        venta_id: 0,
+        producto_id: p.id,
+        producto_nombre: p.nombre,
+        cantidad: p.cantidad,
+        precio_unitario: p.precio,
+        descuento: 0,
+        subtotal: p.subtotal,
+      }));
+
+      const res = await printTicket(venta, detalles);
+      if (res?.ok) {
+        toast({ title: 'Ticket enviado', description: 'Impresión enviada a la impresora configurada.' });
+      } else {
+        toast({ title: 'No se pudo imprimir', description: res?.error || 'Revise la impresora en Configuración', variant: 'destructive' });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Error al imprimir', description: String(e), variant: 'destructive' });
+    }
   };
 
   /* ---------- render ---------- */

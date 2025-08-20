@@ -10,6 +10,7 @@ import CuentasPorCobrarFilters from "../components/cuentas-por-cobrar/CuentasPor
 import CuentasPorCobrarTable from "../components/cuentas-por-cobrar/CuentasPorCobrarTable";
 import PagosRecientesTable from "../components/cuentas-por-cobrar/PagosRecientesTable";
 import RegistrarPagoModal from "../components/cuentas-por-cobrar/RegistrarPagoModal";
+import { printPagoReceipt } from "../components/cuentas-por-cobrar/PaymentReceiptRenderer";
 import CuentaDetalleModal from "../components/cuentas-por-cobrar/CuentaDetalleModal";
 
 // Service y tipos
@@ -151,12 +152,24 @@ export default function CuentasPorCobrar() {
     }
   };
 
-  const handleImprimir = (cuenta: CuentaPorCobrar) => {
-    toast({
-      title: "Imprimiendo",
-      description: `Generando reporte de la cuenta ${cuenta.id}...`
-    });
-    // Aquí se implementaría la lógica de impresión
+  const handleImprimir = async (cuenta: CuentaPorCobrar) => {
+    try {
+      // Preguntar si desea incluir historial
+      const incluir = window.confirm('¿Incluir historial de pagos en el recibo?');
+      let historial = undefined;
+      if (incluir) {
+        try { historial = await CuentasPorCobrarService.obtenerHistoricoPagos(cuenta.id); } catch {}
+      }
+      const res = await printPagoReceipt(cuenta, undefined, { mostrarHistorial: incluir, historial });
+      if (res?.ok) {
+        toast({ title: 'Recibo enviado', description: `Cuenta #${cuenta.id}` });
+      } else {
+        toast({ title: 'No se pudo imprimir', description: res?.error || 'Revise la impresora en Configuración', variant: 'destructive' });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Error al imprimir', description: String(e), variant: 'destructive' });
+    }
   };
 
   const handleExportarReporte = () => {
