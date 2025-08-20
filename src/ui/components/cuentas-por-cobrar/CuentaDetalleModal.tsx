@@ -5,6 +5,7 @@ import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import type { CuentaPorCobrar, PagoCuenta } from "../../services/cuentas-por-cobrar-service";
 import { CuentasPorCobrarService } from "../../services/cuentas-por-cobrar-service";
+import { printPagoReceipt } from "./PaymentReceiptRenderer";
 
 interface CuentaDetalleModalProps {
   cuenta: CuentaPorCobrar | null;
@@ -306,6 +307,23 @@ export default function CuentaDetalleModal({
                           <Badge className="bg-blue-100 text-blue-800 border-blue-200 capitalize text-xs">
                             {pago.metodo_pago}
                           </Badge>
+                        </div>
+                        <div className="mt-2 flex justify-end">
+          <Button
+                            variant="outline"
+                            className="text-gray-600 hover:text-gray-800 text-xs"
+                            onClick={async () => {
+                              try {
+            // No mostrar historial en el recibo de un pago específico,
+            // pero pásalo para cálculo correcto de saldos.
+            await printPagoReceipt(cuenta, { ...pago }, { mostrarHistorial: false, historial: pagos });
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }}
+                          >
+                            <Printer className="h-3 w-3 mr-1" /> Imprimir este pago
+                          </Button>
                         </div>
                         
                         {pago.observaciones && (

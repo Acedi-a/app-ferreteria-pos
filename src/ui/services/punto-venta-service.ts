@@ -85,6 +85,34 @@ export interface Venta {
 import { InventarioService } from './inventario-service';
 
 export class PuntoVentaService {
+  static async obtenerProductoPorCodigo(codigo: string): Promise<Producto | null> {
+    try {
+      const query = `
+        SELECT 
+          p.id,
+          p.codigo_barras,
+          p.codigo_interno,
+          p.nombre,
+          p.descripcion,
+          p.precio_venta,
+          ia.stock_actual,
+          ia.stock_minimo,
+          p.activo,
+          p.fecha_creacion,
+          c.nombre as categoria_nombre
+        FROM inventario_actual ia
+        INNER JOIN productos p ON p.id = ia.id
+        LEFT JOIN categorias c ON p.categoria_id = c.id
+        WHERE p.activo = 1 AND (p.codigo_barras = ? OR p.codigo_interno = ?)
+        LIMIT 1
+      `;
+      const row = await window.electronAPI.db.get(query, [codigo, codigo]);
+      return row || null;
+    } catch (error) {
+      console.error('Error al obtener producto por código:', error);
+      throw error;
+    }
+  }
   // Productos
   static async obtenerProductos(): Promise<Producto[]> {
     try {

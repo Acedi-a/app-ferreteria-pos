@@ -2,9 +2,11 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import { app } from 'electron';
 import fs from 'fs';
+import { promises as fsp } from 'fs';
 
 export class DatabaseService {
   private db: sqlite3.Database | null = null;
+  private dbPath!: string;
 
   constructor() {
     this.initDatabase();
@@ -13,30 +15,11 @@ export class DatabaseService {
   private initDatabase() {
     // Usar directorio de datos del usuario para lectura/escritura
     const userDir = app.getPath('userData');
-    const dbPath = path.join(userDir, 'db.sqlite');
+  const dbPath = path.join(userDir, 'db.sqlite');
+  this.dbPath = dbPath;
 
     // Asegurar carpeta
     try { fs.mkdirSync(userDir, { recursive: true }); } catch {}
-
-    const exists = fs.existsSync(dbPath);
-
-    // Si no existe, intentar copiar una semilla incluida con la app (opcional)
-    if (!exists) {
-      try {
-        const candidates = [
-          path.join(app.getAppPath(), 'db.sqlite'),
-          (process as any).resourcesPath ? path.join((process as any).resourcesPath, 'db.sqlite') : ''
-        ].filter(Boolean);
-        for (const seed of candidates) {
-          if (seed && fs.existsSync(seed)) {
-            fs.copyFileSync(seed, dbPath);
-            break;
-          }
-        }
-      } catch (e) {
-        // noop: si falla la copia, crearemos desde esquema
-      }
-    }
 
     this.db = new sqlite3.Database(dbPath, (err) => {
       if (err) {
@@ -48,6 +31,21 @@ export class DatabaseService {
           .then(() => this.migrate())
           .catch((e) => console.error('DB init/migrate error:', e));
       }
+    });
+  }
+
+  private async reopen() {
+    return new Promise<void>((resolve, reject) => {
+      if (this.db) {
+        try { this.db.close(); } catch {}
+      }
+      this.db = new sqlite3.Database(this.dbPath, (err) => {
+        if (err) return reject(err);
+        this.ensureSchema()
+          .then(() => this.migrate())
+          .then(() => resolve())
+          .catch(reject);
+      });
     });
   }
 
@@ -250,6 +248,18 @@ CREATE TABLE IF NOT EXISTS pagos_cuentas (
   FOREIGN KEY(cuenta_id) REFERENCES cuentas_por_cobrar(id)
 );
 
+-- Registro de respaldos
+CREATE TABLE IF NOT EXISTS backups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  file_path TEXT NOT NULL,
+  size_bytes INTEGER,
+  status TEXT,
+  triggered_by TEXT, -- manual | auto
+  operation TEXT,    -- backup | restore
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 DROP VIEW IF EXISTS inventario_actual;
 CREATE VIEW IF NOT EXISTS inventario_actual AS
 SELECT
@@ -430,6 +440,52 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
       }
     } catch (e) {
       console.error('Migration check/add imagen_url failed:', e);
+    }
+  }
+
+  // Backup: cierra, copia y reabre
+  async backupTo(destPath: string, triggeredBy: 'manual' | 'auto' = 'manual'): Promise<void> {
+    await new Promise<void>((resolve) => {
+      if (this.db) {
+        try { this.db.close(() => resolve()); } catch { resolve(); }
+      } else {
+        resolve();
+      }
+    });
+    await fsp.copyFile(this.dbPath, destPath);
+    // Reabrir y luego registrar el backup
+    await this.reopen();
+    try {
+      const stat = await fsp.stat(destPath);
+      await this.run(
+        `INSERT INTO backups (file_path, size_bytes, status, triggered_by, operation, notes) VALUES (?, ?, 'completed', ?, 'backup', NULL)`,
+        [destPath, stat.size, triggeredBy]
+      );
+    } catch (e) {
+      console.warn('No se pudo registrar backup en tabla backups:', e);
+    }
+  }
+
+  // Restore: cierra, reemplaza y reabre
+  async restoreFrom(sourcePath: string): Promise<void> {
+    await new Promise<void>((resolve) => {
+      if (this.db) {
+        try { this.db.close(() => resolve()); } catch { resolve(); }
+      } else {
+        resolve();
+      }
+    });
+    await fsp.copyFile(sourcePath, this.dbPath);
+    // Reabrir y luego registrar el restore en la BD restaurada
+    await this.reopen();
+    try {
+      const stat = await fsp.stat(sourcePath);
+      await this.run(
+        `INSERT INTO backups (file_path, size_bytes, status, triggered_by, operation, notes) VALUES (?, ?, 'completed', 'manual', 'restore', NULL)`,
+        [sourcePath, stat.size]
+      );
+    } catch (e) {
+      console.warn('No se pudo registrar restore en tabla backups:', e);
     }
   }
 

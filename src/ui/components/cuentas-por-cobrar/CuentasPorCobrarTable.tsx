@@ -207,10 +207,10 @@ export default function CuentasPorCobrarTable({
                       <Button
                         variant="outline"
                         onClick={() => onVerDetalles(cuenta)}
-                        className="h-8 w-8 p-0 text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                        className="h-12 w-14 text-gray-600 hover:text-blue-600 hover:bg-blue-50"
                         title="Ver detalles"
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-auto" />
                       </Button>
 
                       {/* Registrar pago - solo si tiene saldo pendiente */}
@@ -218,10 +218,10 @@ export default function CuentasPorCobrarTable({
                         <Button
                           variant="outline"
                           onClick={() => onRegistrarPago(cuenta)}
-                          className="h-8 w-8 p-0 text-gray-600 hover:text-green-600 hover:bg-green-50"
+                          className="h-12 w-auto text-gray-600 hover:text-green-600 hover:bg-green-50"
                           title="Registrar pago"
                         >
-                          <DollarSign className="h-4 w-4" />
+                          <DollarSign className="w-auto" />
                         </Button>
                       )}
 
@@ -230,10 +230,10 @@ export default function CuentasPorCobrarTable({
                         <Button
                           variant="outline"
                           onClick={() => onImprimir(cuenta)}
-                          className="h-8 w-8 p-0 text-gray-600 hover:text-purple-600 hover:bg-purple-50"
+                          className="h-12 w-12 p-0 text-gray-600 hover:text-purple-600 hover:bg-purple-50"
                           title="Imprimir"
                         >
-                          <Printer className="h-4 w-4" />
+                          <Printer className="w-auto" />
                         </Button>
                       )}
                     </div>
