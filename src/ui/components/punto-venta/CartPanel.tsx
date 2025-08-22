@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "../ui/Button";
+import { useEffect, useState } from "react";
 
 interface ProductoVenta {
   id: number;
@@ -70,9 +71,57 @@ export default function CartPanel({
   isMinimized,
   onToggleMinimize,
 }: CartPanelProps) {
+  // Estado local de inputs de cantidad para edición gradual (permite vacío temporalmente)
+  const [qtyInputs, setQtyInputs] = useState<Record<number, string | undefined>>({});
+
+  // Sincronizar cuando cambia la lista de productos (agregados/eliminados o cantidades actualizadas externamente)
+  useEffect(() => {
+    setQtyInputs((prev) => {
+      const next: Record<number, string | undefined> = {};
+      for (const p of productos) {
+        // Si el usuario no está editando (sin valor en prev), dejamos indefinido para mostrar p.cantidad
+        if (prev[p.id] !== undefined) {
+          next[p.id] = prev[p.id];
+        }
+      }
+      return next;
+    });
+  }, [productos.map((p) => `${p.id}:${p.cantidad}`).join('|')]);
+
   const subtotal = productos.reduce((s, p) => s + p.subtotal, 0);
   const total = subtotal - descuento;
   const totalItems = productos.reduce((total, p) => total + p.cantidad, 0);
+
+  const commitCantidad = (prod: ProductoVenta, raw: string) => {
+    const v = raw.trim();
+    if (v === "") {
+      // Revertir visualmente a la cantidad actual (no eliminar)
+      setQtyInputs((prev) => {
+        const next = { ...prev };
+        delete next[prod.id];
+        return next;
+      });
+      return;
+    }
+    const parsed = Number.parseFloat(v.replace(",", "."));
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      // Valor inválido: revertir
+      setQtyInputs((prev) => {
+        const next = { ...prev };
+        delete next[prod.id];
+        return next;
+      });
+      return;
+    }
+    const finalVal = prod.ventaFraccionada ? parsed : Math.round(parsed);
+    onActualizarCantidad(prod.id, finalVal);
+    // Limpiar edición para reflejar valor desde props en el próximo render
+    setQtyInputs((prev) => {
+      const next = { ...prev };
+      delete next[prod.id];
+      return next;
+    });
+  };
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-lg h-full flex flex-col">
@@ -157,14 +206,32 @@ export default function CartPanel({
                     <Button
                       variant="outline"
                       className="h-6 w-6 p-0"
-                      onClick={() => onActualizarCantidad(p.id, Math.max(0, p.cantidad - (p.ventaFraccionada ? 0.1 : 1)))}
+                      onClick={() => {
+                        const nuevo = Math.max(0, p.cantidad - (p.ventaFraccionada ? 0.1 : 1));
+                        onActualizarCantidad(p.id, nuevo);
+                        setQtyInputs((prev) => {
+                          const next = { ...prev };
+                          delete next[p.id];
+                          return next;
+                        });
+                      }}
                     >
                       -
                     </Button>
                     <input
                       type="number"
-                      value={p.cantidad}
-                      onChange={(e) => onActualizarCantidad(p.id, Number.isNaN(parseFloat(e.target.value)) ? 0 : parseFloat(e.target.value))}
+                      value={qtyInputs[p.id] ?? String(p.cantidad)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setQtyInputs((prev) => ({ ...prev, [p.id]: val }));
+                      }}
+                      onBlur={(e) => commitCantidad(p, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          commitCantidad(p, (e.target as HTMLInputElement).value);
+                        }
+                      }}
                       className="w-12 text-center text-xs border border-gray-300 rounded"
                       step={p.ventaFraccionada ? "0.1" : "1"}
                       min="0"
@@ -172,7 +239,15 @@ export default function CartPanel({
                     <Button
                       variant="outline"
                       className="h-6 w-6"
-                      onClick={() => onActualizarCantidad(p.id, p.cantidad + (p.ventaFraccionada ? 0.1 : 1))}
+                      onClick={() => {
+                        const nuevo = p.cantidad + (p.ventaFraccionada ? 0.1 : 1);
+                        onActualizarCantidad(p.id, nuevo);
+                        setQtyInputs((prev) => {
+                          const next = { ...prev };
+                          delete next[p.id];
+                          return next;
+                        });
+                      }}
                     >
                       +
                     </Button>

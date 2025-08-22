@@ -4,6 +4,7 @@ export interface Producto {
   codigo_interno: string;
   nombre: string;
   descripcion?: string;
+  marca?: string;
   costo_unitario?: number; // nuevo: costo base en maestro
   precio_venta: number; // precio de venta sugerido
   stock_minimo: number;
@@ -43,6 +44,18 @@ export interface TipoUnidad {
 }
 
 class ProductosService {
+  private marcaSupported: boolean | null = null;
+
+  private async hasMarcaColumn(): Promise<boolean> {
+    if (this.marcaSupported !== null) return this.marcaSupported;
+    try {
+      const cols = await window.electronAPI.db.query("PRAGMA table_info('productos')");
+      this.marcaSupported = Array.isArray(cols) && cols.some((c: any) => c.name === 'marca');
+    } catch {
+      this.marcaSupported = false;
+    }
+    return this.marcaSupported;
+  }
   // Productos CRUD - Solo datos maestros
   async obtenerProductos(): Promise<Producto[]> {
     const result = await window.electronAPI.db.query(`
@@ -60,7 +73,8 @@ class ProductosService {
   }
 
   async buscarProductos(termino: string): Promise<Producto[]> {
-    const result = await window.electronAPI.db.query(`
+    const includeMarca = await this.hasMarcaColumn();
+    const baseSql = `
       SELECT 
         p.*,
         c.nombre as categoria_nombre,
@@ -70,13 +84,16 @@ class ProductosService {
       LEFT JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
       WHERE 
-        p.nombre LIKE ? OR 
+        (p.nombre LIKE ? OR 
         p.codigo_interno LIKE ? OR 
         p.codigo_barras LIKE ? OR
-        p.descripcion LIKE ? OR
-        c.nombre LIKE ?
-      ORDER BY p.nombre ASC
-    `, [`%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`]);
+        p.descripcion LIKE ?` + (includeMarca ? ` OR p.marca LIKE ?` : ``) + ` OR
+        c.nombre LIKE ?)
+      ORDER BY p.nombre ASC`;
+    const params = includeMarca
+      ? [`%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`]
+      : [`%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`];
+    const result = await window.electronAPI.db.query(baseSql, params);
     return result || [];
   }
 
@@ -84,6 +101,7 @@ class ProductosService {
     const campos = [];
     const valores = [];
     const placeholders = [];
+    const includeMarca = await this.hasMarcaColumn();
 
     // Construir query dinámicamente solo con campos de datos maestros
     if (producto.codigo_barras) {
@@ -120,6 +138,12 @@ class ProductosService {
       placeholders.push('?');
     }
 
+  if (includeMarca && producto.marca) {
+      campos.push('marca');
+      valores.push(producto.marca);
+      placeholders.push('?');
+    }
+
     if (producto.unidad_medida) {
       campos.push('unidad_medida');
       valores.push(producto.unidad_medida);
@@ -146,6 +170,7 @@ class ProductosService {
   async actualizarProducto(id: number, producto: Partial<Producto>): Promise<boolean> {
     const campos = [];
     const valores = [];
+    const includeMarca = await this.hasMarcaColumn();
 
     // Construir dinámicamente la consulta UPDATE solo con campos de datos maestros
     if (producto.codigo_barras !== undefined) {
@@ -163,6 +188,10 @@ class ProductosService {
     if (producto.descripcion !== undefined) {
       campos.push('descripcion = ?');
       valores.push(producto.descripcion || null);
+    }
+  if (includeMarca && producto.marca !== undefined) {
+      campos.push('marca = ?');
+      valores.push(producto.marca || null);
     }
     if (producto.precio_venta !== undefined) {
       campos.push('precio_venta = ?');

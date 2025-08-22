@@ -27,6 +27,7 @@ const emptyRow = (): Row => ({
   activo: true,
   codigo_barras: '',
   codigo_interno: nanoid(12),
+  marca: '',
   nombre: '',
   descripcion: '',
   precio_venta: 0,
@@ -89,6 +90,7 @@ export default function BulkProductManual({ isOpen, onClose, categorias, tiposUn
         const payload: Omit<Producto, 'id' | 'fecha_creacion' | 'fecha_actualizacion'> = {
           codigo_barras: r.codigo_barras || undefined,
           codigo_interno: r.codigo_interno!,
+          marca: r.marca || undefined,
           nombre: r.nombre!,
           descripcion: r.descripcion || undefined,
           precio_venta: Number(r.precio_venta),
@@ -299,6 +301,7 @@ export default function BulkProductManual({ isOpen, onClose, categorias, tiposUn
                   <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 border-r border-gray-200">
                     Nombre<span className="text-red-500 ml-1">*</span>
                   </th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 border-r border-gray-200">Marca</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 border-r border-gray-200">Descripción</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 border-r border-gray-200">
                     Precio venta<span className="text-red-500 ml-1">*</span>
@@ -406,6 +409,15 @@ export default function BulkProductManual({ isOpen, onClose, categorias, tiposUn
                           value={r.nombre || ''} 
                           onChange={(e) => updateRow(r._key, { nombre: e.target.value })}
                           placeholder="Nombre del producto"
+                        />
+                      </td>
+
+                      <td className="px-3 py-2 border-r border-gray-200">
+                        <input 
+                          className="w-36 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                          value={r.marca || ''} 
+                          onChange={(e) => updateRow(r._key, { marca: e.target.value })}
+                          placeholder="Marca"
                         />
                       </td>
 

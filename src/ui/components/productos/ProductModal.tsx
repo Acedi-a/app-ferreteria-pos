@@ -163,6 +163,21 @@ function ProductModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              Marca
+            </label>
+            <input
+              type="text"
+              id="product-marca"
+              key="product-marca"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              value={formData.marca || ""}
+              onChange={(e) => handleInputChange('marca' as any, e.target.value)}
+              placeholder="Marca / fabricante"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Descripción
             </label>
             <textarea

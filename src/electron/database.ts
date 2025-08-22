@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS productos (
   codigo_interno TEXT UNIQUE,
   nombre TEXT NOT NULL,
   descripcion TEXT,
+  marca TEXT,
   costo_unitario REAL DEFAULT 0,
   precio_venta REAL NOT NULL,
   stock_minimo INTEGER DEFAULT 0,
@@ -266,6 +267,7 @@ SELECT
   p.id AS id,
   p.codigo_interno AS codigo_interno,
   p.nombre AS nombre,
+  p.marca AS marca,
   c.nombre AS categoria,
   p.stock_minimo AS stock_minimo,
   p.unidad_medida AS unidad_medida,
@@ -383,6 +385,71 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
       }
     } catch (e) {
       console.error('Migration check/add imagen_url failed:', e);
+    }
+
+    // Agregar columna marca a productos si no existe
+    try {
+      const cols: any[] = await this.query("PRAGMA table_info('productos')");
+      const hasMarca = cols.some((c: any) => c.name === 'marca');
+      if (!hasMarca) {
+        console.log('Migrating: adding productos.marca ...');
+        await this.run("ALTER TABLE productos ADD COLUMN marca TEXT");
+        console.log('Migration done: productos.marca');
+        // Recrear la vista inventario_actual para incluir la nueva columna
+        await this.exec(`
+DROP VIEW IF EXISTS inventario_actual;
+CREATE VIEW IF NOT EXISTS inventario_actual AS
+SELECT
+  p.id AS id,
+  p.codigo_interno AS codigo_interno,
+  p.nombre AS nombre,
+  p.marca AS marca,
+  c.nombre AS categoria,
+  p.stock_minimo AS stock_minimo,
+  p.unidad_medida AS unidad_medida,
+  tu.nombre AS tipo_unidad_nombre,
+  tu.abreviacion AS tipo_unidad_abrev,
+  p.precio_venta AS precio_venta,
+  COALESCE((
+    SELECT SUM(CASE 
+      WHEN m2.tipo_movimiento = 'entrada' THEN m2.cantidad
+      WHEN m2.tipo_movimiento = 'salida' THEN -m2.cantidad
+      WHEN m2.tipo_movimiento = 'ajuste' THEN m2.cantidad
+      ELSE 0 END)
+    FROM movimientos m2 WHERE m2.producto_id = p.id
+  ), 0) AS stock_actual,
+  COALESCE((
+    SELECT cd.costo_unitario
+    FROM compra_detalles cd
+    INNER JOIN compras c2 ON c2.id = cd.compra_id
+    WHERE cd.producto_id = p.id
+    ORDER BY c2.fecha_compra DESC, cd.id DESC
+    LIMIT 1
+  ), p.costo_unitario, 0) AS costo_unitario_ultimo,
+  COALESCE((
+    SELECT SUM(CASE 
+      WHEN m3.tipo_movimiento = 'entrada' THEN m3.cantidad
+      WHEN m3.tipo_movimiento = 'salida' THEN -m3.cantidad
+      WHEN m3.tipo_movimiento = 'ajuste' THEN m3.cantidad
+      ELSE 0 END)
+    FROM movimientos m3 WHERE m3.producto_id = p.id
+  ), 0) * COALESCE((
+    SELECT cd2.costo_unitario
+    FROM compra_detalles cd2
+    INNER JOIN compras c3 ON c3.id = cd2.compra_id
+    WHERE cd2.producto_id = p.id
+    ORDER BY c3.fecha_compra DESC, cd2.id DESC
+    LIMIT 1
+  ), p.costo_unitario, 0) AS valor_total,
+  (SELECT MAX(m4.fecha_movimiento) FROM movimientos m4 WHERE m4.producto_id = p.id) AS ultimo_movimiento,
+  (SELECT m5.tipo_movimiento FROM movimientos m5 WHERE m5.producto_id = p.id ORDER BY m5.fecha_movimiento DESC, m5.id DESC LIMIT 1) AS tipo_ultimo_movimiento
+FROM productos p
+LEFT JOIN categorias c ON c.id = p.categoria_id
+LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
+        `);
+      }
+    } catch (e) {
+      console.error('Migration check/add marca failed:', e);
     }
   }
 

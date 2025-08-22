@@ -11,7 +11,7 @@ import { MovimientosService } from "../../services/movimientos-service";
 import { productosService } from "../../services/productos-service";
 
 // Claves soportadas en el import (incluye stock_actual que no es campo directo en productos)
-type ColumnKey = keyof Pick<Producto, 'codigo_interno' | 'codigo_barras' | 'nombre' | 'descripcion' | 'precio_venta' | 'costo_unitario' | 'stock_minimo' | 'categoria_id' | 'tipo_unidad_id' | 'unidad_medida' | 'activo' | 'imagen_url'> | 'stock_actual';
+type ColumnKey = keyof Pick<Producto, 'codigo_interno' | 'codigo_barras' | 'nombre' | 'descripcion' | 'marca' | 'precio_venta' | 'costo_unitario' | 'stock_minimo' | 'categoria_id' | 'tipo_unidad_id' | 'unidad_medida' | 'activo' | 'imagen_url'> | 'stock_actual';
 
 interface BulkProductImportProps {
   isOpen: boolean;
@@ -32,6 +32,7 @@ const FIELD_LABELS: Record<ColumnKey, string> = {
   codigo_barras: 'Código Barras',
   nombre: 'Nombre*',
   descripcion: 'Descripción',
+  marca: 'Marca',
   precio_venta: 'Precio Venta*',
   costo_unitario: 'Costo Unitario',
   stock_actual: 'Stock Actual (carga inicial)',
@@ -47,7 +48,7 @@ const REQUIRED_FIELDS: ColumnKey[] = ['codigo_interno', 'nombre', 'precio_venta'
 
 // Orden estable para generar plantilla CSV
 const TEMPLATE_ORDER: ColumnKey[] = [
-  'codigo_interno','codigo_barras','nombre','descripcion','precio_venta','costo_unitario','stock_actual','stock_minimo','categoria_id','tipo_unidad_id','unidad_medida','activo','imagen_url'
+  'codigo_interno','codigo_barras','nombre','descripcion','marca','precio_venta','costo_unitario','stock_actual','stock_minimo','categoria_id','tipo_unidad_id','unidad_medida','activo','imagen_url'
 ];
 
 function guessMapping(headers: string[]): Partial<Record<ColumnKey, string>> {
@@ -59,6 +60,7 @@ function guessMapping(headers: string[]): Partial<Record<ColumnKey, string>> {
     ['codigo_barras', ['codigo_barras', 'barcode', 'ean', 'upc']],
     ['nombre', ['nombre', 'producto', 'name', 'titulo', 'título']],
     ['descripcion', ['descripcion', 'descripción', 'description', 'detalle']],
+  ['marca', ['marca', 'brand', 'fabricante', 'maker']],
     ['precio_venta', ['precio_venta', 'precio', 'price', 'pvp', 'venta']],
     ['costo_unitario', ['costo_unitario', 'costo', 'cost', 'compra']],
   // Priorizar detectar 'stock' como stock_actual para evitar confundir con stock_minimo
@@ -143,6 +145,7 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
       codigo_barras: '7751234567890',
       nombre: 'Martillo de carpintero',
       descripcion: 'Martillo mango de madera',
+  marca: 'Stanley',
       precio_venta: '25.9',
       costo_unitario: '18.5',
       stock_actual: '10',
@@ -210,6 +213,7 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
           codigo_barras: m.codigo_barras ? r[m.codigo_barras]?.toString().trim() : undefined,
           nombre: r[m.nombre]?.toString().trim(),
           descripcion: m.descripcion ? r[m.descripcion]?.toString().trim() : undefined,
+          marca: m.marca ? r[m.marca]?.toString().trim() : undefined,
           precio_venta: toNumber(r[m.precio_venta])!,
           costo_unitario: m.costo_unitario ? toNumber(r[m.costo_unitario]) : undefined,
           stock_minimo: toNumber(r[m.stock_minimo])!,

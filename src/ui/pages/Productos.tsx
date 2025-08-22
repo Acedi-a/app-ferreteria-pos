@@ -121,6 +121,7 @@ const { toast } = useToast();
     setFormData({
       codigo_barras: "",
       codigo_interno: nanoid(12), // Generar código automáticamente con 12 caracteres
+  marca: "",
       nombre: "",
       descripcion: "",
   costo_unitario: 0,
@@ -140,6 +141,7 @@ const { toast } = useToast();
     setFormData({
       codigo_barras: producto.codigo_barras || "",
       codigo_interno: producto.codigo_interno,
+  marca: producto.marca || "",
       nombre: producto.nombre,
       descripcion: producto.descripcion || "",
   costo_unitario: (producto as any).costo_unitario ?? 0,

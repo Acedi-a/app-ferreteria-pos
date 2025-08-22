@@ -78,6 +78,7 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
             <TableHead className="w-[15%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Código</TableHead>
             <TableHead className="w-[6%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Imagen</TableHead>
             <TableHead className="w-[22%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Producto</TableHead>
+            <TableHead className="w-[10%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Marca</TableHead>
             <TableHead className="w-[12%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Categoría</TableHead>
             <TableHead className="w-[10%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Costo</TableHead>
             <TableHead className="w-[10%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Precio</TableHead>
@@ -108,6 +109,9 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                   <div className="font-medium text-gray-900 text-sm truncate">{product.nombre}</div>
                   <div className="text-xs text-gray-500 truncate">{product.descripcion || 'Sin descripción'}</div>
                 </div>
+              </TableCell>
+              <TableCell className="py-4 px-6 text-sm text-gray-700">
+                {product.marca || '—'}
               </TableCell>
               <TableCell className="py-4 px-6 text-sm text-gray-700">
                 {product.categoria_nombre || 'Sin categoría'}

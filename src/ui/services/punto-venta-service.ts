@@ -5,6 +5,7 @@ export interface Producto {
   codigo_interno?: string;
   nombre: string;
   descripcion?: string;
+  imagen_url?: string;
   categoria_id?: number;
   categoria_nombre?: string;
   precio_venta: number;
@@ -123,6 +124,7 @@ export class PuntoVentaService {
           p.codigo_interno,
           p.nombre,
           p.descripcion,
+          p.imagen_url,
           p.precio_venta,
           ia.stock_actual,
           ia.stock_minimo,
@@ -139,6 +141,40 @@ export class PuntoVentaService {
       return window.electronAPI.db.query(query);
     } catch (error) {
       console.error('Error al obtener productos:', error);
+      throw error;
+    }
+  }
+
+  // Búsqueda por nombre o código para POS (autocompletado)
+  static async buscarProductos(termino: string, limit = 10): Promise<Producto[]> {
+    try {
+      const like = `%${termino}%`;
+      const query = `
+        SELECT 
+          p.id,
+          p.codigo_barras,
+          p.codigo_interno,
+          p.nombre,
+          p.descripcion,
+          p.imagen_url,
+          p.precio_venta,
+          ia.stock_actual,
+          ia.stock_minimo,
+          p.activo,
+          p.fecha_creacion,
+          c.nombre as categoria_nombre
+        FROM inventario_actual ia
+        INNER JOIN productos p ON p.id = ia.id
+        LEFT JOIN categorias c ON p.categoria_id = c.id
+        WHERE p.activo = 1 AND (
+          p.nombre LIKE ? OR p.codigo_interno LIKE ? OR p.codigo_barras LIKE ?
+        )
+        ORDER BY p.nombre ASC
+        LIMIT ?
+      `;
+      return await window.electronAPI.db.query(query, [like, like, like, limit]);
+    } catch (error) {
+      console.error('Error al buscar productos:', error);
       throw error;
     }
   }

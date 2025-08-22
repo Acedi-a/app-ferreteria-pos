@@ -10,6 +10,7 @@ import type { Venta as VentaModel, VentaDetalle as VentaDetalleModel } from "../
 import type { Producto as ProductoBase, Cliente as ClienteBase, Categoria } from "../services/punto-venta-service";
 import { productosService } from "../services/productos-service";
 import { MovimientosService } from "../services/movimientos-service";
+import ProductSearch from "../components/punto-venta/ProductSearch";
 
 /* ---------- tipos ---------- */
 interface ProductoVenta {
@@ -90,6 +91,7 @@ export default function PuntoVenta() {
   const [nuevoProd, setNuevoProd] = useState({
     codigo_interno: "",
     codigo_barras: "",
+  marca: "",
     nombre: "",
     precio_venta: "",
     costo_unitario: "",
@@ -187,6 +189,7 @@ export default function PuntoVenta() {
         setNuevoProd({
           codigo_interno: codigo,
           codigo_barras: codigo,
+          marca: "",
           nombre: "",
           precio_venta: "",
           costo_unitario: "",
@@ -204,6 +207,15 @@ export default function PuntoVenta() {
     } catch (e) {
       toast({ title: "Error de búsqueda", description: String(e), variant: "destructive" });
     }
+  };
+
+  // Selección desde el buscador tipoahead
+  const onSelectProductoBuscado = (p: ProductoBase) => {
+    const prod = convertirProductoBase(p);
+    setProductosDisponibles(prev => prev.some(x => x.id === prod.id) ? prev : [...prev, prod]);
+    agregarProducto(prod);
+    setInputCodigo("");
+    setTimeout(() => scanInputRef.current?.focus(), 0);
   };
 
   const guardarNuevoProducto = async () => {
@@ -226,6 +238,7 @@ export default function PuntoVenta() {
       const nuevoId = await productosService.crearProducto({
         codigo_interno: codigoInterno,
         codigo_barras: codigoBarras,
+  marca: nuevoProd.marca?.trim() || undefined,
         nombre,
         precio_venta: precio,
         costo_unitario: costo,
@@ -466,17 +479,17 @@ export default function PuntoVenta() {
       <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
         {/* Zona de escaneo */}
         <div className="bg-white border rounded-lg p-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Escanear / ingresar código</label>
-          <input
-            autoFocus
-            ref={scanInputRef}
+          <label className="block text-sm font-medium text-gray-700 mb-1">Escanear / buscar producto</label>
+          <ProductSearch
             value={inputCodigo}
-            onChange={e => setInputCodigo(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onScanEnter(); } }}
-            placeholder="Escanee el código de barras o escriba y presione Enter"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={setInputCodigo}
+            onEnter={onScanEnter}
+            onSelect={onSelectProductoBuscado}
+            inputRef={scanInputRef}
+            autoFocus
+            placeholder="Escanee el código o escriba para buscar por nombre/código"
           />
-          <p className="text-xs text-gray-500 mt-1">Cada escaneo agrega una unidad al carrito; repita el escaneo para aumentar cantidades.</p>
+          <p className="text-xs text-gray-500 mt-1">Enter intenta coincidencia exacta de código; también puedes seleccionar de la lista sugerida.</p>
           {!loading && (
             <div className="text-xs text-gray-500 mt-2">Clientes cargados: {clientes.length} · Categorías: {categorias.length}</div>
           )}
@@ -537,6 +550,14 @@ export default function PuntoVenta() {
                 <input
                   value={nuevoProd.nombre}
                   onChange={e => setNuevoProd({ ...nuevoProd, nombre: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700">Marca</label>
+                <input
+                  value={nuevoProd.marca}
+                  onChange={e => setNuevoProd({ ...nuevoProd, marca: e.target.value })}
                   className="w-full px-3 py-2 border rounded-md"
                 />
               </div>
