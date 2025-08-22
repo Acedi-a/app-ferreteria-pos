@@ -490,6 +490,18 @@ export default function PuntoVenta() {
             onSelect={onSelectProductoBuscado}
             inputRef={scanInputRef}
             autoFocus
+            onQuickCreate={(nombre) => {
+              setCodigoEscaneado(inputCodigo.trim());
+              setNuevoProd((prev) => ({
+                ...prev,
+                nombre,
+                marca: "",
+                // si el input es un código, se usará en crear; si es nombre puro, se quedará vacío
+                codigo_interno: prev.codigo_interno || "",
+                codigo_barras: prev.codigo_barras || "",
+              }));
+              setShowCrearProducto(true);
+            }}
             placeholder="Escanee el código o escriba para buscar por nombre/código"
           />
           <p className="text-xs text-gray-500 mt-1">Enter intenta coincidencia exacta de código; también puedes seleccionar de la lista sugerida.</p>

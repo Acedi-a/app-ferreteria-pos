@@ -6,6 +6,7 @@ export interface Producto {
   nombre: string;
   descripcion?: string;
   imagen_url?: string;
+  marca?: string;
   categoria_id?: number;
   categoria_nombre?: string;
   precio_venta: number;
@@ -95,6 +96,7 @@ export class PuntoVentaService {
           p.codigo_interno,
           p.nombre,
           p.descripcion,
+          p.marca,
           p.venta_fraccionada,
           p.precio_venta,
           ia.stock_actual,
@@ -126,6 +128,7 @@ export class PuntoVentaService {
           p.nombre,
           p.descripcion,
           p.imagen_url,
+          p.marca,
           p.venta_fraccionada,
           p.precio_venta,
           ia.stock_actual,
@@ -159,6 +162,7 @@ export class PuntoVentaService {
           p.nombre,
           p.descripcion,
           p.imagen_url,
+          p.marca,
           p.venta_fraccionada,
           p.precio_venta,
           ia.stock_actual,

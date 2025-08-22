@@ -7,12 +7,13 @@ interface ProductSearchProps {
   onChange: (v: string) => void;
   onSelect: (producto: Producto) => void;
   onEnter?: () => void;
+  onQuickCreate?: (nombre: string) => void;
   placeholder?: string;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   autoFocus?: boolean;
 }
 
-export default function ProductSearch({ value, onChange, onSelect, onEnter, placeholder = 'Escanee código o escriba nombre/código', inputRef, autoFocus }: ProductSearchProps) {
+export default function ProductSearch({ value, onChange, onSelect, onEnter, onQuickCreate, placeholder = 'Escanee código o escriba nombre/código', inputRef, autoFocus }: ProductSearchProps) {
   const [results, setResults] = React.useState<Producto[]>([]);
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
@@ -49,6 +50,13 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, plac
   }, []);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Atajo: Shift + Espacio => alta rápida con el nombre actual
+    if ((e.code === 'Space' || e.key === ' ') && e.shiftKey) {
+      e.preventDefault();
+      const nombre = value.trim();
+      if (nombre && onQuickCreate) onQuickCreate(nombre);
+      return;
+    }
     if (e.key === 'ArrowDown' && open && results.length > 0) {
       e.preventDefault();
       setHighlight((h) => (h + 1) % results.length);
@@ -146,6 +154,9 @@ function ResultItem({ producto }: { producto: Producto }) {
       </div>
       <div className="min-w-0">
         <div className="text-sm font-medium text-gray-900 truncate">{producto.nombre}</div>
+        {producto.marca && (
+          <div className="text-xs text-gray-600 truncate">{producto.marca}</div>
+        )}
         <div className="text-xs text-gray-500 truncate">{producto.codigo_interno || producto.codigo_barras || '—'} • Bs {producto.precio_venta.toFixed(2)}</div>
         <div className="text-[11px] text-gray-400">
           {producto.categoria_nombre || 'Sin categoría'} • Stock: {Number(producto.stock_actual || 0)}
