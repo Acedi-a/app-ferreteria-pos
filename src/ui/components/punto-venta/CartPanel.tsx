@@ -74,6 +74,16 @@ export default function CartPanel({
   // Estado local de inputs de cantidad para edición gradual (permite vacío temporalmente)
   const [qtyInputs, setQtyInputs] = useState<Record<number, string | undefined>>({});
 
+  // Helpers de precisión para sumar/restar según el step (evita 1.6000000000000005)
+  const stepOf = (p: ProductoVenta) => (p.ventaFraccionada ? 0.1 : 1);
+  const roundToStep = (val: number, step: number) => {
+    const decimals = (String(step).split('.')[1] || '').length;
+    const factor = Math.pow(10, decimals);
+    return Math.round(val * factor) / factor;
+  };
+  const addStep = (val: number, step: number) => roundToStep(val + step, step);
+  const subStep = (val: number, step: number) => Math.max(0, roundToStep(val - step, step));
+
   // Sincronizar cuando cambia la lista de productos (agregados/eliminados o cantidades actualizadas externamente)
   useEffect(() => {
     setQtyInputs((prev) => {
@@ -113,7 +123,9 @@ export default function CartPanel({
       });
       return;
     }
-    const finalVal = prod.ventaFraccionada ? parsed : Math.round(parsed);
+    const finalVal = prod.ventaFraccionada
+      ? roundToStep(parsed, stepOf(prod))
+      : Math.round(parsed);
     onActualizarCantidad(prod.id, finalVal);
     // Limpiar edición para reflejar valor desde props en el próximo render
     setQtyInputs((prev) => {
@@ -207,7 +219,8 @@ export default function CartPanel({
                       variant="outline"
                       className="h-6 w-6 p-0"
                       onClick={() => {
-                        const nuevo = Math.max(0, p.cantidad - (p.ventaFraccionada ? 0.1 : 1));
+                        const step = stepOf(p);
+                        const nuevo = subStep(p.cantidad, step);
                         onActualizarCantidad(p.id, nuevo);
                         setQtyInputs((prev) => {
                           const next = { ...prev };
@@ -220,7 +233,7 @@ export default function CartPanel({
                     </Button>
                     <input
                       type="number"
-                      value={qtyInputs[p.id] ?? String(p.cantidad)}
+                      value={qtyInputs[p.id] ?? (p.ventaFraccionada ? p.cantidad.toFixed(1) : String(p.cantidad))}
                       onChange={(e) => {
                         const val = e.target.value;
                         setQtyInputs((prev) => ({ ...prev, [p.id]: val }));
@@ -240,7 +253,8 @@ export default function CartPanel({
                       variant="outline"
                       className="h-6 w-6"
                       onClick={() => {
-                        const nuevo = p.cantidad + (p.ventaFraccionada ? 0.1 : 1);
+                        const step = stepOf(p);
+                        const nuevo = addStep(p.cantidad, step);
                         onActualizarCantidad(p.id, nuevo);
                         setQtyInputs((prev) => {
                           const next = { ...prev };
