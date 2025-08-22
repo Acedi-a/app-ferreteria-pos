@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS productos (
   nombre TEXT NOT NULL,
   descripcion TEXT,
   marca TEXT,
+  venta_fraccionada INTEGER DEFAULT 0,
   costo_unitario REAL DEFAULT 0,
   precio_venta REAL NOT NULL,
   stock_minimo INTEGER DEFAULT 0,
@@ -387,7 +388,7 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
       console.error('Migration check/add imagen_url failed:', e);
     }
 
-    // Agregar columna marca a productos si no existe
+  // Agregar columna marca a productos si no existe
     try {
       const cols: any[] = await this.query("PRAGMA table_info('productos')");
       const hasMarca = cols.some((c: any) => c.name === 'marca');
@@ -450,6 +451,19 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
       }
     } catch (e) {
       console.error('Migration check/add marca failed:', e);
+    }
+    
+    // Agregar columna venta_fraccionada a productos si no existe
+    try {
+      const cols2: any[] = await this.query("PRAGMA table_info('productos')");
+      const hasFrac = cols2.some((c: any) => c.name === 'venta_fraccionada');
+      if (!hasFrac) {
+        console.log('Migrating: adding productos.venta_fraccionada ...');
+        await this.run("ALTER TABLE productos ADD COLUMN venta_fraccionada INTEGER DEFAULT 0");
+        console.log('Migration done: productos.venta_fraccionada');
+      }
+    } catch (e) {
+      console.error('Migration check/add venta_fraccionada failed:', e);
     }
   }
 

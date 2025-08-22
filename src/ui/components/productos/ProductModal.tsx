@@ -283,7 +283,18 @@ function ProductModal({
           </div>
 
           <div className="space-y-4">
-            {/* Venta fraccionada removed - simplified product model */}
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="venta-fraccionada"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                checked={Boolean((formData as any).venta_fraccionada)}
+                onChange={(e) => setFormData({ ...formData, venta_fraccionada: e.target.checked } as any)}
+              />
+              <label htmlFor="venta-fraccionada" className="text-sm text-gray-700 font-medium">
+                Permitir venta fraccionada (cantidades decimales)
+              </label>
+            </div>
             <div className="flex items-center space-x-3">
               <input
                 type="checkbox"

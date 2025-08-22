@@ -130,6 +130,7 @@ const { toast } = useToast();
       categoria_id: undefined,
       tipo_unidad_id: undefined,
       unidad_medida: "",
+  venta_fraccionada: false,
   activo: true,
   imagen_url: undefined
     });
@@ -150,6 +151,7 @@ const { toast } = useToast();
       categoria_id: producto.categoria_id,
       tipo_unidad_id: producto.tipo_unidad_id,
       unidad_medida: producto.unidad_medida || "",
+  venta_fraccionada: (producto as any).venta_fraccionada ?? false,
   activo: producto.activo,
   imagen_url: producto.imagen_url
     });

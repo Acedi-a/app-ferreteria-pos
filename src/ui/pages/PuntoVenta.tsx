@@ -96,7 +96,8 @@ export default function PuntoVenta() {
     precio_venta: "",
     costo_unitario: "",
     stock_actual: "1",
-    stock_minimo: "0"
+  stock_minimo: "0",
+  venta_fraccionada: false
   });
 
   /* ---------- carga inicial de datos ---------- */
@@ -194,7 +195,8 @@ export default function PuntoVenta() {
           precio_venta: "",
           costo_unitario: "",
           stock_actual: "1",
-          stock_minimo: "0"
+          stock_minimo: "0",
+          venta_fraccionada: false
         });
         setShowCrearProducto(true);
         return;        
@@ -243,6 +245,7 @@ export default function PuntoVenta() {
         precio_venta: precio,
         costo_unitario: costo,
         stock_minimo: stockMin,
+  venta_fraccionada: nuevoProd.venta_fraccionada,
         activo: true
       } as any);
 
@@ -561,6 +564,18 @@ export default function PuntoVenta() {
                   className="w-full px-3 py-2 border rounded-md"
                 />
               </div>
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  id="pv-fraccionada"
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={nuevoProd.venta_fraccionada}
+                  onChange={e => setNuevoProd({ ...nuevoProd, venta_fraccionada: e.target.checked })}
+                />
+                <label htmlFor="pv-fraccionada" className="text-sm text-gray-700 select-none">
+                  Permitir venta fraccionada (cantidades decimales)
+                </label>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm text-gray-700">Precio de venta*</label>
@@ -588,7 +603,7 @@ export default function PuntoVenta() {
                   <label className="block text-sm text-gray-700">Stock inicial</label>
                   <input
                     type="number"
-                    step="1"
+                    step={nuevoProd.venta_fraccionada ? "0.1" : "1"}
                     value={nuevoProd.stock_actual}
                     onChange={e => setNuevoProd({ ...nuevoProd, stock_actual: e.target.value })}
                     className="w-full px-3 py-2 border rounded-md"

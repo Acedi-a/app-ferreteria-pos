@@ -5,6 +5,7 @@ export interface Producto {
   nombre: string;
   descripcion?: string;
   marca?: string;
+  venta_fraccionada?: boolean;
   costo_unitario?: number; // nuevo: costo base en maestro
   precio_venta: number; // precio de venta sugerido
   stock_minimo: number;
@@ -120,6 +121,12 @@ class ProductosService {
     );
     placeholders.push('?', '?', '?', '?', '?');
 
+    if (producto.venta_fraccionada !== undefined) {
+      campos.push('venta_fraccionada');
+      valores.push(producto.venta_fraccionada ? 1 : 0);
+      placeholders.push('?');
+    }
+
     if (producto.costo_unitario !== undefined) {
       campos.push('costo_unitario');
       valores.push(producto.costo_unitario);
@@ -188,6 +195,10 @@ class ProductosService {
     if (producto.descripcion !== undefined) {
       campos.push('descripcion = ?');
       valores.push(producto.descripcion || null);
+    }
+    if (producto.venta_fraccionada !== undefined) {
+      campos.push('venta_fraccionada = ?');
+      valores.push(producto.venta_fraccionada ? 1 : 0);
     }
   if (includeMarca && producto.marca !== undefined) {
       campos.push('marca = ?');
