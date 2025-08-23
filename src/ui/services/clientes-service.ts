@@ -4,6 +4,7 @@ export interface Cliente {
   codigo: string;
   nombre: string;
   apellido?: string;
+  genero?: 'masculino' | 'femenino' | 'otro' | 'no_especificado';
   telefono?: string;
   email?: string;
   direccion?: string;
@@ -21,7 +22,7 @@ export class ClientesService {
   static async obtenerTodos(): Promise<Cliente[]> {
     return window.electronAPI.db.query(`
       SELECT 
-        id, codigo, nombre, apellido, telefono, email, direccion, ciudad,
+  id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
         documento, tipo_documento, activo, fecha_creacion,
         COALESCE(saldo_pendiente, 0) as saldo_pendiente,
         COALESCE(total_compras, 0) as total_compras
@@ -34,7 +35,7 @@ export class ClientesService {
   static async obtenerPorId(id: number): Promise<Cliente | null> {
     const result = await window.electronAPI.db.get(`
       SELECT 
-        id, codigo, nombre, apellido, telefono, email, direccion, ciudad,
+  id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
         documento, tipo_documento, activo, fecha_creacion,
         COALESCE(saldo_pendiente, 0) as saldo_pendiente,
         COALESCE(total_compras, 0) as total_compras
@@ -48,7 +49,7 @@ export class ClientesService {
   static async obtenerPorCodigo(codigo: string): Promise<Cliente | null> {
     const result = await window.electronAPI.db.get(`
       SELECT 
-        id, codigo, nombre, apellido, telefono, email, direccion, ciudad,
+  id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
         documento, tipo_documento, activo, fecha_creacion,
         COALESCE(saldo_pendiente, 0) as saldo_pendiente,
         COALESCE(total_compras, 0) as total_compras
@@ -63,7 +64,7 @@ export class ClientesService {
     const terminoLike = `%${termino}%`;
     return window.electronAPI.db.query(`
       SELECT 
-        id, codigo, nombre, apellido, telefono, email, direccion, ciudad,
+  id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
         documento, tipo_documento, activo, fecha_creacion,
         COALESCE(saldo_pendiente, 0) as saldo_pendiente,
         COALESCE(total_compras, 0) as total_compras
@@ -77,13 +78,14 @@ export class ClientesService {
   static async crear(cliente: Omit<Cliente, 'id' | 'fecha_creacion'>): Promise<number> {
     const result = await window.electronAPI.db.run(`
       INSERT INTO clientes (
-        codigo, nombre, apellido, telefono, email, direccion, ciudad,
+        codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
         documento, tipo_documento, activo, saldo_pendiente, total_compras
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       cliente.codigo,
       cliente.nombre,
       cliente.apellido || '',
+      cliente.genero || 'no_especificado',
       cliente.telefono || '',
       cliente.email || '',
       cliente.direccion || '',
@@ -115,6 +117,10 @@ export class ClientesService {
     if (cliente.apellido !== undefined) {
       campos.push('apellido = ?');
       valores.push(cliente.apellido);
+    }
+    if (cliente.genero !== undefined) {
+      campos.push('genero = ?');
+      valores.push(cliente.genero);
     }
     if (cliente.telefono !== undefined) {
       campos.push('telefono = ?');

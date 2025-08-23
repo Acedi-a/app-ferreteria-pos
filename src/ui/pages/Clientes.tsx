@@ -26,6 +26,7 @@ export default function Clientes() {
     codigo: string;
     nombre: string;
     apellido: string;
+    genero?: 'masculino' | 'femenino' | 'otro' | 'no_especificado';
     telefono: string;
     email: string;
     direccion: string;
@@ -37,6 +38,7 @@ export default function Clientes() {
     codigo: '',
     nombre: '',
     apellido: '',
+    genero: 'no_especificado',
     telefono: '',
     email: '',
     direccion: '',
@@ -110,6 +112,7 @@ export default function Clientes() {
       codigo: client.codigo,
       nombre: client.nombre,
       apellido: client.apellido || '',
+      genero: client.genero || 'no_especificado',
       telefono: client.telefono || '',
       email: client.email || '',
       direccion: client.direccion || '',
@@ -152,6 +155,7 @@ export default function Clientes() {
         codigo: nuevoCodigo,
         nombre: '',
         apellido: '',
+        genero: 'no_especificado',
         telefono: '',
         email: '',
         direccion: '',
@@ -174,18 +178,18 @@ export default function Clientes() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validaciones básicas
-    if (!formData.codigo.trim() || !formData.nombre.trim()) {
+    // Validaciones mínimas requeridas
+    if (!formData.nombre.trim() || !formData.apellido.trim() || !formData.telefono.trim() || !formData.documento.trim() || !formData.genero) {
       toast({
         title: "Error de validación",
-        description: "El código y nombre son obligatorios",
+        description: "Nombre, apellido, teléfono, documento y género son obligatorios",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      // Verificar si el código ya existe
+      // Verificar si el código ya existe (aunque se autogenere)
       const codigoExiste = await ClientesService.existeCodigo(
         formData.codigo, 
         editingClient?.id
@@ -206,6 +210,7 @@ export default function Clientes() {
           codigo: formData.codigo,
           nombre: formData.nombre,
           apellido: formData.apellido,
+          genero: formData.genero,
           telefono: formData.telefono,
           email: formData.email,
           direccion: formData.direccion,
@@ -225,6 +230,7 @@ export default function Clientes() {
           codigo: formData.codigo,
           nombre: formData.nombre,
           apellido: formData.apellido,
+          genero: formData.genero,
           telefono: formData.telefono,
           email: formData.email,
           direccion: formData.direccion,
@@ -249,6 +255,7 @@ export default function Clientes() {
         codigo: '',
         nombre: '',
         apellido: '',
+        genero: 'no_especificado',
         telefono: '',
         email: '',
         direccion: '',
@@ -389,6 +396,7 @@ export default function Clientes() {
             codigo: '',
             nombre: '',
             apellido: '',
+            genero: 'no_especificado',
             telefono: '',
             email: '',
             direccion: '',

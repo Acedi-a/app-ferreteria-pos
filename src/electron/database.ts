@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS clientes (
   codigo TEXT,
   nombre TEXT NOT NULL,
   apellido TEXT,
+  genero TEXT,
   telefono TEXT,
   email TEXT,
   direccion TEXT,
@@ -464,6 +465,19 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
       }
     } catch (e) {
       console.error('Migration check/add venta_fraccionada failed:', e);
+    }
+
+    // Agregar columna genero a clientes si no existe
+    try {
+      const colsCli: any[] = await this.query("PRAGMA table_info('clientes')");
+      const hasGenero = colsCli.some((c: any) => c.name === 'genero');
+      if (!hasGenero) {
+        console.log('Migrating: adding clientes.genero ...');
+        await this.run("ALTER TABLE clientes ADD COLUMN genero TEXT");
+        console.log('Migration done: clientes.genero');
+      }
+    } catch (e) {
+      console.error('Migration check/add genero failed:', e);
     }
   }
 
