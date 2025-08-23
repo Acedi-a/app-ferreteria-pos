@@ -47,6 +47,8 @@ interface CartPanelProps {
   onCambiarPagoInicial: (pagoInicial: number) => void;
   isMinimized: boolean;
   onToggleMinimize: () => void;
+  nombreClientePersonalizado?: string;
+  onCambiarNombreClientePersonalizado?: (nombre: string) => void;
 }
 
 export default function CartPanel({
@@ -70,9 +72,16 @@ export default function CartPanel({
   onCambiarPagoInicial,
   isMinimized,
   onToggleMinimize,
+  nombreClientePersonalizado = "",
+  onCambiarNombreClientePersonalizado = () => {},
 }: CartPanelProps) {
   // Estado local de inputs de cantidad para edición gradual (permite vacío temporalmente)
   const [qtyInputs, setQtyInputs] = useState<Record<number, string | undefined>>({});
+  
+  // Estados para el autocompletar de clientes
+  const [busquedaCliente, setBusquedaCliente] = useState("");
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const [clientesFiltrados, setClientesFiltrados] = useState<Cliente[]>([]);
 
   // Helpers de precisión para sumar/restar según el step (evita 1.6000000000000005)
   const stepOf = (p: ProductoVenta) => (p.ventaFraccionada ? 0.1 : 1);
@@ -83,6 +92,55 @@ export default function CartPanel({
   };
   const addStep = (val: number, step: number) => roundToStep(val + step, step);
   const subStep = (val: number, step: number) => Math.max(0, roundToStep(val - step, step));
+
+  // Filtrar clientes según la búsqueda
+  useEffect(() => {
+    if (busquedaCliente.trim() === "") {
+      setClientesFiltrados([]);
+      return;
+    }
+    
+    const filtrados = clientes.filter(cliente => 
+      cliente.nombre.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
+      cliente.codigo.toLowerCase().includes(busquedaCliente.toLowerCase())
+    ).slice(0, 5); // Máximo 5 sugerencias
+    
+    setClientesFiltrados(filtrados);
+  }, [busquedaCliente, clientes]);
+
+  // Manejar selección de cliente
+  const manejarSeleccionCliente = (cliente: Cliente) => {
+    onSeleccionarCliente(cliente);
+    setBusquedaCliente(cliente.nombre);
+    setMostrarSugerencias(false);
+    onCambiarNombreClientePersonalizado(""); // Limpiar nombre personalizado
+  };
+
+  // Manejar cambio en la búsqueda
+  const manejarCambioBusqueda = (valor: string) => {
+    setBusquedaCliente(valor);
+    setMostrarSugerencias(valor.length > 0); // Solo mostrar si hay texto
+    
+    // Si el valor coincide exactamente con un cliente existente, seleccionarlo
+    const clienteExacto = clientes.find(c => c.nombre.toLowerCase() === valor.toLowerCase());
+    if (clienteExacto) {
+      onSeleccionarCliente(clienteExacto);
+      onCambiarNombreClientePersonalizado("");
+    } else {
+      // Si no coincide con ningún cliente, es un nombre personalizado
+      onSeleccionarCliente(null);
+      onCambiarNombreClientePersonalizado(valor);
+    }
+  };
+
+  // Inicializar búsqueda con cliente seleccionado o nombre personalizado
+  useEffect(() => {
+    if (clienteSeleccionado) {
+      setBusquedaCliente(clienteSeleccionado.nombre);
+    } else if (nombreClientePersonalizado) {
+      setBusquedaCliente(nombreClientePersonalizado);
+    }
+  }, [clienteSeleccionado, nombreClientePersonalizado]);
 
   // Sincronizar cuando cambia la lista de productos (agregados/eliminados o cantidades actualizadas externamente)
   useEffect(() => {
@@ -275,24 +333,55 @@ export default function CartPanel({
 
           {/* Panel de checkout */}
           <div className="border-t bg-white p-4 space-y-4">
-            {/* Cliente */}
-            <div>
+            {/* Cliente con autocompletar */}
+            <div className="relative">
               <label className="text-sm font-medium text-gray-700 mb-1 block">Cliente</label>
-              <select
-                value={clienteSeleccionado?.id ?? ""}
-                onChange={(e) => {
-                  const c = clientes.find((c) => c.id.toString() === e.target.value) ?? null;
-                  onSeleccionarCliente(c);
-                }}
-                className="w-full text-sm border border-gray-300 rounded px-2 py-1"
-              >
-                <option value="">Cliente general</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={busquedaCliente}
+                  onChange={(e) => manejarCambioBusqueda(e.target.value)}
+                  onFocus={() => setMostrarSugerencias(true)}
+                  onBlur={() => {
+                    // Delay para permitir clics en las sugerencias
+                    setTimeout(() => setMostrarSugerencias(false), 200);
+                  }}
+                  className={`w-full text-sm border rounded px-2 py-1 ${
+                    clienteSeleccionado 
+                      ? 'border-green-400 bg-green-50' 
+                      : 'border-gray-300'
+                  }`}
+                  placeholder="Buscar cliente o escribir nombre..."
+                />
+                {clienteSeleccionado && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                    <span className="text-xs text-green-600 font-medium">✓</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Sugerencias de clientes */}
+              {mostrarSugerencias && clientesFiltrados.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                  {clientesFiltrados.map((cliente) => (
+                    <div
+                      key={cliente.id}
+                      onClick={() => manejarSeleccionCliente(cliente)}
+                      className="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                    >
+                      <div className="font-medium">{cliente.nombre}</div>
+                      <div className="text-xs text-gray-500">Código: {cliente.codigo}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Indicador de cliente personalizado */}
+              {nombreClientePersonalizado && !clienteSeleccionado && (
+                <div className="mt-1 text-xs text-blue-600">
+                  ℹ️ Nombre personalizado (se guardará como cliente general)
+                </div>
+              )}
             </div>
 
             {/* Método de pago */}
@@ -304,9 +393,7 @@ export default function CartPanel({
                 className="w-full text-sm border border-gray-300 rounded px-2 py-1"
               >
                 <option value="efectivo">Efectivo</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="mixto">Mixto</option>
+                <option value="transferencia">QR</option>
               </select>
             </div>
 

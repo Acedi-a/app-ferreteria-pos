@@ -76,6 +76,7 @@ export default function PuntoVenta() {
   // Estados del carrito
   const [productos, setProductos] = useState<ProductoVenta[]>([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
+  const [nombreClientePersonalizado, setNombreClientePersonalizado] = useState("");
   const [metodoPago, setMetodoPago] = useState("efectivo");
   const [descuento, setDescuento] = useState(0);
   const [observaciones, setObservaciones] = useState("");
@@ -394,6 +395,7 @@ export default function PuntoVenta() {
       // Limpiar el carrito
       setProductos([]);
       setClienteSeleccionado(null);
+      setNombreClientePersonalizado(""); // Limpiar nombre personalizado
       setDescuento(0);
       setObservaciones("");
       setVentaCredito(false);
@@ -428,7 +430,7 @@ export default function PuntoVenta() {
         id: 0,
         numero_venta: num,
         cliente_id: clienteSeleccionado?.id,
-        cliente_nombre: clienteSeleccionado?.nombre || 'Cliente general',
+        cliente_nombre: clienteSeleccionado?.nombre || nombreClientePersonalizado || 'Cliente general',
         almacen_id: 1,
         subtotal,
         descuento,
@@ -521,6 +523,8 @@ export default function PuntoVenta() {
             clientes={clientes}
             clienteSeleccionado={clienteSeleccionado}
             onSeleccionarCliente={setClienteSeleccionado}
+            nombreClientePersonalizado={nombreClientePersonalizado}
+            onCambiarNombreClientePersonalizado={setNombreClientePersonalizado}
             metodoPago={metodoPago}
             onCambiarMetodoPago={setMetodoPago}
             descuento={descuento}

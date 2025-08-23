@@ -1,5 +1,6 @@
 import type { Venta, VentaDetalle } from "../../services/ventas-service";
 import { ConfiguracionService } from "../../services/configuracion-service";
+import logoClaudio from "../../assets/logo_claudio.png";
 
 export interface TicketOptions {
   widthMm?: number; // default from config ticket_ancho
@@ -13,6 +14,24 @@ function padRight(str: string, len: number) {
 
 function fmtMoney(n: number) {
   return (n ?? 0).toFixed(2);
+}
+
+// Función helper para convertir imagen a base64
+async function imageToBase64(src: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx?.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(src); // Fallback a la URL original
+    img.src = src;
+  });
 }
 
 export async function buildTicketHTML(venta: Venta, detalles: VentaDetalle[]): Promise<string> {
@@ -29,25 +48,31 @@ export async function buildTicketHTML(venta: Venta, detalles: VentaDetalle[]): P
   const mostrarImpuestos = (impuestosCfg.mostrar_impuestos_ticket || 'false') === 'true';
   const tipoComprobante = (ticket.ticket_tipo_comprobante || 'recibo').toLowerCase();
 
+  // Convertir logo de Claudio a base64 para impresión
+  const logoClaudiaBase64 = await imageToBase64(logoClaudio);
+
   // CSS simplificado para ancho fijo (mm) y fuente monoespaciada
   const css = `
     <style>
       @page { size: ${ancho}mm auto; margin: 0; }
-      body { width: ${ancho}mm; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
-      .wrap { padding: 6px 8px; }
+      body { width: ${ancho}mm; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 16px; }
+      .wrap { padding: 8px 10px; }
       .center { text-align: center; }
       .right { text-align: right; }
       .bold { font-weight: 700; }
-      .mt { margin-top: 6px; }
-      .hr { border-top: 1px dashed #000; margin: 6px 0; }
+      .mt { margin-top: 8px; }
+      .hr { border-top: 1px dashed #000; margin: 8px 0; }
       table { width: 100%; border-collapse: collapse; }
-      td { vertical-align: top; }
-      .small { font-size: 11px; }
+      td { vertical-align: top; padding: 2px 0; }
+      .small { font-size: 14px; }
     </style>
   `;
 
   // Encabezado de empresa
   let logoTag = '';
+  // Calcular el tamaño del logo basado en el ancho del ticket desde la base de datos
+  const logoSize = Math.min(110, Math.round(ancho * 1.2)); // Logo proporcional al ancho configurado en BD
+  
   if (mostrarLogo) {
     if (logoPath) {
       let logoSrc = logoPath;
@@ -57,9 +82,19 @@ export async function buildTicketHTML(venta: Venta, detalles: VentaDetalle[]): P
           if (data) logoSrc = data;
         }
       } catch {}
-      logoTag = `<div class=\"center\"><img src=\"${logoSrc}\" style=\"width:${logoWidth}px;max-height:80px;object-fit:contain\" /></div>`;
+      // Si hay logo personalizado, usar el tamaño configurado o el calculado
+      const customWidth = logoWidth > 0 ? logoWidth : logoSize;
+      logoTag = `<div class=\"center\"><img src=\"${logoSrc}\" style=\"width:${customWidth}px;max-height:${Math.round(customWidth * 0.8)}px;object-fit:contain;margin-bottom:15px\" /></div>`;
     } else {
-      logoTag = '<div class=\"center\"><div style=\"width:60px;height:60px;border:1px solid #000;margin:0 auto 4px\"></div></div>';
+      // Usar el logo de Claudio convertido a base64 si no hay logo configurado
+      if (logoClaudiaBase64) {
+        logoTag = `<div class=\"center\"><img src=\"${logoClaudiaBase64}\" style=\"width:${logoSize}px;max-height:${Math.round(logoSize * 0.8)}px;object-fit:contain;margin-bottom:15px\" /></div>`;
+      }
+    }
+  } else {
+    // Siempre mostrar el logo de Claudio aunque la configuración esté deshabilitada
+    if (logoClaudiaBase64) {
+      logoTag = `<div class=\"center\"><img src=\"${logoClaudiaBase64}\" style=\"width:${logoSize}px;max-height:${Math.round(logoSize * 0.8)}px;object-fit:contain;margin-bottom:15px\" /></div>`;
     }
   }
 

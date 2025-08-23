@@ -17,6 +17,7 @@ import {
   Warehouse,
   X,
 } from "lucide-react";
+import logoClaudio from "../assets/logo_claudio.png";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
@@ -84,18 +85,28 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex h-20 items-center justify-center border-b border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800 relative">
           {sidebarCollapsed ? (
             <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
-              <Store className="h-7 w-7 text-white" />
-            </div>
+      {/* Reemplazo de icono por logo */}
+      <img 
+        src={logoClaudio} 
+        alt="Claudio" 
+        className="h-full w-auto object-contain" 
+      />
+    </div>
           ) : (
             <Link to="/" className="flex items-center gap-3 text-white">
-              <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
-                <Store className="h-7 w-7 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-light tracking-wide text-white">Ferreteria</span>
-                <span className="text-xs opacity-80 font-light text-gray-300">Sistema de Gestión</span>
-              </div>
-            </Link>
+      <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
+        {/* Reemplazo de icono por logo */}
+        <img 
+          src={logoClaudio} 
+          alt="Claudio" 
+          className="h-12 w-auto object-contain" 
+        />
+      </div>
+      <div className="flex flex-col">
+        <span className="text-xl font-light tracking-wide text-white">Ferreteria</span>
+        <span className="text-xs opacity-80 font-light text-gray-300">Sistema de Gestión</span>
+      </div>
+    </Link>
           )}
           
           {/* Botón de colapsar */}
@@ -134,16 +145,17 @@ export default function Layout({ children }: LayoutProps) {
       {/* Contenido principal */}
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-72'}`}>
         {/* Header móvil */}
-        <header className="flex h-20 items-center gap-4 border-b border-gray-200 bg-white px-6 md:hidden shadow-sm">
+        <header className="flex items-center gap-4 border-b border-gray-200 bg-white px-6 md:hidden shadow-sm">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="rounded-lg p-3 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors"
+            className="rounded-lg  border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors"
           >
             <Menu className="h-5 w-5" />
           </button>
           <Link to="/" className="flex items-center gap-3 text-gray-900">
-            <div className="p-2.5 bg-red-100 rounded-lg">
-              <Store className="h-5 w-5 text-red-600" />
+            <div className="p-3 bg-white rounded-lg">
+              {/* Reemplazo de icono por logo */}
+              <img src={logoClaudio} alt="Claudio" className="h-8 w-auto object-contain" />
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-medium tracking-wide text-white">Ferreteria</span>
@@ -168,7 +180,8 @@ export default function Layout({ children }: LayoutProps) {
                   onClick={() => setSidebarOpen(false)}
                 >
                   <div className="p-2.5 bg-white/10 rounded-lg border border-white/20">
-                    <Store className="h-6 w-6 text-white" />
+                    {/* Reemplazo de icono por logo */}
+                    <img src={logoClaudio} alt="Claudio" className="h-8 w-auto object-contain" />
                   </div>
                   <div className="flex flex-col">
                     <span className="text-lg font-medium tracking-wide text-white">Ferreteria</span>

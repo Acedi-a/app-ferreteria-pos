@@ -40,15 +40,36 @@ export default function TicketsTab({ message, saving, ticketsConfig, setTicketsC
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Ancho del Ticket (mm)
                 </label>
-                <select
-                  value={ticketsConfig.ticket_ancho}
-                  onChange={(e) => setTicketsConfig({ ...ticketsConfig, ticket_ancho: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-                >
-                  <option value="58">58mm</option>
-                  <option value="80">80mm</option>
-                  <option value="110">110mm</option>
-                </select>
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={["58","80","110"].includes(ticketsConfig.ticket_ancho) ? ticketsConfig.ticket_ancho : "custom"}
+                    onChange={(e) => {
+                      if (e.target.value === "custom") return;
+                      setTicketsConfig({ ...ticketsConfig, ticket_ancho: e.target.value });
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                  >
+                    <option value="58">58mm</option>
+                    <option value="80">80mm</option>
+                    <option value="110">110mm</option>
+                    <option value="custom">Otro...</option>
+                  </select>
+                  <input
+                    type="number"
+                    min={30}
+                    max={200}
+                    step={1}
+                    placeholder="Personalizado"
+                    value={!(["58","80","110"].includes(ticketsConfig.ticket_ancho)) ? ticketsConfig.ticket_ancho : ''}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setTicketsConfig({ ...ticketsConfig, ticket_ancho: val });
+                    }}
+                    className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                  />
+                  <span className="text-sm text-gray-500">mm</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Puedes elegir una opción o escribir el ancho deseado (30-200mm).</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Impresora</label>

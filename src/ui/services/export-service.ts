@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
+import logoClaudio from '../assets/logo_claudio.png';
 
 export type Accessor<T> = keyof T | ((row: T) => any);
 export interface ColumnDef<T> {
@@ -67,6 +68,17 @@ export class ExportService {
 
   static exportPDF<T>(data: T[], cols: ColumnDef<T>[], fileBase: string, opts?: { desde?: string; hasta?: string }) {
     const doc = new jsPDF({ orientation: cols.length > 6 ? 'landscape' : 'portrait', unit: 'pt' });
+    
+    // Agregar logo centrado (120x120)
+    try {
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const logoSize = 120;
+      const logoX = (pageWidth - logoSize) / 2; // Centrar horizontalmente
+      doc.addImage(logoClaudio, 'PNG', logoX, 10, logoSize, logoSize);
+    } catch (error) {
+      console.warn('No se pudo agregar el logo al PDF:', error);
+    }
+    
     const head = [cols.map((c) => c.header)];
     const body = data.map((r) => cols.map((c) => {
       const v = toValue(r, c.accessor);
@@ -77,13 +89,26 @@ export class ExportService {
       body,
       styles: { fontSize: 9 },
       headStyles: { fillColor: [30, 64, 175] },
-      margin: { top: 40 },
-      didDrawPage: (d: any) => {
+      margin: { top: 140 }, // Margen superior para logo de 120px
+      didDrawPage: () => {
+        // Título centrado debajo del logo
         const title = fileBase;
-        doc.setFontSize(12);
-        doc.text(title, d.settings.margin.left, 24);
+        const pageWidth = doc.internal.pageSize.getWidth();
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, pageWidth / 2, 50, { align: 'center' });
+        
+        // Subtítulo con rango de fechas centrado
         const fr = [opts?.desde, opts?.hasta].filter(Boolean).join(' a ');
-        if (fr) doc.text(fr, d.settings.margin.left, 40);
+        if (fr) {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`Período: ${fr}`, pageWidth / 2, 80, { align: 'center' });
+        }
+        
+        // Línea separadora
+        doc.setDrawColor(200, 200, 200);
+        doc.line(40, 130, pageWidth - 40, 130); // Línea debajo del texto
       },
     });
     doc.save(buildFileName(fileBase, { ...opts, ext: 'pdf' }));

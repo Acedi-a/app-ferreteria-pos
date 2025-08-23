@@ -1,8 +1,27 @@
 import { ConfiguracionService } from "../../services/configuracion-service";
 import type { CuentaPorCobrar, PagoCuenta } from "../../services/cuentas-por-cobrar-service";
+import logoClaudio from "../../assets/logo_claudio.png";
 
 function fmt(n?: number) {
   return (n ?? 0).toFixed(2);
+}
+
+// Función helper para convertir imagen a base64
+async function imageToBase64(src: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx?.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(src); // Fallback a la URL original
+    img.src = src;
+  });
 }
 
 export interface PrintPagoOptions {
@@ -10,13 +29,16 @@ export interface PrintPagoOptions {
   historial?: PagoCuenta[];
 }
 
-export function buildPagoReceiptHTML(
+export async function buildPagoReceiptHTML(
   cuenta: CuentaPorCobrar,
   pago?: Partial<PagoCuenta> & { fecha_pago?: string; id?: number },
   opts: PrintPagoOptions = {}
-): string {
+): Promise<string> {
   const ahora = new Date();
   const fecha = pago?.fecha_pago ? new Date(pago.fecha_pago) : ahora;
+
+  // Convertir logo de Claudio a base64 para impresión
+  const logoClaudiaBase64 = await imageToBase64(logoClaudio);
 
   // Calcular saldo anterior y posterior en caso de pago específico usando historial si está disponible
   let previo = (cuenta.saldo ?? 0) + (pago?.monto ?? 0);
@@ -37,6 +59,7 @@ export function buildPagoReceiptHTML(
 
   const header = `
     <div class="wrap center">
+      <div class="center"><img src="${logoClaudiaBase64}" style="width:110px;max-height:88px;object-fit:contain;margin-bottom:15px" /></div>
       <div class="bold">RECIBO DE PAGO</div>
       <div>Cuenta #${cuenta.id} · ${cuenta.numero_venta || (cuenta.venta_id ? 'VENTA-' + cuenta.venta_id : '')}</div>
       <div>${fecha.toLocaleString()}</div>
@@ -90,15 +113,15 @@ export function buildPagoReceiptHTML(
   const css = `
     <style>
       @page { size: 80mm auto; margin: 0; }
-      body { width: 80mm; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
-      .wrap { padding: 6px 8px; }
+      body { width: 80mm; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 16px; }
+      .wrap { padding: 8px 10px; }
       .center { text-align: center; }
       .right { text-align: right; }
       .bold { font-weight: 700; }
-      .small { font-size: 11px; }
-      .hr { border-top: 1px dashed #000; margin: 6px 0; }
+      .small { font-size: 14px; }
+      .hr { border-top: 1px dashed #000; margin: 8px 0; }
       table { width: 100%; border-collapse: collapse; }
-      td { vertical-align: top; }
+      td { vertical-align: top; padding: 2px 0; }
     </style>
   `;
 
@@ -114,7 +137,7 @@ export async function printPagoReceipt(
   const widthMm = Number(ticket.ticket_ancho || '80');
   const deviceName = ticket.ticket_impresora || undefined;
   const auto = (ticket.ticket_auto_imprimir || 'true') === 'true';
-  const htmlRaw = buildPagoReceiptHTML(cuenta, pago, opts);
+  const htmlRaw = await buildPagoReceiptHTML(cuenta, pago, opts);
   // Ajustar ancho con CSS inline @page segun widthMm
   const html = htmlRaw.replace('@page { size: 80mm auto;', `@page { size: ${widthMm}mm auto;`).replace('body { width: 80mm;', `body { width: ${widthMm}mm;`);
   return window.electronAPI.printHtml({ html, widthMm, deviceName, silent: auto, title: `Recibo Pago Cta ${cuenta.id}` });
