@@ -12,6 +12,7 @@ import PagosRecientesTable from "../components/cuentas-por-cobrar/PagosRecientes
 import RegistrarPagoModal from "../components/cuentas-por-cobrar/RegistrarPagoModal";
 import { printPagoReceipt } from "../components/cuentas-por-cobrar/PaymentReceiptRenderer";
 import CuentaDetalleModal from "../components/cuentas-por-cobrar/CuentaDetalleModal";
+import { exportCuentasPorCobrarExcel } from "../components/cuentas-por-cobrar/ExportCxC";
 
 // Service y tipos
 import {
@@ -173,11 +174,17 @@ export default function CuentasPorCobrar() {
   };
 
   const handleExportarReporte = () => {
-    toast({
-      title: "Exportando reporte",
-      description: "Generando archivo Excel con todas las cuentas por cobrar..."
-    });
-    // Aquí se implementaría la lógica de exportación
+    try {
+      toast({
+        title: "Exportando reporte",
+        description: "Generando archivo Excel con todas las cuentas por cobrar..."
+      });
+      exportCuentasPorCobrarExcel(cuentas, { fileBase: 'cuentas_por_cobrar' });
+      toast({ title: 'Exportación completada', description: `${cuentas.length} registros exportados` });
+    } catch (e) {
+      console.error('Error al exportar CxC:', e);
+      toast({ title: 'Error al exportar', description: String(e), variant: 'destructive' });
+    }
   };
 
   const limpiarFiltros = () => {
