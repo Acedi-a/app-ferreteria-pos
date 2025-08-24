@@ -30,6 +30,7 @@ const emptyRow = (): Row => ({
   marca: '',
   nombre: '',
   descripcion: '',
+  venta_fraccionada: false,
   precio_venta: 0,
   costo_unitario: undefined,
   stock_minimo: 0,
@@ -314,6 +315,7 @@ export default function BulkProductManual({ isOpen, onClose, categorias, tiposUn
                   <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 border-r border-gray-200">Tipo unidad</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 border-r border-gray-200">Unidad medida</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 border-r border-gray-200">Activo</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 border-r border-gray-200">Venta Fraccionada</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700">Acciones</th>
                 </tr>
               </thead>
@@ -504,6 +506,18 @@ export default function BulkProductManual({ isOpen, onClose, categorias, tiposUn
                             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                           />
                           <span className="ml-2 text-sm text-gray-600">{r.activo ? 'Sí' : 'No'}</span>
+                        </label>
+                      </td>
+
+                      <td className="px-3 py-2 border-r border-gray-200 text-center">
+                        <label className="inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={r.venta_fraccionada ?? false} 
+                            onChange={(e) => updateRow(r._key, { venta_fraccionada: e.target.checked })}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                          />
+                          <span className="ml-2 text-sm text-gray-600">{r.venta_fraccionada ? 'Sí' : 'No'}</span>
                         </label>
                       </td>
 

@@ -8,8 +8,8 @@ export interface Producto {
   descripcion?: string;
   marca?: string;
   venta_fraccionada?: boolean;
-  costo_unitario?: number; // nuevo: costo base en maestro
-  precio_venta: number; // precio de venta sugerido
+  costo_unitario?: number; 
+  precio_venta: number; 
   stock_minimo: number;
   categoria_id?: number;
   tipo_unidad_id?: number;
@@ -17,8 +17,7 @@ export interface Producto {
   activo: boolean;
   fecha_creacion?: string;
   fecha_actualizacion?: string;
-  imagen_url?: string; // nueva columna para imagen
-  // Campos calculados/join
+  imagen_url?: string; 
   categoria_nombre?: string;
   tipo_unidad_nombre?: string;
   tipo_unidad_abreviacion?: string;
