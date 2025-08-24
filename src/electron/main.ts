@@ -79,6 +79,15 @@ ipcMain.handle('image-read-dataurl', async (event, fileRef: string) => {
         filePath = filePath.slice(1);
       }
     }
+    
+    // Verificar si el archivo existe antes de intentar leerlo
+    try {
+      await fsp.access(filePath);
+    } catch {
+      // Archivo no existe, devolver null silenciosamente
+      return null;
+    }
+    
     const buf = await fsp.readFile(filePath);
     const ext = path.extname(filePath).toLowerCase().replace('.', '');
     const mime = ext === 'png' ? 'image/png'
@@ -89,7 +98,10 @@ ipcMain.handle('image-read-dataurl', async (event, fileRef: string) => {
     const base64 = buf.toString('base64');
     return `data:${mime};base64,${base64}`;
   } catch (e) {
-    console.error('image-read-dataurl error:', e);
+    // Solo mostrar error si no es un problema de archivo no encontrado
+    if ((e as any).code !== 'ENOENT') {
+      console.error('image-read-dataurl error:', e);
+    }
     return null;
   }
 });

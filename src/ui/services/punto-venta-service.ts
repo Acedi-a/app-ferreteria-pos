@@ -89,7 +89,14 @@ import CajasService from './cajas-service';
 import { getBoliviaISOString } from '../lib/utils';
 
 export class PuntoVentaService {
+  private static verificarElectronAPI() {
+    if (!window.electronAPI?.db) {
+      throw new Error('La aplicación Electron no está disponible. Por favor, ejecute la aplicación desde Electron.');
+    }
+  }
+
   static async obtenerProductoPorCodigo(codigo: string): Promise<Producto | null> {
+    this.verificarElectronAPI();
     try {
       const query = `
         SELECT 
@@ -120,53 +127,7 @@ export class PuntoVentaService {
     }
   }
 
-  static async buscarProductos(termino: string): Promise<Producto[]> {
-    try {
-      const query = `
-        SELECT 
-          p.id,
-          p.codigo_barras,
-          p.codigo_interno,
-          p.nombre,
-          p.descripcion,
-          p.precio_venta,
-          ia.stock_actual,
-          ia.stock_minimo,
-          p.activo,
-          p.fecha_creacion,
-          c.nombre as categoria_nombre
-        FROM inventario_actual ia
-        INNER JOIN productos p ON p.id = ia.id
-        LEFT JOIN categorias c ON p.categoria_id = c.id
-        WHERE p.activo = 1 AND (
-          p.nombre LIKE ? OR 
-          p.codigo_barras LIKE ? OR 
-          p.codigo_interno LIKE ? OR
-          p.descripcion LIKE ?
-        )
-        ORDER BY 
-          CASE 
-            WHEN p.codigo_barras = ? OR p.codigo_interno = ? THEN 1
-            WHEN p.nombre LIKE ? THEN 2
-            ELSE 3
-          END,
-          p.nombre ASC
-        LIMIT 10
-      `;
-      
-      const termSearch = `%${termino}%`;
-      const termExact = termino;
-      const termStartsWith = `${termino}%`;
-      
-      return window.electronAPI.db.query(query, [
-        termSearch, termSearch, termSearch, termSearch,
-        termExact, termExact, termStartsWith
-      ]);
-    } catch (error) {
-      console.error('Error al buscar productos:', error);
-      throw error;
-    }
-  }
+
   // Productos
   static async obtenerProductos(): Promise<Producto[]> {
     try {

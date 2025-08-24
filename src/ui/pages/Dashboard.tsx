@@ -14,19 +14,59 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [ventas, setVentas] = useState<VentaReciente[]>([]);
   const [stockBajo, setStockBajo] = useState<StockBajoItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [s, v, sb] = await Promise.all([
-        DashboardService.obtenerStats(),
-        DashboardService.obtenerVentasRecientes(5),
-        DashboardService.obtenerStockBajo(5),
-      ]);
-      setStats(s);
-      setVentas(v);
-      setStockBajo(sb);
+      try {
+        const [s, v, sb] = await Promise.all([
+          DashboardService.obtenerStats(),
+          DashboardService.obtenerVentasRecientes(5),
+          DashboardService.obtenerStockBajo(5),
+        ]);
+        setStats(s);
+        setVentas(v);
+        setStockBajo(sb);
+        setError(null);
+      } catch (err) {
+        console.error('Error cargando datos del dashboard:', err);
+        setError(err instanceof Error ? err.message : 'Error desconocido');
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-lg text-slate-500">Cargando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-sm text-slate-500">Resumen general de tu negocio</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-lg text-red-500 mb-2">Error al cargar el dashboard</p>
+            <p className="text-sm text-slate-500">{error}</p>
+            <p className="text-xs text-slate-400 mt-2">Asegúrate de que la aplicación Electron esté ejecutándose correctamente.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">

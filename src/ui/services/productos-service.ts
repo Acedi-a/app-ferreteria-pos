@@ -49,9 +49,16 @@ export interface TipoUnidad {
 class ProductosService {
   private marcaSupported: boolean | null = null;
 
+  private verificarElectronAPI() {
+    if (!window.electronAPI?.db) {
+      throw new Error('La aplicación Electron no está disponible. Por favor, ejecute la aplicación desde Electron.');
+    }
+  }
+
   private async hasMarcaColumn(): Promise<boolean> {
     if (this.marcaSupported !== null) return this.marcaSupported;
     try {
+      this.verificarElectronAPI();
       const cols = await window.electronAPI.db.query("PRAGMA table_info('productos')");
       this.marcaSupported = Array.isArray(cols) && cols.some((c: any) => c.name === 'marca');
     } catch {
@@ -61,6 +68,7 @@ class ProductosService {
   }
   // Productos CRUD - Solo datos maestros
   async obtenerProductos(): Promise<Producto[]> {
+    this.verificarElectronAPI();
     const result = await window.electronAPI.db.query(`
       SELECT 
         p.*,
@@ -76,6 +84,7 @@ class ProductosService {
   }
 
   async buscarProductos(termino: string): Promise<Producto[]> {
+    this.verificarElectronAPI();
     const includeMarca = await this.hasMarcaColumn();
     const baseSql = `
       SELECT 
@@ -101,6 +110,7 @@ class ProductosService {
   }
 
   async crearProducto(producto: Omit<Producto, 'id' | 'fecha_creacion' | 'fecha_actualizacion'>): Promise<number> {
+    this.verificarElectronAPI();
     const campos = [];
     const valores = [];
     const placeholders = [];

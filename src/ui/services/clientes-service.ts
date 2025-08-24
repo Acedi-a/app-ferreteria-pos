@@ -18,8 +18,15 @@ export interface Cliente {
 }
 
 export class ClientesService {
+  private static verificarElectronAPI() {
+    if (!window.electronAPI?.db) {
+      throw new Error('La aplicación Electron no está disponible. Por favor, ejecute la aplicación desde Electron.');
+    }
+  }
+
   // Obtener todos los clientes
   static async obtenerTodos(): Promise<Cliente[]> {
+    this.verificarElectronAPI();
     return window.electronAPI.db.query(`
       SELECT 
   id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
@@ -33,6 +40,7 @@ export class ClientesService {
 
   // Obtener un cliente por ID
   static async obtenerPorId(id: number): Promise<Cliente | null> {
+    this.verificarElectronAPI();
     const result = await window.electronAPI.db.get(`
       SELECT 
   id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
@@ -47,6 +55,7 @@ export class ClientesService {
 
   // Obtener cliente por código
   static async obtenerPorCodigo(codigo: string): Promise<Cliente | null> {
+    this.verificarElectronAPI();
     const result = await window.electronAPI.db.get(`
       SELECT 
   id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,

@@ -4,7 +4,15 @@ export interface RangoFechas {
 }
 
 export class ReportesService {
+  private static verificarElectronAPI() {
+    if (!window.electronAPI?.db) {
+      throw new Error('La aplicación Electron no está disponible. Por favor, ejecute la aplicación desde Electron.');
+    }
+  }
+
   static async ventasPorDia(rango: RangoFechas) {
+    this.verificarElectronAPI();
+    
     const filtroFecha = rango.desde && rango.hasta
       ? `DATE(v.fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -32,6 +40,8 @@ export class ReportesService {
   }
 
   static async topProductos(rango: RangoFechas, limite = 10) {
+    this.verificarElectronAPI();
+    
     const filtroFecha = rango.desde && rango.hasta
       ? `DATE(v.fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -61,6 +71,8 @@ export class ReportesService {
   }
 
   static async mejoresClientes(rango: RangoFechas, limite = 10) {
+    this.verificarElectronAPI();
+    
     const filtroFecha = rango.desde && rango.hasta
       ? `DATE(v.fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -90,6 +102,8 @@ export class ReportesService {
   }
 
   static async inventarioPorCategoria() {
+    this.verificarElectronAPI();
+    
     return window.electronAPI.db.query(`
       SELECT 
         COALESCE(ia.categoria, 'Sin categoría') as categoria,
@@ -103,6 +117,8 @@ export class ReportesService {
   }
 
   static async resumenFinanciero(rango: RangoFechas) {
+    this.verificarElectronAPI();
+    
     const filtroVentas = rango.desde && rango.hasta
       ? `DATE(fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -151,6 +167,8 @@ export class ReportesService {
 
   // --- Reportes detallados ---
   static async ventasCabecera(rango: RangoFechas) {
+    this.verificarElectronAPI();
+    
     const filtro = rango.desde && rango.hasta
       ? `DATE(v.fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde

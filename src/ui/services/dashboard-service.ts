@@ -22,6 +22,10 @@ export interface StockBajoItem {
 
 export class DashboardService {
   static async obtenerStats(): Promise<DashboardStats> {
+    if (!window.electronAPI?.db) {
+      throw new Error('ElectronAPI no está disponible');
+    }
+    
     const fechaHoy = getBoliviaISOString().split('T')[0];
     const ventasHoy = await window.electronAPI.db.get(`
       SELECT COALESCE(SUM(total), 0) as total
@@ -56,6 +60,10 @@ export class DashboardService {
   }
 
   static async obtenerVentasRecientes(limit = 5): Promise<VentaReciente[]> {
+    if (!window.electronAPI?.db) {
+      throw new Error('ElectronAPI no está disponible');
+    }
+    
     return window.electronAPI.db.query(`
       SELECT 
         v.numero_venta as id,
@@ -70,6 +78,10 @@ export class DashboardService {
   }
 
   static async obtenerStockBajo(limit = 5): Promise<StockBajoItem[]> {
+    if (!window.electronAPI?.db) {
+      throw new Error('ElectronAPI no está disponible');
+    }
+    
     return window.electronAPI.db.query(`
       SELECT nombre, stock_actual as stock, stock_minimo as minimo
       FROM inventario_actual

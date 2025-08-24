@@ -1,5 +1,3 @@
-import { getBoliviaISOString } from '../lib/utils';
-
 export type TipoMovimiento = 'entrada' | 'salida' | 'ajuste';
 
 export interface InventarioItem {

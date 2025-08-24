@@ -17,8 +17,15 @@ export interface Proveedor {
 }
 
 export class ProveedoresService {
+  private static verificarElectronAPI() {
+    if (!window.electronAPI?.db) {
+      throw new Error('La aplicación Electron no está disponible. Por favor, ejecute la aplicación desde Electron.');
+    }
+  }
+
   // Listar proveedores (por defecto todos, activos primero)
   static async obtenerTodos(): Promise<Proveedor[]> {
+    this.verificarElectronAPI();
     return window.electronAPI.db.query(`
       SELECT 
         id, codigo, nombre, contacto, telefono, email, direccion, ciudad, documento, 
@@ -31,6 +38,7 @@ export class ProveedoresService {
   }
 
   static async obtenerPorId(id: number): Promise<Proveedor | null> {
+    this.verificarElectronAPI();
     const result = await window.electronAPI.db.get(`
       SELECT 
         id, codigo, nombre, contacto, telefono, email, direccion, ciudad, documento, 
@@ -44,6 +52,7 @@ export class ProveedoresService {
   }
 
   static async obtenerPorCodigo(codigo: string): Promise<Proveedor | null> {
+    this.verificarElectronAPI();
     const result = await window.electronAPI.db.get(`
       SELECT 
         id, codigo, nombre, contacto, telefono, email, direccion, ciudad, documento, 

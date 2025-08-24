@@ -3,7 +3,6 @@ import { nanoid } from "nanoid";
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/Dialog";
 import { Button } from "../ui/Button";
-import { Select } from "../ui/Select";
 import type { Producto, Categoria, TipoUnidad } from "../../services/productos-service";
 
 interface ProductModalProps {
@@ -196,9 +195,10 @@ function ProductModal({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Categoría
               </label>
-              <Select
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 value={formData.categoria_id?.toString() || ""}
-                onValueChange={(value) => handleInputChange('categoria_id', value ? Number(value) : undefined)}
+                onChange={(e) => handleInputChange('categoria_id', e.target.value ? Number(e.target.value) : undefined)}
               >
                 <option value="">Seleccionar categoría</option>
                 {categorias.map((categoria) => (
@@ -206,15 +206,16 @@ function ProductModal({
                     {categoria.nombre}
                   </option>
                 ))}
-              </Select>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Unidad de Medida
               </label>
-              <Select
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 value={formData.tipo_unidad_id?.toString() || ""}
-                onValueChange={(value) => handleInputChange('tipo_unidad_id', value ? Number(value) : undefined)}
+                onChange={(e) => handleInputChange('tipo_unidad_id', e.target.value ? Number(e.target.value) : undefined)}
               >
                 <option value="">Seleccionar unidad</option>
                 {tiposUnidad.map((tipo) => (
@@ -222,7 +223,7 @@ function ProductModal({
                     {tipo.nombre} ({tipo.abreviacion})
                   </option>
                 ))}
-              </Select>
+              </select>
             </div>
           </div>
 
