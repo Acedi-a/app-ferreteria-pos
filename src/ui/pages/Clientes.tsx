@@ -238,8 +238,7 @@ export default function Clientes() {
           documento: formData.documento,
           tipo_documento: formData.tipo_documento,
           activo: formData.activo,
-          saldo_pendiente: 0,
-          total_compras: 0
+          saldo_pendiente: 0
         });
         toast({
           title: "Éxito",

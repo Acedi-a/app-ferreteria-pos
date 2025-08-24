@@ -172,17 +172,13 @@ export default function CuentasPorPagar() {
       // Asegurar proveedor
       let proveedorId = datos.proveedor_id;
       if (!proveedorId && datos.nuevo_proveedor_nombre) {
-        const codigo = await ProveedoresService.generarCodigo();
         proveedorId = await ProveedoresService.crear({
-          codigo,
           nombre: datos.nuevo_proveedor_nombre,
           activo: true,
-          contacto: '',
           telefono: '',
           email: '',
           direccion: '',
-          ciudad: '',
-          documento: ''
+          ciudad: ''
         });
       }
 

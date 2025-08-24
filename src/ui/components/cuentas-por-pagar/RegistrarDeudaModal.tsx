@@ -66,8 +66,8 @@ export default function RegistrarDeudaModal({
     if (!term) return proveedores;
     return proveedores.filter(p =>
       p.nombre.toLowerCase().includes(term) ||
-      (p.codigo || '').toLowerCase().includes(term) ||
-      (p.contacto || '').toLowerCase().includes(term)
+      (p.telefono || '').toLowerCase().includes(term) ||
+      (p.email || '').toLowerCase().includes(term)
     );
   }, [proveedores, busqueda]);
 
@@ -160,7 +160,7 @@ export default function RegistrarDeudaModal({
                   <option value="">Seleccionar proveedor...</option>
                   {proveedoresFiltrados.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {(p.codigo ? p.codigo + ' - ' : '') + p.nombre}
+                      {p.nombre}
                     </option>
                   ))}
                 </select>
