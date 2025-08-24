@@ -170,6 +170,12 @@ export default function Cajas() {
     
     return [
       {
+        titulo: 'Saldo Inicial',
+        valor: modoVistaCompleta ? cajaSeleccionada?.monto_inicial || 0 : cajaActiva?.monto_inicial || 0,
+        icono: <DollarSign className="h-5 w-5" />,
+        color: 'text-green-600'
+      },
+      {
         titulo: 'Ventas del Día',
         valor: resumenActual.total_ventas || 0,
         icono: <ShoppingCart className="h-5 w-5" />,
@@ -536,7 +542,7 @@ export default function Cajas() {
       </div>
 
       {/* KPIs Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
         {generarKPIs().map((kpi, index) => (
           <Card key={index} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">

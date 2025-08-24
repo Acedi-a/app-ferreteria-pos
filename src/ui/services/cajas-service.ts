@@ -659,17 +659,20 @@ export class CajasService {
     // Fórmula: monto_inicial + total_ingresos - total_egresos + total_ajustes
     // No necesitamos recalcularlo aquí para evitar inconsistencias
 
-    // Formato legacy
+    // Formato que espera el modal (nombres de propiedades corregidos)
     return {
-      saldo_inicial: resumen.monto_inicial,
+      monto_inicial: resumen.monto_inicial,
       ventas_efectivo: resumen.ventas_efectivo,
       ventas_tarjeta: resumen.ventas_tarjeta,
       ventas_transferencia: resumen.ventas_transferencia,
-      // ventas_credito no existe en ResumenCaja, se elimina esta línea
-      ventas_total: resumen.total_ventas,
+      total_ventas: resumen.total_ventas,
       cobros_cxc_efectivo: resumen.cobros_cxc_efectivo,
       total_recibido: resumen.total_recibido,
       total_egresos: resumen.total_egresos,
+      saldo_final_calculado: resumen.saldo_final_calculado,
+      // Propiedades legacy para compatibilidad
+      saldo_inicial: resumen.monto_inicial,
+      ventas_total: resumen.total_ventas,
       saldo_final: resumen.saldo_final_calculado,
       ganancia_perdida_estimada: 0 // Deprecado
     };
