@@ -134,8 +134,8 @@ ipcMain.handle('image-delete', async (event, fileRef: string) => {
 });
 
 app.on("ready", async ()=> {
-    // IMPORTANTE: El preload debe estar en CommonJS y ubicado en dist-electron/preload.cjs
-  const preloadPath = isDev()
+  // IMPORTANTE: El preload debe estar en CommonJS y ubicado en dist-electron/preload.cjs
+  const preloadPath = isDev() 
     ? path.join(process.cwd(), 'src', 'electron', 'preload.cjs')
     : path.join(__dirname, 'preload.cjs');
   const mainWindow = new BrowserWindow({

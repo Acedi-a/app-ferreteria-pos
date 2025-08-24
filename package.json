@@ -8,14 +8,15 @@
     "start": "npm run build && npm run dev",
     "dev": "npm-run-all --parallel dev:react dev:electron",
     "dev:react": "vite",
-    "dev:electron": "npm run transpile:electron && cross-env NODE_ENV=development electron .",
+    "dev:electron": "npm run transpile:electron && npm run copy:preload && cross-env NODE_ENV=development electron .",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "transpile:electron": "tsc --project src/electron/tsconfig.json",
-    "dist:mac": "npm run transpile:electron && npm run build && electron-builder --mac --arm64",
-    "dist:win": "npm run transpile:electron && npm run build && electron-builder --win --x64",
-    "dist:linux": "npm run transpile:electron && npm run build && electron-builder --linux --x64"
+    "copy:preload": "node scripts/copy-preload.cjs",
+    "dist:mac": "npm run transpile:electron && npm run copy:preload && npm run build && electron-builder --mac --arm64",
+    "dist:win": "npm run transpile:electron && npm run copy:preload && npm run build && electron-builder --win --x64",
+    "dist:linux": "npm run transpile:electron && npm run copy:preload && npm run build && electron-builder --linux --x64"
   },
   "dependencies": {
     "@radix-ui/react-toast": "^1.2.14",
