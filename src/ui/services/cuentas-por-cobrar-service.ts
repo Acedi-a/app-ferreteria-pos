@@ -1,6 +1,7 @@
 // src/services/cuentas-por-cobrar-service.ts
 
 import { CajasService } from './cajas-service';
+import { getBoliviaISOString } from '../lib/utils';
 
 export interface Cliente {
   id: number;
@@ -107,6 +108,7 @@ export class CuentasPorCobrarService {
     limite?: number
   ): Promise<CuentaPorCobrar[]> {
     try {
+      const fechaHoy = getBoliviaISOString().split('T')[0];
       let whereClause = '';
       const whereClauses: string[] = [];
       const params: any[] = [];
@@ -141,9 +143,11 @@ export class CuentasPorCobrarService {
       // Filtro por vencimiento
       if (filtros.vencimiento) {
         if (filtros.vencimiento === 'vencidas') {
-          whereClauses.push('cpc.fecha_vencimiento < DATE("now") AND cpc.estado != "pagada"');
+          whereClauses.push('cpc.fecha_vencimiento < DATE(?) AND cpc.estado != "pagada"');
+          params.push(fechaHoy);
         } else if (filtros.vencimiento === 'por_vencer') {
-          whereClauses.push('cpc.fecha_vencimiento >= DATE("now") AND cpc.estado != "pagada"');
+          whereClauses.push('cpc.fecha_vencimiento >= DATE(?) AND cpc.estado != "pagada"');
+          params.push(fechaHoy);
         }
       }
 
@@ -162,8 +166,8 @@ export class CuentasPorCobrarService {
           c.telefono as cliente_telefono,
           COALESCE(v.numero_venta, 'VENTA-' || cpc.venta_id) as numero_venta,
           CASE 
-            WHEN cpc.fecha_vencimiento < DATE('now') AND cpc.estado != 'pagada' 
-            THEN JULIANDAY('now') - JULIANDAY(cpc.fecha_vencimiento)
+            WHEN cpc.fecha_vencimiento < DATE(?) AND cpc.estado != 'pagada' 
+            THEN JULIANDAY(?) - JULIANDAY(cpc.fecha_vencimiento)
             ELSE 0 
           END as dias_vencido
         FROM cuentas_por_cobrar cpc
@@ -180,7 +184,9 @@ export class CuentasPorCobrarService {
         ${limitClause}
       `;
 
-      const result = await this.executeQuery(query, params);
+      // Añadir parámetros para el cálculo de días vencidos
+      const queryParams = [...params, fechaHoy, fechaHoy];
+      const result = await this.executeQuery(query, queryParams);
 
       return result.map((row: any) => ({
         ...row,
@@ -195,10 +201,11 @@ export class CuentasPorCobrarService {
   // Obtener estadísticas de cuentas por cobrar
   static async obtenerEstadisticas(): Promise<EstadisticasCuentasPorCobrar> {
     try {
+      const fechaHoy = getBoliviaISOString().split('T')[0];
       const query = `
         SELECT 
           COALESCE(SUM(CASE WHEN estado != 'pagada' THEN saldo ELSE 0 END), 0) as total_por_cobrar,
-          COALESCE(SUM(CASE WHEN fecha_vencimiento < DATE('now') AND estado != 'pagada' THEN saldo ELSE 0 END), 0) as total_vencido,
+          COALESCE(SUM(CASE WHEN fecha_vencimiento < DATE(?) AND estado != 'pagada' THEN saldo ELSE 0 END), 0) as total_vencido,
           COUNT(CASE WHEN estado = 'pendiente' THEN 1 END) as cantidad_pendientes,
           COUNT(CASE WHEN estado = 'vencida' THEN 1 END) as cantidad_vencidas,
           COUNT(CASE WHEN estado = 'pagada' THEN 1 END) as cantidad_pagadas,
@@ -206,7 +213,7 @@ export class CuentasPorCobrarService {
         FROM cuentas_por_cobrar
       `;
 
-      const stats = await this.executeGet(query);
+      const stats = await this.executeGet(query, [fechaHoy]);
 
       return {
         totalPorCobrar: stats?.total_por_cobrar || 0,
@@ -269,17 +276,19 @@ export class CuentasPorCobrarService {
         throw new Error('El monto del pago no puede ser mayor al saldo pendiente');
       }
 
-      // Registrar el pago
+      // Registrar el pago con fecha de Bolivia
+      const fechaHoy = getBoliviaISOString();
       const insertPagoQuery = `
-        INSERT INTO pagos_cuentas (cuenta_id, monto, metodo_pago, observaciones)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO pagos_cuentas (cuenta_id, monto, metodo_pago, observaciones, fecha_pago)
+        VALUES (?, ?, ?, ?, ?)
       `;
 
       const resultPago = await this.executeRun(insertPagoQuery, [
         datosPago.cuenta_id,
         datosPago.monto,
         datosPago.metodo_pago,
-        datosPago.observaciones || null
+        datosPago.observaciones || null,
+        fechaHoy
       ]);
 
       // Actualizar el saldo de la cuenta
@@ -405,14 +414,15 @@ export class CuentasPorCobrarService {
   // Actualizar estado de cuentas vencidas
   static async actualizarEstadosVencidas(): Promise<{ cuentas_actualizadas: number }> {
     try {
+      const fechaHoy = getBoliviaISOString().split('T')[0];
       const query = `
         UPDATE cuentas_por_cobrar 
         SET estado = 'vencida'
-        WHERE fecha_vencimiento < DATE('now') 
+        WHERE fecha_vencimiento < DATE(?) 
         AND estado = 'pendiente'
       `;
 
-      const result = await this.executeRun(query);
+      const result = await this.executeRun(query, [fechaHoy]);
 
       return {
         cuentas_actualizadas: result.changes || 0

@@ -1,5 +1,6 @@
 // src/services/cuentas-por-pagar-service.ts
 import { CajasService } from './cajas-service';
+import { getBoliviaISOString } from '../lib/utils';
 
 export interface Proveedor {
   id: number;
@@ -109,6 +110,7 @@ export class CuentasPorPagarService {
     limite?: number
   ): Promise<CuentaPorPagar[]> {
     try {
+      const fechaHoy = getBoliviaISOString().split('T')[0];
       let whereClause = '';
       const whereClauses: string[] = [];
       const params: any[] = [];
@@ -164,8 +166,8 @@ export class CuentasPorPagarService {
           p.telefono as proveedor_telefono,
           COALESCE('COMPRA-' || cpp.compra_id, 'CUENTA-' || cpp.id) as numero_compra,
           CASE 
-            WHEN cpp.fecha_vencimiento < DATE('now') AND cpp.estado != 'pagada' 
-            THEN JULIANDAY('now') - JULIANDAY(cpp.fecha_vencimiento)
+            WHEN cpp.fecha_vencimiento < DATE(?) AND cpp.estado != 'pagada' 
+            THEN JULIANDAY(?) - JULIANDAY(cpp.fecha_vencimiento)
             ELSE 0 
           END as dias_vencido
         FROM cuentas_por_pagar cpp
@@ -181,7 +183,9 @@ export class CuentasPorPagarService {
         ${limitClause}
       `;
 
-      const result = await this.executeQuery(query, params);
+      // Añadir parámetros para el cálculo de días vencidos
+      const queryParams = [...params, fechaHoy, fechaHoy];
+      const result = await this.executeQuery(query, queryParams);
 
       return result.map((row: any) => ({
         ...row,
@@ -196,10 +200,11 @@ export class CuentasPorPagarService {
   // Obtener estadísticas de cuentas por pagar
   static async obtenerEstadisticas(): Promise<EstadisticasCuentasPorPagar> {
     try {
+      const fechaHoy = getBoliviaISOString().split('T')[0];
       const query = `
         SELECT 
           COALESCE(SUM(CASE WHEN estado != 'pagada' THEN saldo ELSE 0 END), 0) as total_por_pagar,
-          COALESCE(SUM(CASE WHEN fecha_vencimiento < DATE('now') AND estado != 'pagada' THEN saldo ELSE 0 END), 0) as total_vencido,
+          COALESCE(SUM(CASE WHEN fecha_vencimiento < DATE(?) AND estado != 'pagada' THEN saldo ELSE 0 END), 0) as total_vencido,
           COUNT(CASE WHEN estado = 'pendiente' THEN 1 END) as cantidad_pendientes,
           COUNT(CASE WHEN estado = 'vencida' THEN 1 END) as cantidad_vencidas,
           COUNT(CASE WHEN estado = 'pagada' THEN 1 END) as cantidad_pagadas,
@@ -207,7 +212,7 @@ export class CuentasPorPagarService {
         FROM cuentas_por_pagar
       `;
 
-      const stats = await this.executeGet(query);
+      const stats = await this.executeGet(query, [fechaHoy]);
 
       return {
         totalPorPagar: stats?.total_por_pagar || 0,
@@ -272,17 +277,19 @@ export class CuentasPorPagarService {
         throw new Error('El monto del pago no puede ser mayor al saldo pendiente');
       }
 
-      // Registrar el pago
+      // Registrar el pago con fecha de Bolivia
+      const fechaHoy = getBoliviaISOString();
       const insertPagoQuery = `
-        INSERT INTO pagos_proveedores (cuenta_id, monto, metodo_pago, observaciones)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO pagos_proveedores (cuenta_id, monto, metodo_pago, observaciones, fecha_pago)
+        VALUES (?, ?, ?, ?, ?)
       `;
 
       const resultPago = await this.executeRun(insertPagoQuery, [
         datosPago.cuenta_id,
         datosPago.monto,
         datosPago.metodo_pago,
-        datosPago.observaciones || null
+        datosPago.observaciones || null,
+        fechaHoy
       ]);
 
       // Actualizar el saldo de la cuenta
@@ -386,14 +393,15 @@ export class CuentasPorPagarService {
   // Actualizar estado de cuentas vencidas
   static async actualizarEstadosVencidas(): Promise<{ cuentas_actualizadas: number }> {
     try {
+      const fechaHoy = getBoliviaISOString().split('T')[0];
       const query = `
         UPDATE cuentas_por_pagar 
         SET estado = 'vencida'
-        WHERE fecha_vencimiento < DATE('now') 
+        WHERE fecha_vencimiento < DATE(?) 
         AND estado = 'pendiente'
       `;
 
-      const result = await this.executeRun(query);
+      const result = await this.executeRun(query, [fechaHoy]);
 
       return {
         cuentas_actualizadas: result.changes || 0

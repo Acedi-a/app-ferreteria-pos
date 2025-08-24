@@ -10,6 +10,7 @@ import type { Venta as VentaModel, VentaDetalle as VentaDetalleModel } from "../
 import type { Producto as ProductoBase, Cliente as ClienteBase, Categoria } from "../services/punto-venta-service";
 import { productosService } from "../services/productos-service";
 import { MovimientosService } from "../services/movimientos-service";
+import { getBoliviaDate, getBoliviaISOString } from "../lib/utils";
 
 /* ---------- tipos ---------- */
 interface ProductoVenta {
@@ -553,7 +554,7 @@ export default function PuntoVenta() {
     try {
       const subtotal = productos.reduce((s, p) => s + p.subtotal, 0);
       const total = subtotal - descuento;
-      const ahora = new Date();
+      const ahora = getBoliviaDate();
       const num = `P-${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}${String(ahora.getDate()).padStart(2, '0')}-${String(ahora.getHours()).padStart(2, '0')}${String(ahora.getMinutes()).padStart(2, '0')}${String(ahora.getSeconds()).padStart(2, '0')}`;
 
       const venta: VentaModel = {
@@ -569,7 +570,7 @@ export default function PuntoVenta() {
         metodo_pago: metodoPago,
         estado: 'pendiente',
         observaciones: observaciones || '',
-        fecha_venta: new Date().toISOString(),
+        fecha_venta: getBoliviaISOString(),
         usuario: 'POS',
       };
 
@@ -749,9 +750,12 @@ export default function PuntoVenta() {
                   <label className="block text-sm text-gray-700">Precio de venta*</label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="any"
                     value={nuevoProd.precio_venta}
-                    onChange={e => setNuevoProd({ ...nuevoProd, precio_venta: e.target.value })}
+                    onChange={e => {
+                      const value = e.target.value;
+                      setNuevoProd({ ...nuevoProd, precio_venta: value });
+                    }}
                     className="w-full px-3 py-2 border rounded-md"
                   />
                 </div>
@@ -759,9 +763,12 @@ export default function PuntoVenta() {
                   <label className="block text-sm text-gray-700">Costo unitario</label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="any"
                     value={nuevoProd.costo_unitario}
-                    onChange={e => setNuevoProd({ ...nuevoProd, costo_unitario: e.target.value })}
+                    onChange={e => {
+                      const value = e.target.value;
+                      setNuevoProd({ ...nuevoProd, costo_unitario: value });
+                    }}
                     className="w-full px-3 py-2 border rounded-md"
                   />
                 </div>

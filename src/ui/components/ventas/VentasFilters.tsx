@@ -3,6 +3,7 @@ import { Search, Filter, Calendar, RotateCcw } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Card, CardContent } from "../ui/Card";
 import type { FiltrosVenta } from "../../services/ventas-service";
+import { getBoliviaDateString, getBoliviaDateDaysAgo } from "../../lib/utils";
 
 interface VentasFiltersProps {
   filtros: FiltrosVenta;
@@ -24,9 +25,9 @@ export default function VentasFilters({
 
   const hayFiltrosActivos = Object.values(filtros).some(valor => valor && valor.trim() !== '');
 
-  // Obtener fechas para valores por defecto
-  const hoy = new Date().toISOString().split('T')[0];
-  const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Obtener fechas para valores por defecto (zona horaria de Bolivia)
+  const hoy = getBoliviaDateString();
+  const hace30Dias = getBoliviaDateDaysAgo(30);
 
   return (
     <Card className="mb-6">

@@ -2,6 +2,7 @@ import { Users, Plus, Edit, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../components/ui/Table";
 import { Badge } from "../../components/ui/Badge";
+import { formatBoliviaDate } from "../../lib/utils";
 
 interface Usuario {
   id: number;
@@ -58,7 +59,7 @@ export default function UsuariosTab({ usuarios }: Props) {
                     <Badge variant="default">{usuario.rol}</Badge>
                   </TableCell>
                   <TableCell className="text-slate-500">
-                    {new Date(usuario.ultimo_acceso).toLocaleString()}
+                    {formatBoliviaDate(usuario.ultimo_acceso)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={usuario.activo ? "success" : "destructive"}>

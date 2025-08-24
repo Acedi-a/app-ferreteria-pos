@@ -12,10 +12,12 @@ interface PagosProveedoresTableProps {
 
 export default function PagosProveedoresTable({ pagos, loading = false }: PagosProveedoresTableProps) {
   const formatearFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleDateString('es-ES', {
+    return new Date(fecha).toLocaleString('es-ES', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -129,12 +131,18 @@ export default function PagosProveedoresTable({ pagos, loading = false }: PagosP
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-gray-400" />
--                      {formatearFecha(pago.fecha_pago)}
-+                      {formatearFecha(pago.fecha_pago)}
-                     </div>
-                   </TableCell>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {formatearFecha(pago.fecha_pago).split(' ')[0]}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {formatearFecha(pago.fecha_pago).split(' ')[1]}
+                        </div>
+                      </div>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-start gap-2 text-sm text-gray-700">
                       <FileText className="h-4 w-4 text-gray-400 mt-0.5" />

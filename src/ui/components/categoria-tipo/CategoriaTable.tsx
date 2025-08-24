@@ -3,6 +3,7 @@ import { Button } from "../ui/Button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/Table";
 import { Badge } from "../ui/Badge";
 import type { CategoriaForm } from "../../services/categoria-tipo-service";
+import { formatBoliviaDateOnly } from "../../lib/utils";
 
 interface CategoriaTableProps {
   categorias: CategoriaForm[];
@@ -72,7 +73,7 @@ export default function CategoriaTable({ categorias, loading, onEdit, onDelete }
                   </TableCell>
                   <TableCell className="py-4">
                     <div className="text-sm font-light text-gray-500">
-                      {categoria.fecha_creacion ? new Date(categoria.fecha_creacion).toLocaleDateString() : 'N/A'}
+                      {categoria.fecha_creacion ? formatBoliviaDateOnly(categoria.fecha_creacion) : 'N/A'}
                     </div>
                   </TableCell>
                   <TableCell className="py-4">

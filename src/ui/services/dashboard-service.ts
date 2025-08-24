@@ -1,3 +1,5 @@
+import { getBoliviaISOString } from '../lib/utils';
+
 export interface DashboardStats {
   ventasHoyTotal: number;
   productosEnStock: number;
@@ -20,11 +22,12 @@ export interface StockBajoItem {
 
 export class DashboardService {
   static async obtenerStats(): Promise<DashboardStats> {
+    const fechaHoy = getBoliviaISOString().split('T')[0];
     const ventasHoy = await window.electronAPI.db.get(`
       SELECT COALESCE(SUM(total), 0) as total
       FROM ventas
-      WHERE DATE(fecha_venta) = DATE('now')
-    `);
+      WHERE DATE(fecha_venta) = DATE(?)
+    `, [fechaHoy]);
 
     const productosEnStock = await window.electronAPI.db.get(`
       SELECT COUNT(*) as total

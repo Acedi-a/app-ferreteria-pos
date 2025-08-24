@@ -1,3 +1,5 @@
+import { getBoliviaISOString } from '../lib/utils';
+
 export interface Producto {
   id?: number;
   codigo_barras?: string;
@@ -202,7 +204,8 @@ class ProductosService {
     }
 
     // Siempre actualizar fecha_actualizacion
-    campos.push('fecha_actualizacion = CURRENT_TIMESTAMP');
+    campos.push('fecha_actualizacion = ?');
+    valores.push(getBoliviaISOString());
     valores.push(id);
 
     const query = `UPDATE productos SET ${campos.join(', ')} WHERE id = ?`;

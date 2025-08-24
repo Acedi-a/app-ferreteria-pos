@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Download, FileText, Package, Users, DollarSign, TrendingUp } from "lucide-react";
+import { getBoliviaDate, getBoliviaDateString } from "../lib/utils";
 
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -71,19 +72,26 @@ const reportTypes: ReportType[] = [
 ];
 function toISO(d: Date) { return d.toISOString().slice(0, 10); }
 function rangoPorSeleccion(sel: string, desde?: string, hasta?: string): RangoFechas {
-  const hoy = new Date();
+  const hoy = getBoliviaDate();
   const startOfWeek = () => {
     const d = new Date(hoy);
     const day = d.getDay() || 7; // Monday=1..Sunday=7
     if (day !== 1) d.setDate(d.getDate() - (day - 1));
     return d;
   }
-  const startOfMonth = () => new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  const startOfQuarter = () => {
-    const q = Math.floor(hoy.getMonth() / 3) * 3;
-    return new Date(hoy.getFullYear(), q, 1);
+  const startOfMonth = () => {
+    const boliviaDate = getBoliviaDate();
+    return new Date(boliviaDate.getFullYear(), boliviaDate.getMonth(), 1);
   }
-  const startOfYear = () => new Date(hoy.getFullYear(), 0, 1);
+  const startOfQuarter = () => {
+    const boliviaDate = getBoliviaDate();
+    const q = Math.floor(boliviaDate.getMonth() / 3) * 3;
+    return new Date(boliviaDate.getFullYear(), q, 1);
+  }
+  const startOfYear = () => {
+    const boliviaDate = getBoliviaDate();
+    return new Date(boliviaDate.getFullYear(), 0, 1);
+  }
   switch (sel) {
     case 'today':
       return { desde: toISO(hoy), hasta: toISO(hoy) };

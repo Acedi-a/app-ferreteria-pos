@@ -186,7 +186,7 @@ export default function RegistrarDeudaModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">Monto</label>
               <input
                 type="number"
-                step="0.01"
+                step="any"
                 min="0"
                 value={monto}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMonto(e.target.value)}

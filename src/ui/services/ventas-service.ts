@@ -1,4 +1,6 @@
 // Servicio para gestionar las ventas
+import { getBoliviaISOString } from '../lib/utils';
+
     export interface VentaDetalle {
     id: number;
     venta_id: number;
@@ -136,13 +138,14 @@
     // Obtener estadísticas de ventas
     static async obtenerEstadisticasVentas(): Promise<any> {
         try {
+        const fechaHoy = getBoliviaISOString().split('T')[0];
         const ventasHoy = await window.electronAPI.db.get(`
             SELECT 
             COUNT(*) as cantidad,
             COALESCE(SUM(total), 0) as total
             FROM ventas 
-            WHERE DATE(fecha_venta) = DATE('now')
-        `);
+            WHERE DATE(fecha_venta) = DATE(?)
+        `, [fechaHoy]);
 
         const ventasSemana = await window.electronAPI.db.get(`
             SELECT 
@@ -343,7 +346,8 @@
             }
 
             // Agregar fecha de modificación
-            sets.push('fecha_modificacion = datetime(\'now\')');
+            sets.push('fecha_modificacion = ?');
+            params.push(getBoliviaISOString());
 
             const query = `UPDATE ventas SET ${sets.join(', ')} WHERE id = ?`;
             params.push(ventaId);

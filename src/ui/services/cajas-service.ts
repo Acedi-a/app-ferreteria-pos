@@ -3,6 +3,8 @@
  * Refactorizado para máxima consistencia, atomicidad y robustez
  */
 
+import { getBoliviaISOString } from '../lib/utils';
+
 // ============================================================================
 // INTERFACES Y TIPOS
 // ============================================================================
@@ -141,8 +143,8 @@ export class CajasService {
       const resultado = await window.electronAPI.db.run(`
         INSERT INTO cajas (
           fecha_apertura, usuario, monto_inicial, estado, observaciones
-        ) VALUES (datetime('now'), ?, ?, 'abierta', ?)
-      `, [usuario, montoInicial, observaciones || '']);
+        ) VALUES (?, ?, ?, 'abierta', ?)
+      `, [getBoliviaISOString(), usuario, montoInicial, observaciones || '']);
 
       const cajaId = resultado.id!;
 
@@ -204,12 +206,12 @@ export class CajasService {
       // Cerrar la caja
       await window.electronAPI.db.run(`
         UPDATE cajas SET 
-          fecha_cierre = datetime('now'),
+          fecha_cierre = ?,
           estado = 'cerrada',
           saldo_final = ?,
           observaciones = COALESCE(observaciones || '', '') || ?
         WHERE id = ?
-      `, [saldoFinal, observacionesFinal, cajaActiva.id]);
+      `, [getBoliviaISOString(), saldoFinal, observacionesFinal, cajaActiva.id]);
 
       // Auditoría
       await this.registrarAuditoria({
@@ -391,8 +393,8 @@ export class CajasService {
     const resultado = await window.electronAPI.db.run(`
       INSERT INTO caja_transacciones (
         caja_id, tipo, monto, concepto, referencia, usuario, fecha
-      ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-    `, [datos.caja_id, datos.tipo, datos.monto, datos.concepto, datos.referencia || null, datos.usuario]);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [datos.caja_id, datos.tipo, datos.monto, datos.concepto, datos.referencia || null, datos.usuario, getBoliviaISOString()]);
     
     return resultado.id!;
   }
@@ -537,14 +539,15 @@ export class CajasService {
       await window.electronAPI.db.run(`
         INSERT INTO auditoria_cajas (
           caja_id, accion, detalle, usuario, datos_anteriores, datos_nuevos, fecha
-        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
       `, [
         datos.caja_id,
         datos.accion,
         datos.detalle,
         datos.usuario,
         datos.datos_anteriores || null,
-        datos.datos_nuevos || null
+        datos.datos_nuevos || null,
+        getBoliviaISOString()
       ]);
     } catch (error) {
       console.error('Error al registrar auditoría:', error);

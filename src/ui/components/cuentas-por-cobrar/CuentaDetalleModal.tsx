@@ -6,6 +6,7 @@ import { Badge } from "../ui/Badge";
 import type { CuentaPorCobrar, PagoCuenta } from "../../services/cuentas-por-cobrar-service";
 import { CuentasPorCobrarService } from "../../services/cuentas-por-cobrar-service";
 import { printPagoReceipt } from "./PaymentReceiptRenderer";
+import { formatBoliviaDate, formatBoliviaDateOnly } from "../../lib/utils";
 
 interface CuentaDetalleModalProps {
   cuenta: CuentaPorCobrar | null;
@@ -44,21 +45,11 @@ export default function CuentaDetalleModal({
   };
 
   const formatearFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatBoliviaDate(fecha);
   };
 
   const formatearFechaCorta = (fecha: string) => {
-    return new Date(fecha).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    return formatBoliviaDateOnly(fecha);
   };
 
   const getBadgeEstado = (estado: string) => {

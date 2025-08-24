@@ -282,23 +282,8 @@ export class PuntoVentaService {
         ]);
       }
 
-      // Registrar la venta como movimiento en caja
-      try {
-        const resultadoCaja = await CajasService.registrarMovimiento({
-          tipo: 'ingreso',
-          monto: venta.total,
-          concepto: `Venta ${numeroVenta} - ${venta.metodo_pago}`,
-          usuario: 'Sistema',
-          referencia: `venta_${ventaId}`
-        });
-
-        if (!resultadoCaja.exito) {
-          console.warn('Error al registrar venta en caja:', resultadoCaja.errores);
-        }
-      } catch (error) {
-        console.warn('Error al registrar venta en caja:', error);
-        // No fallar la operación principal por errores en caja
-      }
+      // Nota: El registro en caja se maneja en el servicio frontend (UI)
+      // que tiene la lógica completa para ventas a crédito y pago inicial
 
       // Nota: el stock se actualiza mediante movimientos en la capa UI
       return ventaId;

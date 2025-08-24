@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FolderOpen, RotateCw } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { formatBoliviaDate } from '../../lib/utils';
 
 type BackupRow = {
   id: number;
@@ -81,7 +82,7 @@ export default function BackupsHistory() {
               ) : (
                 rows.map(r => (
                   <tr key={r.id} className="border-b hover:bg-gray-50">
-                    <td className="py-2 pr-4 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                    <td className="py-2 pr-4 whitespace-nowrap">{formatBoliviaDate(r.created_at)}</td>
                     <td className="py-2 pr-4 max-w-[360px] truncate" title={r.file_path}>{r.file_path}</td>
                     <td className="py-2 pr-4 whitespace-nowrap">{r.size_bytes ? (Math.round(r.size_bytes/1024) + ' KB') : '-'}</td>
                     <td className="py-2 pr-4">{r.triggered_by || '-'}</td>

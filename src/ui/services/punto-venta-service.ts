@@ -84,6 +84,7 @@ export interface Venta {
 
 import { InventarioService } from './inventario-service';
 import CajasService from './cajas-service';
+import { getBoliviaISOString } from '../lib/utils';
 
 export class PuntoVentaService {
   static async obtenerProductoPorCodigo(codigo: string): Promise<Producto | null> {
@@ -237,7 +238,7 @@ export class PuntoVentaService {
         INSERT INTO ventas (
           numero_venta, cliente_id, almacen_id, fecha_venta, metodo_pago, 
           subtotal, descuento, total, estado, observaciones, usuario
-        ) VALUES (?, ?, 1, datetime('now'), ?, ?, ?, ?, ?, ?, 'POS')
+        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, 'POS')
       `;
 
       // Generar número temporal para obtener el ID
@@ -246,6 +247,7 @@ export class PuntoVentaService {
       const ventaResult = await window.electronAPI.db.run(ventaQuery, [
         numeroTemporal,
         venta.cliente_id || null,
+        getBoliviaISOString(),
         venta.metodo_pago,
         venta.subtotal,
         venta.descuento,
@@ -300,12 +302,17 @@ export class PuntoVentaService {
       }
 
       // Registrar el pago en la tabla venta_pagos
-      await window.electronAPI.db.run(`
-        INSERT INTO venta_pagos (venta_id, metodo_pago, monto, usuario)
-        VALUES (?, ?, ?, ?)
-      `, [ventaId, venta.metodo_pago, venta.total, 'Sistema']);
+      // Para ventas a crédito, solo registrar si hay pago inicial
+      // Para ventas normales, registrar el total
+      if (!venta.es_credito) {
+        const fechaHoy = getBoliviaISOString();
+        await window.electronAPI.db.run(`
+          INSERT INTO venta_pagos (venta_id, metodo_pago, monto, usuario, fecha_pago)
+          VALUES (?, ?, ?, ?, ?)
+        `, [ventaId, venta.metodo_pago, venta.total, 'Sistema', fechaHoy]);
 
-      console.log(`Pago registrado en venta_pagos: ${venta.metodo_pago} - Bs ${venta.total.toFixed(2)}`);
+        console.log(`Pago registrado en venta_pagos: ${venta.metodo_pago} - Bs ${venta.total.toFixed(2)}`);
+      }
 
       // Si es venta a crédito, crear cuenta por cobrar
       if (venta.es_credito && venta.cliente_id) {
@@ -381,10 +388,11 @@ export class PuntoVentaService {
       // Registrar pago inicial en caja si es mayor a 0 (todos los métodos de pago)
       if (pagoInicial > 0) {
         // Registrar pago inicial en venta_pagos
+        const fechaHoy = getBoliviaISOString();
         await window.electronAPI.db.run(`
-          INSERT INTO venta_pagos (venta_id, metodo_pago, monto, usuario)
-          VALUES (?, ?, ?, ?)
-        `, [ventaId, venta.metodo_pago, pagoInicial, 'Sistema']);
+          INSERT INTO venta_pagos (venta_id, metodo_pago, monto, usuario, fecha_pago)
+          VALUES (?, ?, ?, ?, ?)
+        `, [ventaId, venta.metodo_pago, pagoInicial, 'Sistema', fechaHoy]);
 
         console.log(`Pago inicial registrado en venta_pagos: ${venta.metodo_pago} - Bs ${pagoInicial.toFixed(2)}`);
 
@@ -475,17 +483,18 @@ export class PuntoVentaService {
         throw new Error('Cuenta por cobrar no encontrada');
       }
 
-      // Registrar el pago
+      // Registrar el pago con fecha de Bolivia
+      const fechaHoy = getBoliviaISOString();
       await window.electronAPI.db.run(`
-        INSERT INTO pagos_cuentas (cuenta_id, monto, metodo_pago, observaciones)
-        VALUES (?, ?, ?, ?)
-      `, [cuentaId, montoPago, metodoPago, observaciones || '']);
+        INSERT INTO pagos_cuentas (cuenta_id, monto, metodo_pago, observaciones, fecha_pago)
+        VALUES (?, ?, ?, ?, ?)
+      `, [cuentaId, montoPago, metodoPago, observaciones || '', fechaHoy]);
 
       // Registrar el pago en venta_pagos
       await window.electronAPI.db.run(`
-        INSERT INTO venta_pagos (venta_id, metodo_pago, monto, usuario)
-        VALUES (?, ?, ?, ?)
-      `, [cuenta.venta_id, metodoPago, montoPago, 'Sistema']);
+        INSERT INTO venta_pagos (venta_id, metodo_pago, monto, usuario, fecha_pago)
+        VALUES (?, ?, ?, ?, ?)
+      `, [cuenta.venta_id, metodoPago, montoPago, 'Sistema', fechaHoy]);
 
       console.log(`Pago de crédito registrado en venta_pagos: ${metodoPago} - Bs ${montoPago.toFixed(2)}`);
 

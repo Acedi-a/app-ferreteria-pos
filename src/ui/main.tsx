@@ -19,6 +19,52 @@ import Cajas from './pages/Cajas';
 import CategoriaTipo from './pages/CategoriaTipo';
 import { Toaster } from "./components/ui/toaster";
 
+// Prevenir scroll en inputs numéricos
+document.addEventListener('DOMContentLoaded', () => {
+  // Función para prevenir scroll en inputs numéricos
+  const preventScrollOnNumberInputs = (e: WheelEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'number') {
+      if (document.activeElement === target) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  // Agregar listener global
+  document.addEventListener('wheel', preventScrollOnNumberInputs, { passive: false });
+
+  // También prevenir cuando el input está enfocado
+  document.addEventListener('focusin', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'number') {
+      target.addEventListener('wheel', (wheelEvent) => {
+        wheelEvent.preventDefault();
+      }, { passive: false });
+    }
+  });
+});
+
+// Backup: agregar listener inmediatamente si el DOM ya está cargado
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    addScrollPrevention();
+  });
+} else {
+  addScrollPrevention();
+}
+
+function addScrollPrevention() {
+  const preventScroll = (e: WheelEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'number') {
+      e.preventDefault();
+    }
+  };
+  
+  document.addEventListener('wheel', preventScroll, { passive: false });
+}
+
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
