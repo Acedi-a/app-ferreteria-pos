@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { DollarSign, AlertTriangle, User, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/Dialog";
 import { Button } from "../ui/Button";
-import { Select } from "../ui/Select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/Select";
 import { Badge } from "../ui/Badge";
 import type { CuentaPorPagar, RegistrarPagoProveedorData } from "../../services/cuentas-por-pagar-service";
 
@@ -185,10 +185,15 @@ export default function RegistrarPagoProveedorModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Método de pago</label>
-              <Select value={metodoPago} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setMetodoPago(e.target.value)} placeholder="Selecciona un método">
-                <option value="efectivo">Efectivo</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="transferencia">Transferencia</option>
+              <Select value={metodoPago} onValueChange={setMetodoPago}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un método" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="efectivo">Efectivo</SelectItem>
+                  <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                  <SelectItem value="transferencia">Transferencia</SelectItem>
+                </SelectContent>
               </Select>
             </div>
 

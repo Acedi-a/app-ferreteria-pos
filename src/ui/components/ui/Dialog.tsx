@@ -14,9 +14,18 @@ interface DialogContentProps {
 
 export const Dialog: React.FC<DialogProps> = ({ open, children }) => {
   useEffect(() => {
-    if (open) document.body.classList.add("overflow-hidden");
-    else document.body.classList.remove("overflow-hidden");
+    if (open) {
+      document.body.classList.add("overflow-hidden");
+    } else {
+      document.body.classList.remove("overflow-hidden");
+    }
+    
+    // Función de limpieza para asegurar que se remueva la clase al desmontar
+    return () => {
+      document.body.classList.remove("overflow-hidden");
+    };
   }, [open]);
+  
   return open ? <>{children}</> : null;
 };
 

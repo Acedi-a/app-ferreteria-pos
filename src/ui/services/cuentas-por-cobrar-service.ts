@@ -1,5 +1,7 @@
 // src/services/cuentas-por-cobrar-service.ts
 
+import { CajasService } from './cajas-service';
+
 export interface Cliente {
   id: number;
   codigo: string;
@@ -328,6 +330,24 @@ export class CuentasPorCobrarService {
       `;
 
       await this.executeRun(updateClienteQuery, [cuenta.cliente_id, cuenta.cliente_id]);
+
+      // Registrar el pago como ingreso en la caja activa
+      try {
+        const resultadoCaja = await CajasService.registrarMovimiento({
+          tipo: 'ingreso',
+          monto: datosPago.monto,
+          concepto: `Pago cuenta por cobrar #${datosPago.cuenta_id}`,
+          usuario: 'Sistema' // Propiedad requerida en MovimientoCaja
+          // metodo_pago y observaciones no existen en MovimientoCaja
+        });
+
+        if (!resultadoCaja.exito) {
+          console.warn('No se pudo registrar el pago en caja:', resultadoCaja.errores);
+        }
+      } catch (error) {
+        console.error('Error al registrar pago en caja:', error);
+        // No lanzamos el error para no afectar el registro del pago
+      }
 
       return {
         success: true,

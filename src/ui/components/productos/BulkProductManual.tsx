@@ -452,9 +452,8 @@ export default function BulkProductManual({ isOpen, onClose, categorias, tiposUn
 
                       <td className="px-3 py-2 border-r border-gray-200">
                         <Select 
-                          value={r.categoria_id ?? ''} 
-                          onChange={(e) => updateRow(r._key, { categoria_id: e.target.value ? Number(e.target.value) : undefined })}
-                          className="w-32 text-sm"
+                          value={r.categoria_id?.toString() ?? ''} 
+                          onValueChange={(value) => updateRow(r._key, { categoria_id: value ? Number(value) : undefined })}
                         >
                           <option value="">— Categoría —</option>
                           {categorias.map(c => (
@@ -465,9 +464,8 @@ export default function BulkProductManual({ isOpen, onClose, categorias, tiposUn
 
                       <td className="px-3 py-2 border-r border-gray-200">
                         <Select 
-                          value={r.tipo_unidad_id ?? ''} 
-                          onChange={(e) => updateRow(r._key, { tipo_unidad_id: e.target.value ? Number(e.target.value) : undefined })}
-                          className="w-32 text-sm"
+                          value={r.tipo_unidad_id?.toString() ?? ''} 
+                          onValueChange={(value) => updateRow(r._key, { tipo_unidad_id: value ? Number(value) : undefined })}
                         >
                           <option value="">— Tipo —</option>
                           {tiposUnidad.map(t => (

@@ -15,6 +15,7 @@ import Reportes from './pages/Reportes';
 import CuentasPorCobrar from './pages/CuentasPorCobrar';
 import CuentasPorPagar from './pages/CuentasPorPagar';
 import Configuracion from './pages/Configuracion';
+import Cajas from './pages/Cajas';
 import CategoriaTipo from './pages/CategoriaTipo';
 import { Toaster } from "./components/ui/toaster";
 
@@ -35,6 +36,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/reportes" element={<Reportes />} />
           <Route path="/cuentas-por-cobrar" element={<CuentasPorCobrar />} />
           <Route path="/cuentas-por-pagar" element={<CuentasPorPagar />} />
+          <Route path="/cajas" element={<Cajas />} />
           <Route path="/configuracion" element={<Configuracion />} />
           <Route path='/categoria-unidad' element={<CategoriaTipo />} />
         </Routes>

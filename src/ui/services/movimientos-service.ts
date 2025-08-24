@@ -1,4 +1,5 @@
 import type { TipoMovimiento } from './inventario-service';
+import { CajasService } from './cajas-service';
 
 export interface MovimientoStock {
   id?: number;
@@ -143,6 +144,7 @@ export class MovimientosService {
    */
   static async registrarCompra(compra: Compra): Promise<number[]> {
     const movimientoIds: number[] = [];
+    let totalCompra = 0;
 
     for (const detalle of compra.detalles) {
       const movimientoId = await this.registrarEntrada({
@@ -153,6 +155,29 @@ export class MovimientosService {
         observaciones: `Compra ${compra.numero_factura || ''} - ${compra.observaciones || ''}`.trim()
       });
       movimientoIds.push(movimientoId);
+      totalCompra += detalle.cantidad * detalle.costo_unitario;
+    }
+
+    // Registrar el egreso en la caja activa
+    if (totalCompra > 0) {
+      try {
+        const resultado = await CajasService.registrarMovimiento({
+          tipo: 'egreso',
+          monto: totalCompra,
+          concepto: `Compra a proveedor ${compra.numero_factura ? `- Factura ${compra.numero_factura}` : ''}`,
+          usuario: 'Sistema',
+          referencia: `compra_${compra.proveedor_id}_${Date.now()}`
+        });
+
+        if (resultado.exito) {
+          console.log(`Egreso de compra registrado en caja: Bs ${totalCompra.toFixed(2)}`);
+        } else {
+          console.warn('Error al registrar egreso de compra en caja:', resultado.mensaje);
+        }
+      } catch (error) {
+        console.error('Error al registrar egreso de compra en caja:', error);
+        // No lanzamos el error para no afectar el registro de la compra
+      }
     }
 
     return movimientoIds;

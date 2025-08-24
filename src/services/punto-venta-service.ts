@@ -1,4 +1,6 @@
 // Interfaces para Punto de Venta
+import { CajasService } from '../ui/services/cajas-service';
+
 export interface Producto {
   id: number;
   codigo_barras?: string;
@@ -233,6 +235,12 @@ export class PuntoVentaService {
   // Ventas
   static async crearVenta(venta: NuevaVenta): Promise<number> {
     try {
+      // Verificar que hay una caja abierta
+      const cajaActiva = await CajasService.getCajaActiva();
+      if (!cajaActiva) {
+        throw new Error('No hay una caja abierta. Debe abrir una caja antes de realizar ventas.');
+      }
+
       // Generar número de venta
       const numeroVenta = await this.generarNumeroVenta();
 
@@ -272,10 +280,27 @@ export class PuntoVentaService {
           detalle.precio_unitario,
           detalle.subtotal
         ]);
-
-  // Nota: el stock se actualiza mediante movimientos en la capa UI
       }
 
+      // Registrar la venta como movimiento en caja
+      try {
+        const resultadoCaja = await CajasService.registrarMovimiento({
+          tipo: 'ingreso',
+          monto: venta.total,
+          concepto: `Venta ${numeroVenta} - ${venta.metodo_pago}`,
+          usuario: 'Sistema',
+          referencia: `venta_${ventaId}`
+        });
+
+        if (!resultadoCaja.exito) {
+          console.warn('Error al registrar venta en caja:', resultadoCaja.errores);
+        }
+      } catch (error) {
+        console.warn('Error al registrar venta en caja:', error);
+        // No fallar la operación principal por errores en caja
+      }
+
+      // Nota: el stock se actualiza mediante movimientos en la capa UI
       return ventaId;
 
     } catch (error) {

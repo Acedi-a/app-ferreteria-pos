@@ -183,8 +183,7 @@ function ProductModal({
               </label>
               <Select
                 value={formData.categoria_id?.toString() || ""}
-                onChange={(e) => handleInputChange('categoria_id', e.target.value ? Number(e.target.value) : undefined)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                onValueChange={(value) => handleInputChange('categoria_id', value ? Number(value) : undefined)}
               >
                 <option value="">Seleccionar categoría</option>
                 {categorias.map((categoria) => (
@@ -200,8 +199,7 @@ function ProductModal({
               </label>
               <Select
                 value={formData.tipo_unidad_id?.toString() || ""}
-                onChange={(e) => handleInputChange('tipo_unidad_id', e.target.value ? Number(e.target.value) : undefined)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                onValueChange={(value) => handleInputChange('tipo_unidad_id', value ? Number(value) : undefined)}
               >
                 <option value="">Seleccionar unidad</option>
                 {tiposUnidad.map((tipo) => (

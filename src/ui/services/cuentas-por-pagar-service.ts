@@ -1,4 +1,5 @@
 // src/services/cuentas-por-pagar-service.ts
+import { CajasService } from './cajas-service';
 
 export interface Proveedor {
   id: number;
@@ -308,6 +309,26 @@ export class CuentasPorPagarService {
       `;
 
       await this.executeRun(updateProveedorQuery, [cuenta.proveedor_id, cuenta.proveedor_id]);
+
+      // Registrar egreso en caja activa
+      try {
+        const resultadoCaja = await CajasService.registrarMovimiento({
+          tipo: 'egreso',
+          monto: datosPago.monto,
+          concepto: `Pago a proveedor - Cuenta #${datosPago.cuenta_id}`,
+          // metodo_pago no existe en MovimientoCaja, se elimina esta línea
+          usuario: 'Sistema', // TODO: obtener usuario actual
+          // observaciones no existe en MovimientoCaja, se elimina esta línea
+          referencia: `PAGO_PROV_${resultPago.id}`
+        });
+
+        if (!resultadoCaja.exito) {
+          console.warn('Error al registrar pago en caja:', resultadoCaja.errores);
+        }
+      } catch (error) {
+        console.warn('Error al registrar pago en caja:', error);
+        // No fallar la operación principal por errores en caja
+      }
 
       return {
         success: true,

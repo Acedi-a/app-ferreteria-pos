@@ -49,8 +49,8 @@ const convertirProductoBase = (producto: ProductoBase): Producto => ({
   nombre: producto.nombre,
   precio: producto.precio_venta,
   stock: producto.stock_actual,
-  ventaFraccionada: Boolean(producto.venta_fraccionada),
-  unidadMedida: 'unidad', // Valor por defecto
+  ventaFraccionada: false, // Por defecto false ya que no existe en la BD
+  unidadMedida: 'unidad', // Por defecto ya que no existe en ProductoBase
   categoria: producto.categoria_nombre
 });
 
@@ -87,6 +87,16 @@ export default function PuntoVenta() {
   // Alta rápida de producto
   const [showCrearProducto, setShowCrearProducto] = useState(false);
   const [codigoEscaneado, setCodigoEscaneado] = useState("");
+  // Búsqueda de productos
+  const [showBusquedaProductos, setShowBusquedaProductos] = useState(false);
+  const [productosEncontrados, setProductosEncontrados] = useState<Producto[]>([]);
+  const [terminoBusqueda, setTerminoBusqueda] = useState("");
+  // Sugerencias en tiempo real
+  const [sugerencias, setSugerencias] = useState<Producto[]>([]);
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  // Confirmación de registro
+  const [mostrarConfirmacionRegistro, setMostrarConfirmacionRegistro] = useState(false);
+  const [productoARegistrar, setProductoARegistrar] = useState("");
   const [nuevoProd, setNuevoProd] = useState({
     codigo_interno: "",
     codigo_barras: "",
@@ -101,6 +111,38 @@ export default function PuntoVenta() {
   useEffect(() => {
     cargarDatos();
   }, []);
+
+  // Búsqueda en tiempo real con debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (inputCodigo.trim().length >= 2) {
+        try {
+          const productos = await PuntoVentaService.buscarProductos(inputCodigo.trim());
+          const productosConvertidos = productos.map(convertirProductoBase);
+          
+          if (productosConvertidos.length === 0) {
+            // Si no se encuentran productos, mostrar confirmación de registro
+            setSugerencias([]);
+            setMostrarSugerencias(false);
+            setProductoARegistrar(inputCodigo.trim());
+            setMostrarConfirmacionRegistro(true);
+          } else {
+            setSugerencias(productosConvertidos.slice(0, 5)); // Máximo 5 sugerencias
+            setMostrarSugerencias(true);
+          }
+        } catch (error) {
+          console.error('Error en búsqueda en tiempo real:', error);
+          setSugerencias([]);
+          setMostrarSugerencias(false);
+        }
+      } else {
+        setSugerencias([]);
+        setMostrarSugerencias(false);
+      }
+    }, 800); // Aumenté el debounce a 800ms para evitar mostrar el modal muy rápido
+
+    return () => clearTimeout(timeoutId);
+  }, [inputCodigo]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -172,21 +214,35 @@ export default function PuntoVenta() {
 
   // Buscar producto por código (barras o interno) y agregar al carrito
   const onScanEnter = async () => {
-    const codigo = inputCodigo.trim();
-    if (!codigo) return;
+    const termino = inputCodigo.trim();
+    if (!termino) return;
+    
     try {
-      const prodBase = await PuntoVentaService.obtenerProductoPorCodigo(codigo);
-      if (!prodBase) {
-        // Preguntar si desea registrar
-        const desea = window.confirm(`No se encontró el código "${codigo}". ¿Desea registrar el producto ahora?`);
+      // Primero intentar búsqueda exacta por código
+      const prodBase = await PuntoVentaService.obtenerProductoPorCodigo(termino);
+      if (prodBase) {
+        const prod = convertirProductoBase(prodBase);
+        // Asegurar que tengamos referencia de stock para futuras actualizaciones
+        setProductosDisponibles(prev => prev.some(p => p.id === prod.id) ? prev : [...prev, prod]);
+        agregarProducto(prod);
+        setInputCodigo("");
+        return;
+      }
+      
+      // Si no se encuentra por código, buscar por nombre/descripción
+      const productosEncontrados = await PuntoVentaService.buscarProductos(termino);
+      
+      if (productosEncontrados.length === 0) {
+        // No se encontró nada, preguntar si desea registrar
+        const desea = window.confirm(`No se encontró ningún producto con "${termino}". ¿Desea registrar un nuevo producto?`);
         if (!desea) {
           setInputCodigo("");
           return;
         }
-        setCodigoEscaneado(codigo);
+        setCodigoEscaneado(termino);
         setNuevoProd({
-          codigo_interno: codigo,
-          codigo_barras: codigo,
+          codigo_interno: termino,
+          codigo_barras: termino,
           nombre: "",
           precio_venta: "",
           costo_unitario: "",
@@ -194,15 +250,107 @@ export default function PuntoVenta() {
           stock_minimo: "0"
         });
         setShowCrearProducto(true);
-        return;        
+        return;
       }
-      const prod = convertirProductoBase(prodBase);
-  // Asegurar que tengamos referencia de stock para futuras actualizaciones
-  setProductosDisponibles(prev => prev.some(p => p.id === prod.id) ? prev : [...prev, prod]);
-      agregarProducto(prod);
-      setInputCodigo("");
+      
+      if (productosEncontrados.length === 1) {
+        // Solo un producto encontrado, agregarlo directamente
+        const prod = convertirProductoBase(productosEncontrados[0]);
+        setProductosDisponibles(prev => prev.some(p => p.id === prod.id) ? prev : [...prev, prod]);
+        agregarProducto(prod);
+        setInputCodigo("");
+        return;
+      }
+      
+      // Múltiples productos encontrados, mostrar lista para seleccionar
+      setProductosEncontrados(productosEncontrados.map(convertirProductoBase));
+      setTerminoBusqueda(termino);
+      setShowBusquedaProductos(true);
+      
     } catch (e) {
       toast({ title: "Error de búsqueda", description: String(e), variant: "destructive" });
+    }
+  };
+  
+  const seleccionarProductoBusqueda = (producto: Producto) => {
+    setProductosDisponibles(prev => prev.some(p => p.id === producto.id) ? prev : [...prev, producto]);
+    agregarProducto(producto);
+    setShowBusquedaProductos(false);
+    setInputCodigo("");
+    // Reenfocar input de escaneo
+    setTimeout(() => scanInputRef.current?.focus(), 0);
+  };
+  
+  const cerrarBusquedaProductos = () => {
+    setShowBusquedaProductos(false);
+    setProductosEncontrados([]);
+    setTerminoBusqueda("");
+    // Reenfocar input de escaneo
+    setTimeout(() => scanInputRef.current?.focus(), 0);
+  };
+
+  const seleccionarSugerencia = (producto: Producto) => {
+    // Agregar el producto al carrito
+    setProductosDisponibles(prev => prev.some(p => p.id === producto.id) ? prev : [...prev, producto]);
+    agregarProducto(producto);
+    // Limpiar input y sugerencias
+    setInputCodigo("");
+    setSugerencias([]);
+    setMostrarSugerencias(false);
+    scanInputRef.current?.focus();
+  };
+
+  const manejarCambioInput = (valor: string) => {
+    setInputCodigo(valor);
+    // Si el campo se vacía, ocultar sugerencias y confirmación
+    if (valor.trim() === "") {
+      setSugerencias([]);
+      setMostrarSugerencias(false);
+      setMostrarConfirmacionRegistro(false);
+    }
+    // Si el usuario sigue escribiendo después de que aparezca el modal, cerrarlo
+    if (showCrearProducto && valor.trim() !== codigoEscaneado) {
+      setShowCrearProducto(false);
+    }
+    // Si el usuario sigue escribiendo después de que aparezca la confirmación, cerrarla
+    if (mostrarConfirmacionRegistro && valor.trim() !== productoARegistrar) {
+      setMostrarConfirmacionRegistro(false);
+    }
+  };
+
+  const confirmarRegistroProducto = () => {
+    setCodigoEscaneado(productoARegistrar);
+    setNuevoProd({
+      codigo_interno: productoARegistrar,
+      codigo_barras: "",
+      nombre: "",
+      precio_venta: "",
+      costo_unitario: "",
+      stock_actual: "1",
+      stock_minimo: "0"
+    });
+    setMostrarConfirmacionRegistro(false);
+    setShowCrearProducto(true);
+  };
+
+  const cancelarRegistroProducto = () => {
+    setMostrarConfirmacionRegistro(false);
+    setProductoARegistrar("");
+    setInputCodigo("");
+    scanInputRef.current?.focus();
+  };
+
+  const manejarBlurInput = () => {
+    // Ocultar sugerencias después de un pequeño delay para permitir clicks
+    setTimeout(() => {
+      setMostrarSugerencias(false);
+    }, 200);
+  };
+
+  const manejarFocusInput = () => {
+    // Mostrar sugerencias si hay texto y resultados
+    if (inputCodigo.trim().length >= 2 && sugerencias.length > 0) {
+      setMostrarSugerencias(true);
     }
   };
 
@@ -465,17 +613,73 @@ export default function PuntoVenta() {
 
       <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
         {/* Zona de escaneo */}
-        <div className="bg-white border rounded-lg p-4">
+        <div className="bg-white border rounded-lg p-4 relative">
           <label className="block text-sm font-medium text-gray-700 mb-1">Escanear / ingresar código</label>
           <input
             autoFocus
             ref={scanInputRef}
             value={inputCodigo}
-            onChange={e => setInputCodigo(e.target.value)}
+            onChange={e => manejarCambioInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onScanEnter(); } }}
+            onBlur={manejarBlurInput}
+            onFocus={manejarFocusInput}
             placeholder="Escanee el código de barras o escriba y presione Enter"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          
+          {/* Sugerencias en tiempo real */}
+          {mostrarSugerencias && sugerencias.length > 0 && (
+            <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+              {sugerencias.map((producto) => (
+                <div
+                  key={producto.id}
+                  onClick={() => seleccionarSugerencia(producto)}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="font-medium text-sm">{producto.nombre}</div>
+                      <div className="text-xs text-gray-500">
+                        {producto.codigo && `Código: ${producto.codigo}`}
+                        {producto.codigoBarras && ` • Barras: ${producto.codigoBarras}`}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium text-sm">${producto.precio.toFixed(2)}</div>
+                      <div className="text-xs text-gray-500">Stock: {producto.stock}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Confirmación de registro de producto */}
+          {mostrarConfirmacionRegistro && (
+            <div className="absolute z-50 w-full bg-yellow-50 border border-yellow-200 rounded-md shadow-lg mt-1 p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-yellow-800">Producto no encontrado</div>
+                  <div className="text-xs text-yellow-600">¿Desea registrar "{productoARegistrar}" como nuevo producto?</div>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={confirmarRegistroProducto}
+                    className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    Sí, registrar
+                  </button>
+                  <button
+                    onClick={cancelarRegistroProducto}
+                    className="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <p className="text-xs text-gray-500 mt-1">Cada escaneo agrega una unidad al carrito; repita el escaneo para aumentar cantidades.</p>
           {!loading && (
             <div className="text-xs text-gray-500 mt-2">Clientes cargados: {clientes.length} · Categorías: {categorias.length}</div>
@@ -588,6 +792,49 @@ export default function PuntoVenta() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowCrearProducto(false)}>Cancelar</Button>
               <Button onClick={guardarNuevoProducto}>Guardar y agregar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal: Búsqueda de productos */}
+        <Dialog open={showBusquedaProductos} onOpenChange={cerrarBusquedaProductos}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Seleccionar producto</DialogTitle>
+              <DialogDescription>
+                Se encontraron {productosEncontrados.length} productos para "{terminoBusqueda}"
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-auto">
+              <div className="space-y-2">
+                {productosEncontrados.map((producto) => (
+                  <div
+                    key={producto.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                    onClick={() => seleccionarProductoBusqueda(producto)}
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{producto.nombre}</div>
+                      <div className="text-sm text-gray-600">
+                        Código: {producto.codigo || producto.codigoBarras || 'N/A'}
+                        {producto.categoria && ` • ${producto.categoria}`}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Stock: {producto.stock} {producto.unidadMedida}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-lg">Bs {producto.precio.toFixed(2)}</div>
+                      <Button className="mt-1">
+                        Agregar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={cerrarBusquedaProductos}>Cancelar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
