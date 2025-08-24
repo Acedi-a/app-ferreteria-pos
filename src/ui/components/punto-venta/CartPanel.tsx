@@ -77,6 +77,8 @@ export default function CartPanel({
 }: CartPanelProps) {
   // Estado local de inputs de cantidad para edición gradual (permite vacío temporalmente)
   const [qtyInputs, setQtyInputs] = useState<Record<number, string | undefined>>({});
+  // Estado local informativo para monto pagado (solo efectivo y sin crédito)
+  const [montoPagado, setMontoPagado] = useState<number>(0);
   
   // Estados para el autocompletar de clientes
   const [busquedaCliente, setBusquedaCliente] = useState("");
@@ -156,9 +158,18 @@ export default function CartPanel({
     });
   }, [productos.map((p) => `${p.id}:${p.cantidad}`).join('|')]);
 
+  // Si no hay cliente seleccionado, asegurar que venta a crédito esté desactivado
+  useEffect(() => {
+    if (!clienteSeleccionado && ventaCredito) {
+      onCambiarVentaCredito(false);
+    }
+  }, [clienteSeleccionado, ventaCredito, onCambiarVentaCredito]);
+
   const subtotal = productos.reduce((s, p) => s + p.subtotal, 0);
   const total = subtotal - descuento;
   const totalItems = productos.reduce((total, p) => total + p.cantidad, 0);
+  const creditBlocked = !clienteSeleccionado; // No permitir crédito sin cliente seleccionado
+  const cambio = Math.max(0, (montoPagado || 0) - total);
 
   const commitCantidad = (prod: ProductoVenta, raw: string) => {
     const v = raw.trim();
@@ -397,6 +408,30 @@ export default function CartPanel({
               </select>
             </div>
 
+            {/* Monto pagado (informativo), solo cuando es efectivo y NO es a crédito */}
+            {metodoPago === 'efectivo' && !ventaCredito && (
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Monto pagado (informativo)</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Bs</span>
+                  <input
+                    type="number"
+                    value={Number.isNaN(montoPagado) ? 0 : montoPagado}
+                    onChange={(e) => setMontoPagado(Number.parseFloat(e.target.value) || 0)}
+                    className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                  />
+                </div>
+                {montoPagado > 0 && (
+                  <div className="mt-1 text-xs text-gray-700">
+                    Cambio a devolver: <span className="font-medium">Bs {cambio.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Descuento */}
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">Descuento:</label>
@@ -411,14 +446,27 @@ export default function CartPanel({
             </div>
 
             {/* Venta a crédito */}
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">Venta a crédito:</label>
-              <input
-                type="checkbox"
-                checked={ventaCredito}
-                onChange={(e) => onCambiarVentaCredito(e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">Venta a crédito:</label>
+                <input
+                  type="checkbox"
+                  checked={ventaCredito}
+                  disabled={creditBlocked}
+                  title={creditBlocked ? 'Seleccione un cliente para habilitar venta a crédito' : ''}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    if (creditBlocked && checked) return; // Bloqueado sin cliente
+                    onCambiarVentaCredito(checked);
+                  }}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+                />
+              </div>
+              {creditBlocked && (
+                <div className="mt-1 text-xs text-red-600">
+                  Solo se permite venta a crédito con un cliente seleccionado.
+                </div>
+              )}
             </div>
 
             {/* Pago inicial - solo mostrar si es venta a crédito */}
