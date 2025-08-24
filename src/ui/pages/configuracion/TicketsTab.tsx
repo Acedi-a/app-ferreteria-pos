@@ -70,19 +70,8 @@ export default function TicketsTab({ message, saving, ticketsConfig, setTicketsC
                   <span className="text-sm text-gray-500">mm</span>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Puedes elegir una opción o escribir el ancho deseado (30-200mm).</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Impresora</label>
-                <select
-                  value={ticketsConfig.ticket_impresora}
-                  onChange={(e) => setTicketsConfig({ ...ticketsConfig, ticket_impresora: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-                >
-                  <option value="">Seleccionar impresora...</option>
-                  <option value="thermal1">Impresora Térmica 1</option>
-                  <option value="thermal2">Impresora Térmica 2</option>
-                </select>
-              </div>
+              </div>  
+              
             </div>
 
             <div>
@@ -109,55 +98,7 @@ export default function TicketsTab({ message, saving, ticketsConfig, setTicketsC
               />
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="logo"
-                  checked={ticketsConfig.ticket_mostrar_logo === 'true'}
-                  onChange={(e) => setTicketsConfig({ ...ticketsConfig, ticket_mostrar_logo: e.target.checked ? 'true' : 'false' })}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
-                />
-                <label htmlFor="logo" className="text-sm text-slate-700">
-                  Mostrar logo en el ticket
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="auto-print"
-                  checked={ticketsConfig.ticket_auto_imprimir === 'true'}
-                  onChange={(e) => setTicketsConfig({ ...ticketsConfig, ticket_auto_imprimir: e.target.checked ? 'true' : 'false' })}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
-                />
-                <label htmlFor="auto-print" className="text-sm text-slate-700">
-                  Imprimir automáticamente después de la venta
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="barcode"
-                  checked={ticketsConfig.ticket_mostrar_barcode === 'true'}
-                  onChange={(e) => setTicketsConfig({ ...ticketsConfig, ticket_mostrar_barcode: e.target.checked ? 'true' : 'false' })}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
-                />
-                <label htmlFor="barcode" className="text-sm text-slate-700">
-                  Mostrar código de barras en el ticket
-                </label>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3">
-              <Button type="button" variant="outline">
-                <Receipt className="mr-2 h-4 w-4" />
-                Imprimir Prueba
-              </Button>
-              <Button type="submit" disabled={saving}>
-                <Save className="mr-2 h-4 w-4" />
-                {saving ? 'Guardando...' : 'Guardar Configuración'}
-              </Button>
-            </div>
+            
           </form>
         </div>
       </div>

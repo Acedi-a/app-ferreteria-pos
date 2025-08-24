@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { Building2, Receipt, Calculator, Users, Settings, Shield, TrendingUp } from "lucide-react";
+import { Building2, Receipt, Settings, Shield, TrendingUp } from "lucide-react";
 import { ConfiguracionService } from "../services/configuracion-service";
 import EmpresaTab from "./configuracion/EmpresaTab";
 import TicketsTab from "./configuracion/TicketsTab";
-import ImpuestosTab from "./configuracion/ImpuestosTab";
-import UsuariosTab from "./configuracion/UsuariosTab";
 import SistemaTab from "./configuracion/SistemaTab";
 import BackupTab from "./configuracion/BackupTab";
 import BackupsHistory from "./configuracion/BackupsHistory";
@@ -15,54 +13,34 @@ interface Tab {
   icon: React.ReactNode;
 }
 
-interface Usuario {
-  id: number;
-  nombre: string;
-  email: string;
-  rol: string;
-  activo: boolean;
-  ultimo_acceso: string;
-}
 
 const tabs: Tab[] = [
   { id: "empresa", name: "Información de Empresa", icon: <Building2 className="h-4 w-4" /> },
   { id: "tickets", name: "Configuración de Tickets", icon: <Receipt className="h-4 w-4" /> },
-  { id: "impuestos", name: "Impuestos", icon: <Calculator className="h-4 w-4" /> },
-  { id: "usuarios", name: "Usuarios", icon: <Users className="h-4 w-4" /> },
   { id: "sistema", name: "Sistema", icon: <Settings className="h-4 w-4" /> },
   { id: "backup", name: "Backup & Restore", icon: <Shield className="h-4 w-4" /> },
 ];
 
-const initialUsuarios: Usuario[] = [
-  { id: 1, nombre: "Administrador", email: "admin@ferreteria.com", rol: "Administrador", activo: true, ultimo_acceso: "2024-01-20T14:30:00" },
-  { id: 2, nombre: "Vendedor 1", email: "vendedor1@ferreteria.com", rol: "Vendedor", activo: true, ultimo_acceso: "2024-01-20T12:15:00" },
-  { id: 3, nombre: "Cajero", email: "cajero@ferreteria.com", rol: "Cajero", activo: false, ultimo_acceso: "2024-01-18T16:45:00" },
-];
-
 export default function Configuracion() {
   const [activeTab, setActiveTab] = useState("empresa");
-  const [usuarios] = useState<Usuario[]>(initialUsuarios);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [empresaConfig, setEmpresaConfig] = useState({ nombre_empresa: '', nit_empresa: '', direccion_empresa: '', telefono_empresa: '', email_empresa: '', ciudad_empresa: '', descripcion_empresa: '' });
   const [ticketsConfig, setTicketsConfig] = useState({ ticket_ancho: '80', ticket_impresora: '', ticket_encabezado: '', ticket_pie_pagina: '', ticket_mostrar_logo: 'true', ticket_auto_imprimir: 'true', ticket_mostrar_barcode: 'false' });
-  const [impuestosConfig, setImpuestosConfig] = useState({ iva_general: '19.00', iva_reducido: '5.00', retencion_fuente: '2.50', aplicar_iva_defecto: 'true', mostrar_impuestos_ticket: 'false', calcular_impuestos_auto: 'true' });
   const [sistemaConfig, setSistemaConfig] = useState({ auto_backup: 'true', log_activity: 'true', debug_mode: 'false', ultimo_backup: '' });
 
   useEffect(() => { cargarConfiguraciones(); }, []);
 
   const cargarConfiguraciones = async () => {
     try {
-      const [empresa, tickets, impuestos, sistema] = await Promise.all([
+  const [empresa, tickets, sistema] = await Promise.all([
         ConfiguracionService.obtenerConfiguracionEmpresa(),
         ConfiguracionService.obtenerConfiguracionTickets(),
-        ConfiguracionService.obtenerConfiguracionImpuestos(),
         ConfiguracionService.obtenerConfiguracionSistema()
       ]);
       setEmpresaConfig(prev => ({ ...prev, ...empresa }));
       setTicketsConfig(prev => ({ ...prev, ...tickets }));
-      setImpuestosConfig(prev => ({ ...prev, ...impuestos }));
       setSistemaConfig(prev => ({ ...prev, ...sistema }));
     } catch (error) {
       console.error('Error al cargar configuraciones:', error);
@@ -77,7 +55,6 @@ export default function Configuracion() {
 
   const guardarEmpresa = async () => { try { setSaving(true); await ConfiguracionService.guardarConfiguracionEmpresa(empresaConfig); mostrarMensaje('success', 'Configuración de empresa guardada'); } catch (e) { mostrarMensaje('error', 'Error al guardar empresa'); } finally { setSaving(false); } };
   const guardarTickets = async () => { try { setSaving(true); await ConfiguracionService.guardarConfiguracionTickets(ticketsConfig); mostrarMensaje('success', 'Configuración de tickets guardada'); } catch (e) { mostrarMensaje('error', 'Error al guardar tickets'); } finally { setSaving(false); } };
-  const guardarImpuestos = async () => { try { setSaving(true); await ConfiguracionService.guardarConfiguracionImpuestos(impuestosConfig); mostrarMensaje('success', 'Configuración de impuestos guardada'); } catch (e) { mostrarMensaje('error', 'Error al guardar impuestos'); } finally { setSaving(false); } };
   const guardarSistema = async () => { try { setSaving(true); await ConfiguracionService.guardarConfiguracionSistema(sistemaConfig); mostrarMensaje('success', 'Configuración del sistema guardada'); } catch (e) { mostrarMensaje('error', 'Error al guardar sistema'); } finally { setSaving(false); } };
 
   const crearRespaldoMarca = async () => {
@@ -113,14 +90,6 @@ export default function Configuracion() {
       case 'tickets':
         return (
           <TicketsTab message={message} saving={saving} ticketsConfig={ticketsConfig} setTicketsConfig={setTicketsConfig} onSave={guardarTickets} />
-        );
-      case 'impuestos':
-        return (
-          <ImpuestosTab message={message} saving={saving} impuestosConfig={impuestosConfig} setImpuestosConfig={setImpuestosConfig} onSave={guardarImpuestos} />
-        );
-      case 'usuarios':
-        return (
-          <UsuariosTab usuarios={usuarios} />
         );
       case 'sistema':
         return (

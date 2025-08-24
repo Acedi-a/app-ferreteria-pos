@@ -157,7 +157,6 @@ export async function buildTicketHTML(venta: Venta, detalles: VentaDetalle[]): P
   const footer = `
     <div class="wrap center small">
       ${pie}
-      <div class="mt">Gracias por su compra</div>
     </div>
   `;
 
