@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS ventas (
   observaciones TEXT,
   usuario TEXT,
   fecha_creacion TEXT DEFAULT (datetime('now')),
+  fecha_modificacion TEXT,
   FOREIGN KEY(cliente_id) REFERENCES clientes(id)
 );
 
@@ -251,6 +252,61 @@ CREATE TABLE IF NOT EXISTS pagos_cuentas (
   FOREIGN KEY(cuenta_id) REFERENCES cuentas_por_cobrar(id)
 );
 
+-- Gestión de cajas
+CREATE TABLE IF NOT EXISTS cajas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  fecha_apertura TEXT DEFAULT (datetime('now')),
+  fecha_cierre TEXT,
+  usuario TEXT,
+  monto_inicial REAL NOT NULL,
+  estado TEXT DEFAULT 'abierta' CHECK (estado IN ('abierta','cerrada')),
+  observaciones TEXT,
+  total_ventas REAL DEFAULT 0,
+  total_cobros_cxc REAL DEFAULT 0,
+  total_gastos REAL DEFAULT 0,
+  total_pagos_deuda REAL DEFAULT 0,
+  total_ingresos_manuales REAL DEFAULT 0,
+  total_egresos_manuales REAL DEFAULT 0,
+  saldo_final REAL DEFAULT 0,
+  ganancia_perdida REAL DEFAULT 0,
+  actualizado_en TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS caja_transacciones (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  caja_id INTEGER NOT NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('ingreso','egreso','ajuste')),
+  monto REAL NOT NULL,
+  concepto TEXT,
+  referencia TEXT,
+  usuario TEXT,
+  fecha TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY(caja_id) REFERENCES cajas(id)
+);
+
+-- Nueva tabla: pagos por venta
+CREATE TABLE IF NOT EXISTS venta_pagos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  venta_id INTEGER NOT NULL,
+  metodo_pago TEXT NOT NULL,
+  monto REAL NOT NULL,
+  usuario TEXT,
+  fecha_pago TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY(venta_id) REFERENCES ventas(id)
+);
+
+CREATE TABLE IF NOT EXISTS auditoria_cajas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  caja_id INTEGER,
+  accion TEXT NOT NULL,
+  detalle TEXT,
+  datos_anteriores TEXT,
+  datos_nuevos TEXT,
+  usuario TEXT,
+  fecha TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY(caja_id) REFERENCES cajas(id)
+);
+
 -- Registro de respaldos
 CREATE TABLE IF NOT EXISTS backups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -263,6 +319,7 @@ CREATE TABLE IF NOT EXISTS backups (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- Vistas auxiliares optimizadas para el módulo de caja
 DROP VIEW IF EXISTS inventario_actual;
 CREATE VIEW IF NOT EXISTS inventario_actual AS
 SELECT
@@ -316,6 +373,149 @@ SELECT
 FROM productos p
 LEFT JOIN categorias c ON c.id = p.categoria_id
 LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
+
+-- Vista optimizada para resumen de caja con KPIs
+DROP VIEW IF EXISTS caja_resumen_kpis;
+CREATE VIEW IF NOT EXISTS caja_resumen_kpis AS
+SELECT 
+  c.id,
+  c.fecha_apertura,
+  c.fecha_cierre,
+  c.usuario,
+  c.monto_inicial,
+  c.estado,
+  -- Totales de transacciones por tipo (incluyendo todas las transacciones de ingreso)
+  COALESCE((
+    SELECT SUM(monto) FROM caja_transacciones ct 
+    WHERE ct.caja_id = c.id AND ct.tipo = 'ingreso'
+  ), 0) AS total_ingresos,
+  COALESCE((
+    SELECT SUM(monto) FROM caja_transacciones ct 
+    WHERE ct.caja_id = c.id AND ct.tipo = 'egreso'
+  ), 0) AS total_egresos,
+  COALESCE((
+    SELECT SUM(monto) FROM caja_transacciones ct 
+    WHERE ct.caja_id = c.id AND ct.tipo = 'ajuste'
+  ), 0) AS total_ajustes,
+  -- Ventas por método de pago desde venta_pagos
+  COALESCE((
+    SELECT SUM(vp.monto) FROM venta_pagos vp
+    INNER JOIN ventas v ON v.id = vp.venta_id
+    WHERE v.fecha_venta >= c.fecha_apertura 
+    AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND vp.metodo_pago = 'efectivo'
+  ), 0) AS ventas_efectivo,
+  COALESCE((
+    SELECT SUM(vp.monto) FROM venta_pagos vp
+    INNER JOIN ventas v ON v.id = vp.venta_id
+    WHERE v.fecha_venta >= c.fecha_apertura 
+    AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND vp.metodo_pago = 'tarjeta'
+  ), 0) AS ventas_tarjeta,
+  COALESCE((
+    SELECT SUM(vp.monto) FROM venta_pagos vp
+    INNER JOIN ventas v ON v.id = vp.venta_id
+    WHERE v.fecha_venta >= c.fecha_apertura 
+    AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND vp.metodo_pago = 'transferencia'
+  ), 0) AS ventas_transferencia,
+  COALESCE((
+    SELECT SUM(vp.monto) FROM venta_pagos vp
+    INNER JOIN ventas v ON v.id = vp.venta_id
+    WHERE v.fecha_venta >= c.fecha_apertura 
+    AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND vp.metodo_pago = 'mixto'
+  ), 0) AS ventas_mixto,
+  -- Total de ventas
+  COALESCE((
+    SELECT SUM(v.total) FROM ventas v
+    WHERE v.fecha_venta >= c.fecha_apertura 
+    AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.estado != 'cancelada'
+  ), 0) AS total_ventas,
+  -- Cobros de cuentas por cobrar en efectivo
+  COALESCE((
+    SELECT SUM(pc.monto) FROM pagos_cuentas pc
+    INNER JOIN cuentas_por_cobrar cxc ON cxc.id = pc.cuenta_id
+    WHERE pc.fecha_pago >= c.fecha_apertura 
+    AND (c.fecha_cierre IS NULL OR pc.fecha_pago <= c.fecha_cierre)
+    AND pc.metodo_pago = 'efectivo'
+  ), 0) AS cobros_cxc_efectivo,
+  -- Gastos del período
+  COALESCE((
+    SELECT SUM(g.monto) FROM gastos g
+    WHERE g.fecha_gasto >= date(c.fecha_apertura) 
+    AND (c.fecha_cierre IS NULL OR g.fecha_gasto <= date(c.fecha_cierre))
+  ), 0) AS total_gastos,
+  -- Pagos a proveedores del período
+  COALESCE((
+    SELECT SUM(pp.monto) FROM pagos_proveedores pp
+    WHERE pp.fecha_pago >= c.fecha_apertura 
+    AND (c.fecha_cierre IS NULL OR pp.fecha_pago <= c.fecha_cierre)
+  ), 0) AS total_pagos_proveedores,
+  -- Saldo final calculado: monto inicial + total ingresos - total egresos + ajustes
+  c.monto_inicial + 
+  COALESCE((
+    SELECT SUM(CASE 
+      WHEN ct.tipo = 'ingreso' THEN ct.monto
+      WHEN ct.tipo = 'egreso' THEN -ct.monto
+      WHEN ct.tipo = 'ajuste' THEN ct.monto
+      ELSE 0 END)
+    FROM caja_transacciones ct WHERE ct.caja_id = c.id
+  ), 0) AS saldo_final_calculado
+FROM cajas c;
+
+-- Vista para transacciones de caja con detalles enriquecidos
+DROP VIEW IF EXISTS caja_transacciones_detalladas;
+CREATE VIEW IF NOT EXISTS caja_transacciones_detalladas AS
+SELECT 
+  ct.*,
+  c.fecha_apertura,
+  c.fecha_cierre,
+  c.usuario AS caja_usuario,
+  c.estado AS caja_estado,
+  -- Información adicional según el tipo de referencia
+  CASE 
+    WHEN ct.referencia LIKE 'venta_%' THEN (
+      SELECT v.numero_venta FROM ventas v 
+      WHERE v.id = CAST(REPLACE(ct.referencia, 'venta_', '') AS INTEGER)
+    )
+    WHEN ct.referencia LIKE 'pago_cxc_%' THEN (
+      SELECT 'CxC #' || pc.cuenta_id FROM pagos_cuentas pc 
+      WHERE pc.id = CAST(REPLACE(ct.referencia, 'pago_cxc_', '') AS INTEGER)
+    )
+    ELSE ct.referencia
+  END AS referencia_detalle,
+  -- Clasificación de la transacción
+  CASE 
+    WHEN ct.referencia LIKE 'venta_%' THEN 'Venta'
+    WHEN ct.referencia LIKE 'pago_cxc_%' THEN 'Cobro CxC'
+    WHEN ct.referencia LIKE 'gasto_%' THEN 'Gasto'
+    WHEN ct.referencia LIKE 'pago_proveedor_%' THEN 'Pago Proveedor'
+    WHEN ct.concepto LIKE '%ingreso%' OR ct.concepto LIKE '%deposito%' THEN 'Ingreso Manual'
+    WHEN ct.concepto LIKE '%egreso%' OR ct.concepto LIKE '%retiro%' THEN 'Egreso Manual'
+    WHEN ct.tipo = 'ajuste' THEN 'Ajuste'
+    ELSE 'Otro'
+  END AS categoria_transaccion
+FROM caja_transacciones ct
+INNER JOIN cajas c ON c.id = ct.caja_id;
+
+-- Vista para análisis de métodos de pago
+DROP VIEW IF EXISTS metodos_pago_analisis;
+CREATE VIEW IF NOT EXISTS metodos_pago_analisis AS
+SELECT 
+  DATE(v.fecha_venta) AS fecha,
+  vp.metodo_pago,
+  COUNT(DISTINCT v.id) AS cantidad_ventas,
+  SUM(vp.monto) AS total_monto,
+  AVG(vp.monto) AS promedio_monto,
+  MIN(vp.monto) AS monto_minimo,
+  MAX(vp.monto) AS monto_maximo
+FROM venta_pagos vp
+INNER JOIN ventas v ON v.id = vp.venta_id
+WHERE v.estado != 'cancelada'
+GROUP BY DATE(v.fecha_venta), vp.metodo_pago
+ORDER BY fecha DESC, vp.metodo_pago;
 `;
 
     await this.exec(schema);
@@ -376,6 +576,63 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
       console.error('Migration check/add costo_unitario failed:', e);
     }
 
+    // Crear tabla cuentas_por_pagar si no existe
+    try {
+      await this.run(`
+        CREATE TABLE IF NOT EXISTS cuentas_por_pagar (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          proveedor_id INTEGER NOT NULL,
+          compra_id INTEGER,
+          monto DECIMAL(10,2) NOT NULL,
+          saldo DECIMAL(10,2) NOT NULL,
+          fecha_vencimiento DATE,
+          estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'vencida', 'pagada')),
+          observaciones TEXT,
+          fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+          fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (proveedor_id) REFERENCES proveedores(id)
+        )
+      `);
+      console.log('Migration done: cuentas_por_pagar table created');
+    } catch (e) {
+      console.error('Migration create cuentas_por_pagar failed:', e);
+    }
+
+    // Crear tabla pagos_proveedores si no existe
+    try {
+      await this.run(`
+        CREATE TABLE IF NOT EXISTS pagos_proveedores (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          cuenta_id INTEGER NOT NULL,
+          monto DECIMAL(10,2) NOT NULL,
+          metodo_pago TEXT NOT NULL,
+          fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP,
+          observaciones TEXT,
+          FOREIGN KEY (cuenta_id) REFERENCES cuentas_por_pagar(id)
+        )
+      `);
+      console.log('Migration done: pagos_proveedores table created');
+    } catch (e) {
+      console.error('Migration create pagos_proveedores failed:', e);
+    }
+
+    // Agregar columna saldo_pendiente a proveedores si no existe
+    try {
+      const hasProvCol: any[] = await this.query(
+        "PRAGMA table_info('proveedores')"
+      );
+      const existsProv = hasProvCol.some((c: any) => c.name === 'saldo_pendiente');
+      if (!existsProv) {
+        console.log('Migrating: adding proveedores.saldo_pendiente ...');
+        await this.run(
+          "ALTER TABLE proveedores ADD COLUMN saldo_pendiente DECIMAL(10,2) DEFAULT 0"
+        );
+        console.log('Migration done: proveedores.saldo_pendiente');
+      }
+    } catch (e) {
+      console.error('Migration check/add saldo_pendiente to proveedores failed:', e);
+    }
+
     // Agregar columna imagen_url a productos si no existe
     try {
       const cols: any[] = await this.query("PRAGMA table_info('productos')");
@@ -389,7 +646,7 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
       console.error('Migration check/add imagen_url failed:', e);
     }
 
-  // Agregar columna marca a productos si no existe
+    // Agregar columna marca a productos si no existe
     try {
       const cols: any[] = await this.query("PRAGMA table_info('productos')");
       const hasMarca = cols.some((c: any) => c.name === 'marca');
@@ -478,6 +735,58 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
       }
     } catch (e) {
       console.error('Migration check/add genero failed:', e);
+    }
+
+    // Agregar columna fecha_modificacion a ventas si no existe
+    try {
+      const ventasCols: any[] = await this.query("PRAGMA table_info('ventas')");
+      const hasFechaModificacion = ventasCols.some((c: any) => c.name === 'fecha_modificacion');
+      if (!hasFechaModificacion) {
+        console.log('Migrating: adding ventas.fecha_modificacion ...');
+        await this.run("ALTER TABLE ventas ADD COLUMN fecha_modificacion TEXT");
+        console.log('Migration done: ventas.fecha_modificacion');
+      }
+    } catch (e) {
+      console.error('Migration check/add fecha_modificacion failed:', e);
+    }
+
+    // Crear tabla venta_pagos si no existe
+    try {
+      await this.run(`
+        CREATE TABLE IF NOT EXISTS venta_pagos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          venta_id INTEGER NOT NULL,
+          metodo_pago TEXT NOT NULL,
+          monto REAL NOT NULL,
+          usuario TEXT,
+          fecha_pago TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY(venta_id) REFERENCES ventas(id)
+        )
+      `);
+      console.log('Migration done: venta_pagos table created');
+    } catch (e) {
+      console.error('Migration create venta_pagos failed:', e);
+    }
+
+    // Agregar columnas datos_anteriores y datos_nuevos a auditoria_cajas si no existen
+    try {
+      const auditoriaCols: any[] = await this.query("PRAGMA table_info('auditoria_cajas')");
+      const hasDatosAnteriores = auditoriaCols.some((c: any) => c.name === 'datos_anteriores');
+      const hasDatosNuevos = auditoriaCols.some((c: any) => c.name === 'datos_nuevos');
+      
+      if (!hasDatosAnteriores) {
+        console.log('Migrating: adding auditoria_cajas.datos_anteriores ...');
+        await this.run("ALTER TABLE auditoria_cajas ADD COLUMN datos_anteriores TEXT");
+        console.log('Migration done: auditoria_cajas.datos_anteriores');
+      }
+      
+      if (!hasDatosNuevos) {
+        console.log('Migrating: adding auditoria_cajas.datos_nuevos ...');
+        await this.run("ALTER TABLE auditoria_cajas ADD COLUMN datos_nuevos TEXT");
+        console.log('Migration done: auditoria_cajas.datos_nuevos');
+      }
+    } catch (e) {
+      console.error('Migration check/add auditoria_cajas columns failed:', e);
     }
   }
 

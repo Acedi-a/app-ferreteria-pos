@@ -1,4 +1,6 @@
 // Interfaces para Punto de Venta
+import { CajasService } from '../ui/services/cajas-service';
+
 export interface Producto {
   id: number;
   codigo_barras?: string;
@@ -233,6 +235,12 @@ export class PuntoVentaService {
   // Ventas
   static async crearVenta(venta: NuevaVenta): Promise<number> {
     try {
+      // Verificar que hay una caja abierta
+      const cajaActiva = await CajasService.getCajaActiva();
+      if (!cajaActiva) {
+        throw new Error('No hay una caja abierta. Debe abrir una caja antes de realizar ventas.');
+      }
+
       // Generar número de venta
       const numeroVenta = await this.generarNumeroVenta();
 
@@ -272,10 +280,12 @@ export class PuntoVentaService {
           detalle.precio_unitario,
           detalle.subtotal
         ]);
-
-  // Nota: el stock se actualiza mediante movimientos en la capa UI
       }
 
+      // Nota: El registro en caja se maneja en el servicio frontend (UI)
+      // que tiene la lógica completa para ventas a crédito y pago inicial
+
+      // Nota: el stock se actualiza mediante movimientos en la capa UI
       return ventaId;
 
     } catch (error) {

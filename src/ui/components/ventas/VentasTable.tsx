@@ -3,6 +3,7 @@ import { Eye, FileText, X } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import type { Venta } from "../../services/ventas-service";
+import { formatBoliviaDate } from "../../lib/utils";
 
 interface VentasTableProps {
   ventas: Venta[];
@@ -20,13 +21,7 @@ export default function VentasTable({
   onImprimirTicket 
 }: VentasTableProps) {
   const formatearFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatBoliviaDate(fecha);
   };
 
   const getBadgeColor = (estado: string) => {

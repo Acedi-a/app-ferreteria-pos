@@ -1,2 +1,32 @@
 @import "tailwindcss";
 
+/* Desactivar controles de ruedita en inputs numéricos */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Desactivar scroll para cambiar valores en inputs numéricos */
+input[type="number"] {
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+
+/* Prevenir cambio de valor con scroll del mouse */
+input[type="number"]:focus {
+  -moz-appearance: textfield;
+}
+
+/* Desactivar scroll en inputs numéricos con JavaScript será manejado por el navegador */
+input[type="number"] {
+  pointer-events: auto;
+}
+
+input[type="number"]:focus {
+  pointer-events: auto;
+}

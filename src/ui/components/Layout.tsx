@@ -28,6 +28,8 @@ const navigation = [
   { name: "Ventas", href: "/ventas", icon: ShoppingCart },
   { name: "Inventario", href: "/inventario", icon: Package },
   { name: "Cuentas por Cobrar", href: "/cuentas-por-cobrar", icon: CreditCard },
+  { name: "Cuentas por Pagar", href: "/cuentas-por-pagar", icon: CreditCard },
+  { name: "Cajas", href: "/cajas", icon: Store },
   { name: "Reportes", href: "/reportes", icon: BarChart3 },
   { name: "Configuración", href: "/configuracion", icon: Settings },
   { name: "Categorías y Unidades", href: "/categoria-unidad", icon: Package },

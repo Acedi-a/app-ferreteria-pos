@@ -1,3 +1,5 @@
+import { getBoliviaISOString } from '../lib/utils';
+
 export interface Producto {
   id?: number;
   codigo_barras?: string;
@@ -180,7 +182,8 @@ class ProductosService {
     }
 
     // Siempre actualizar fecha_actualizacion
-    campos.push('fecha_actualizacion = CURRENT_TIMESTAMP');
+    campos.push('fecha_actualizacion = ?');
+    valores.push(getBoliviaISOString());
     valores.push(id);
 
     const query = `UPDATE productos SET ${campos.join(', ')} WHERE id = ?`;
@@ -231,9 +234,9 @@ class ProductosService {
     const result = await window.electronAPI.db.get(`
       SELECT 
         COUNT(*) as totalProductos,
-        COUNT(CASE WHEN stock_actual <= stock_minimo THEN 1 END) as stockBajo,
-        COALESCE(SUM(valor_total), 0) as valorInventario,
-        COUNT(CASE WHEN activo = 1 THEN 1 END) as productosActivos
+        COUNT(CASE WHEN ia.stock_actual <= ia.stock_minimo THEN 1 END) as stockBajo,
+        COALESCE(SUM(ia.valor_total), 0) as valorInventario,
+        COUNT(CASE WHEN p.activo = 1 THEN 1 END) as productosActivos
       FROM inventario_actual ia
       JOIN productos p ON p.id = ia.id
     `);

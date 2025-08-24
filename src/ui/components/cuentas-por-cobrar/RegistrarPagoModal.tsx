@@ -5,6 +5,7 @@ import { Button } from "../ui/Button";
 import { printPagoReceipt } from "./PaymentReceiptRenderer";
 import { CuentasPorCobrarService } from "../../services/cuentas-por-cobrar-service";
 import type { CuentaPorCobrar, RegistrarPagoData } from "../../services/cuentas-por-cobrar-service";
+import { getBoliviaISOString } from "../../lib/utils";
 
 interface RegistrarPagoModalProps {
   cuenta: CuentaPorCobrar | null;
@@ -75,7 +76,7 @@ export default function RegistrarPagoModal({
       
       // Impresión opcional del recibo
       if (imprimir) {
-        const pagoParcial = { monto: montoNum, metodo_pago: metodoPago, observaciones, fecha_pago: new Date().toISOString() };
+        const pagoParcial = { monto: montoNum, metodo_pago: metodoPago, observaciones, fecha_pago: getBoliviaISOString() };
         let historial = undefined;
         if (incluirHistorial) {
           try {
@@ -103,7 +104,7 @@ export default function RegistrarPagoModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b bg-gray-50">
           <div className="flex items-center gap-3">
@@ -130,7 +131,7 @@ export default function RegistrarPagoModal({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           {/* Información de la cuenta */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -221,7 +222,7 @@ export default function RegistrarPagoModal({
                   </span>
                   <input
                     type="number"
-                    step="0.01"
+                    step="any"
                     min="0"
                     max={cuenta.saldo}
                     value={monto}
@@ -301,7 +302,7 @@ export default function RegistrarPagoModal({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setMonto((cuenta.saldo / 2).toFixed(2))}
+                  onClick={() => setMonto((cuenta.saldo / 2).toString())}
                   className="text-xs px-3 py-1 text-blue-600 hover:bg-blue-50"
                   disabled={loading}
                 >
@@ -310,7 +311,7 @@ export default function RegistrarPagoModal({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setMonto((cuenta.saldo * 0.25).toFixed(2))}
+                  onClick={() => setMonto((cuenta.saldo * 0.25).toString())}
                   className="text-xs px-3 py-1 text-purple-600 hover:bg-purple-50"
                   disabled={loading}
                 >

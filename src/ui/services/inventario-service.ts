@@ -1,3 +1,5 @@
+import { getBoliviaISOString } from '../lib/utils';
+
 export type TipoMovimiento = 'entrada' | 'salida' | 'ajuste';
 
 export interface InventarioItem {
@@ -60,12 +62,13 @@ export class InventarioService {
 
   static async calcularComprasRecientes(dias = 30): Promise<number> {
     // Ahora se calcula desde compras/compra_detalles en el periodo
+    const fechaLimite = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const result = await window.electronAPI.db.get(`
       SELECT COALESCE(SUM(cd.subtotal), 0) as total_compras
       FROM compra_detalles cd
       INNER JOIN compras c ON c.id = cd.compra_id
-      WHERE DATE(c.fecha_compra) >= DATE('now', '-' || ? || ' days')
-    `, [dias]);
+      WHERE DATE(c.fecha_compra) >= DATE(?)
+    `, [fechaLimite]);
     return result?.total_compras || 0;
   }
 

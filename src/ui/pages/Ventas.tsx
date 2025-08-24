@@ -5,9 +5,11 @@ import VentasStats from "../components/ventas/VentasStats";
 import VentasTable from "../components/ventas/VentasTable";
 import VentasFilters from "../components/ventas/VentasFilters";
 import VentaDetalleModal from "../components/ventas/VentaDetalleModal";
+import CancelarVentaModal from "../components/ventas/CancelarVentaModal";
 import { VentasService } from "../services/ventas-service";
 import { printTicket } from "../components/ventas/TicketRenderer";
 import type { Venta, VentaDetalle, FiltrosVenta } from "../services/ventas-service";
+import { getBoliviaDateString, getBoliviaDateDaysAgo } from "../lib/utils";
 
 export default function Ventas() {
   const { toast } = useToast();
@@ -18,10 +20,10 @@ export default function Ventas() {
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
   
-  // Estados para filtros
+  // Estados para filtros (zona horaria de Bolivia)
   const [filtros, setFiltros] = useState<FiltrosVenta>({
-    fechaInicio: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    fechaFin: new Date().toISOString().split('T')[0]
+    fechaInicio: getBoliviaDateDaysAgo(30),
+    fechaFin: getBoliviaDateString()
   });
   
   // Estados para el modal de detalles
@@ -29,6 +31,11 @@ export default function Ventas() {
   const [detallesVenta, setDetallesVenta] = useState<VentaDetalle[]>([]);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [loadingDetalles, setLoadingDetalles] = useState(false);
+  
+  // Estados para el modal de cancelación
+  const [isCancelarModalOpen, setIsCancelarModalOpen] = useState(false);
+  const [ventaACancelar, setVentaACancelar] = useState<Venta | null>(null);
+  const [cancelandoVenta, setCancellandoVenta] = useState(false);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -106,21 +113,28 @@ export default function Ventas() {
   };
 
   const cancelarVenta = async (venta: Venta) => {
-    if (!confirm(`¿Está seguro de cancelar la venta ${venta.numero_venta}?`)) {
-      return;
-    }
+    setVentaACancelar(venta);
+    setIsCancelarModalOpen(true);
+  };
+
+  const confirmarCancelacion = async (motivo: string) => {
+    if (!ventaACancelar) return;
 
     try {
-      const motivo = prompt('Motivo de cancelación (opcional):') || 'Cancelación manual';
-      await VentasService.cancelarVenta(venta.id, motivo);
+      setCancellandoVenta(true);
+      await VentasService.cancelarVenta(ventaACancelar.id, motivo);
       
       toast({
         title: "Venta cancelada",
-        description: `La venta ${venta.numero_venta} ha sido cancelada`
+        description: `La venta ${ventaACancelar.numero_venta} ha sido cancelada`
       });
       
       // Recargar datos
       await cargarDatos();
+      
+      // Cerrar modal
+      setIsCancelarModalOpen(false);
+      setVentaACancelar(null);
     } catch (error) {
       console.error('Error al cancelar venta:', error);
       toast({
@@ -128,7 +142,14 @@ export default function Ventas() {
         description: "No se pudo cancelar la venta",
         variant: "destructive"
       });
+    } finally {
+      setCancellandoVenta(false);
     }
+  };
+
+  const cerrarModalCancelacion = () => {
+    setIsCancelarModalOpen(false);
+    setVentaACancelar(null);
   };
 
   const imprimirTicket = async (venta: Venta) => {
@@ -146,8 +167,8 @@ export default function Ventas() {
 
   const limpiarFiltros = () => {
     setFiltros({
-      fechaInicio: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      fechaFin: new Date().toISOString().split('T')[0]
+      fechaInicio: getBoliviaDateDaysAgo(30),
+      fechaFin: getBoliviaDateString()
     });
   };
 
@@ -204,6 +225,15 @@ export default function Ventas() {
           loading={loadingDetalles}
           onImprimir={() => ventaSeleccionada && imprimirTicket(ventaSeleccionada)}
         />
+
+        {/* Modal de cancelación */}
+        <CancelarVentaModal
+           venta={ventaACancelar}
+           isOpen={isCancelarModalOpen}
+           onClose={cerrarModalCancelacion}
+           onConfirm={confirmarCancelacion}
+           loading={cancelandoVenta}
+         />
       </div>
     </div>
   );

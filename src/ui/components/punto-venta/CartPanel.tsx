@@ -438,10 +438,20 @@ export default function CartPanel({
               <input
                 type="number"
                 value={descuento}
-                onChange={(e) => onCambiarDescuento(Number.parseFloat(e.target.value) || 0)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || value === '.') {
+                    onCambiarDescuento(0);
+                  } else {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue) && numValue >= 0) {
+                      onCambiarDescuento(numValue);
+                    }
+                  }
+                }}
                 className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
                 min="0"
-                step="0.01"
+                step="any"
               />
             </div>
 
@@ -480,11 +490,21 @@ export default function CartPanel({
                   <input
                     type="number"
                     value={pagoInicial}
-                    onChange={(e) => onCambiarPagoInicial(Number.parseFloat(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || value === '.') {
+                        onCambiarPagoInicial(0);
+                      } else {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue) && numValue >= 0 && numValue <= total) {
+                          onCambiarPagoInicial(numValue);
+                        }
+                      }
+                    }}
                     className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
                     min="0"
                     max={total}
-                    step="0.01"
+                    step="any"
                     placeholder="0.00"
                   />
                 </div>

@@ -3,6 +3,7 @@ import { Button } from "../ui/Button";
 import { Settings } from "lucide-react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/Table";
 import type { InventarioItem } from "../../services/inventario-service";
+import { formatBoliviaDateOnly } from "../../lib/utils";
 
 export interface InventoryTableProps {
   items: InventarioItem[];
@@ -34,7 +35,7 @@ export function InventoryTable({ items, onAdjust }: InventoryTableProps) {
                 <div>
                   <div className="font-medium">{item.nombre}</div>
                   <div className="text-sm text-slate-500">
-                    Último mov: {item.ultimo_movimiento ? new Date(item.ultimo_movimiento).toLocaleDateString() : "-"}
+                    Último mov: {item.ultimo_movimiento ? formatBoliviaDateOnly(item.ultimo_movimiento) : "-"}
                   </div>
                 </div>
               </TableCell>

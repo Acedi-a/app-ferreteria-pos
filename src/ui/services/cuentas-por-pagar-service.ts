@@ -1,29 +1,27 @@
-// src/services/cuentas-por-cobrar-service.ts
-
+// src/services/cuentas-por-pagar-service.ts
 import { CajasService } from './cajas-service';
 import { getBoliviaISOString } from '../lib/utils';
 
-export interface Cliente {
+export interface Proveedor {
   id: number;
   codigo: string;
   nombre: string;
-  apellido: string;
+  contacto?: string;
   telefono?: string;
   email?: string;
   direccion?: string;
   ciudad?: string;
   documento?: string;
-  tipo_documento: string;
   activo: boolean;
   fecha_creacion: string;
   saldo_pendiente: number;
   total_compras: number;
 }
 
-export interface CuentaPorCobrar {
+export interface CuentaPorPagar {
   id: number;
-  cliente_id: number;
-  venta_id?: number;
+  proveedor_id: number;
+  compra_id?: number;
   monto: number;
   saldo: number;
   fecha_vencimiento?: string;
@@ -31,18 +29,18 @@ export interface CuentaPorCobrar {
   observaciones?: string;
   fecha_creacion: string;
   
-  // Datos del cliente (JOIN)
-  cliente_codigo?: string;
-  cliente_nombre?: string;
-  cliente_apellido?: string;
-  cliente_telefono?: string;
+  // Datos del proveedor (JOIN)
+  proveedor_codigo?: string;
+  proveedor_nombre?: string;
+  proveedor_contacto?: string;
+  proveedor_telefono?: string;
   
   // Datos calculados
   dias_vencido?: number;
-  numero_venta?: string;
+  numero_compra?: string;
 }
 
-export interface PagoCuenta {
+export interface PagoProveedor {
   id: number;
   cuenta_id: number;
   monto: number;
@@ -50,37 +48,41 @@ export interface PagoCuenta {
   fecha_pago: string;
   observaciones?: string;
   
-  // Datos del cliente (JOIN)
-  cliente_nombre?: string;
-  cliente_apellido?: string;
+  // Datos del proveedor (JOIN)
+  proveedor_nombre?: string;
+  proveedor_contacto?: string;
+  proveedor_telefono?: string;
+  
+  // Datos de la cuenta (JOIN/calculados)
+  numero_compra?: string;
 }
 
-export interface FiltrosCuentasPorCobrar {
-  cliente?: string;
+export interface FiltrosCuentasPorPagar {
+  proveedor?: string;
   estado?: string;
   fechaDesde?: string;
   fechaHasta?: string;
   vencimiento?: 'todos' | 'vencidas' | 'por_vencer';
 }
 
-export interface EstadisticasCuentasPorCobrar {
-  totalPorCobrar: number;
+export interface EstadisticasCuentasPorPagar {
+  totalPorPagar: number;
   totalVencido: number;
   cantidadPendientes: number;
   cantidadVencidas: number;
   cantidadPagadas: number;
-  promedioTiempoCobranza: number;
-  clientesConDeuda: number;
+  promedioTiempoPago: number;
+  proveedoresConDeuda: number;
 }
 
-export interface RegistrarPagoData {
+export interface RegistrarPagoProveedorData {
   cuenta_id: number;
   monto: number;
   metodo_pago: string;
   observaciones?: string;
 }
 
-export class CuentasPorCobrarService {
+export class CuentasPorPagarService {
   private static async executeQuery(query: string, params: any[] = []): Promise<any[]> {
     if (typeof window !== 'undefined' && window.electronAPI) {
       return await window.electronAPI.db.query(query, params);
@@ -102,52 +104,50 @@ export class CuentasPorCobrarService {
     throw new Error('ElectronAPI no está disponible');
   }
 
-  // Obtener todas las cuentas por cobrar con filtros
-  static async obtenerCuentasPorCobrar(
-    filtros: FiltrosCuentasPorCobrar = {},
+  // Obtener todas las cuentas por pagar con filtros
+  static async obtenerCuentasPorPagar(
+    filtros: FiltrosCuentasPorPagar = {},
     limite?: number
-  ): Promise<CuentaPorCobrar[]> {
+  ): Promise<CuentaPorPagar[]> {
     try {
       const fechaHoy = getBoliviaISOString().split('T')[0];
       let whereClause = '';
       const whereClauses: string[] = [];
       const params: any[] = [];
 
-      // Filtro por cliente
-      if (filtros.cliente && filtros.cliente.trim() !== '') {
+      // Filtro por proveedor
+      if (filtros.proveedor && filtros.proveedor.trim() !== '') {
         whereClauses.push(`(
-          c.nombre LIKE ? OR 
-          c.apellido LIKE ? OR 
-          c.codigo LIKE ?
+          p.nombre LIKE ? OR 
+          p.contacto LIKE ? OR 
+          p.codigo LIKE ?
         )`);
-        const clienteParam = `%${filtros.cliente}%`;
-        params.push(clienteParam, clienteParam, clienteParam);
+        const proveedorParam = `%${filtros.proveedor}%`;
+        params.push(proveedorParam, proveedorParam, proveedorParam);
       }
 
       // Filtro por estado
       if (filtros.estado && filtros.estado !== '') {
-        whereClauses.push('cpc.estado = ?');
+        whereClauses.push('cpp.estado = ?');
         params.push(filtros.estado);
       }
 
       // Filtro por fecha de creación
       if (filtros.fechaDesde) {
-        whereClauses.push('DATE(cpc.fecha_creacion) >= ?');
+        whereClauses.push('DATE(cpp.fecha_creacion) >= ?');
         params.push(filtros.fechaDesde);
       }
       if (filtros.fechaHasta) {
-        whereClauses.push('DATE(cpc.fecha_creacion) <= ?');
+        whereClauses.push('DATE(cpp.fecha_creacion) <= ?');
         params.push(filtros.fechaHasta);
       }
 
       // Filtro por vencimiento
       if (filtros.vencimiento) {
         if (filtros.vencimiento === 'vencidas') {
-          whereClauses.push('cpc.fecha_vencimiento < DATE(?) AND cpc.estado != "pagada"');
-          params.push(fechaHoy);
+          whereClauses.push('cpp.fecha_vencimiento < DATE("now") AND cpp.estado != "pagada"');
         } else if (filtros.vencimiento === 'por_vencer') {
-          whereClauses.push('cpc.fecha_vencimiento >= DATE(?) AND cpc.estado != "pagada"');
-          params.push(fechaHoy);
+          whereClauses.push('cpp.fecha_vencimiento >= DATE("now") AND cpp.estado != "pagada"');
         }
       }
 
@@ -159,28 +159,27 @@ export class CuentasPorCobrarService {
 
       const query = `
         SELECT 
-          cpc.*,
-          c.codigo as cliente_codigo,
-          c.nombre as cliente_nombre,
-          c.apellido as cliente_apellido,
-          c.telefono as cliente_telefono,
-          COALESCE(v.numero_venta, 'VENTA-' || cpc.venta_id) as numero_venta,
+          cpp.*,
+          p.codigo as proveedor_codigo,
+          p.nombre as proveedor_nombre,
+          p.contacto as proveedor_contacto,
+          p.telefono as proveedor_telefono,
+          COALESCE('COMPRA-' || cpp.compra_id, 'CUENTA-' || cpp.id) as numero_compra,
           CASE 
-            WHEN cpc.fecha_vencimiento < DATE(?) AND cpc.estado != 'pagada' 
-            THEN JULIANDAY(?) - JULIANDAY(cpc.fecha_vencimiento)
+            WHEN cpp.fecha_vencimiento < DATE(?) AND cpp.estado != 'pagada' 
+            THEN JULIANDAY(?) - JULIANDAY(cpp.fecha_vencimiento)
             ELSE 0 
           END as dias_vencido
-        FROM cuentas_por_cobrar cpc
-        INNER JOIN clientes c ON cpc.cliente_id = c.id
-        LEFT JOIN ventas v ON cpc.venta_id = v.id
+        FROM cuentas_por_pagar cpp
+        INNER JOIN proveedores p ON cpp.proveedor_id = p.id
         ${whereClause}
         ORDER BY 
-          CASE cpc.estado 
+          CASE cpp.estado 
             WHEN 'vencida' THEN 1
             WHEN 'pendiente' THEN 2
             WHEN 'pagada' THEN 3
           END,
-          cpc.fecha_vencimiento ASC
+          cpp.fecha_vencimiento ASC
         ${limitClause}
       `;
 
@@ -193,36 +192,36 @@ export class CuentasPorCobrarService {
         dias_vencido: Math.max(0, Math.floor(row.dias_vencido || 0))
       }));
     } catch (error) {
-      console.error('Error al obtener cuentas por cobrar:', error);
+      console.error('Error al obtener cuentas por pagar:', error);
       throw error;
     }
   }
 
-  // Obtener estadísticas de cuentas por cobrar
-  static async obtenerEstadisticas(): Promise<EstadisticasCuentasPorCobrar> {
+  // Obtener estadísticas de cuentas por pagar
+  static async obtenerEstadisticas(): Promise<EstadisticasCuentasPorPagar> {
     try {
       const fechaHoy = getBoliviaISOString().split('T')[0];
       const query = `
         SELECT 
-          COALESCE(SUM(CASE WHEN estado != 'pagada' THEN saldo ELSE 0 END), 0) as total_por_cobrar,
+          COALESCE(SUM(CASE WHEN estado != 'pagada' THEN saldo ELSE 0 END), 0) as total_por_pagar,
           COALESCE(SUM(CASE WHEN fecha_vencimiento < DATE(?) AND estado != 'pagada' THEN saldo ELSE 0 END), 0) as total_vencido,
           COUNT(CASE WHEN estado = 'pendiente' THEN 1 END) as cantidad_pendientes,
           COUNT(CASE WHEN estado = 'vencida' THEN 1 END) as cantidad_vencidas,
           COUNT(CASE WHEN estado = 'pagada' THEN 1 END) as cantidad_pagadas,
-          COUNT(DISTINCT CASE WHEN saldo > 0 THEN cliente_id END) as clientes_con_deuda
-        FROM cuentas_por_cobrar
+          COUNT(DISTINCT CASE WHEN saldo > 0 THEN proveedor_id END) as proveedores_con_deuda
+        FROM cuentas_por_pagar
       `;
 
       const stats = await this.executeGet(query, [fechaHoy]);
 
       return {
-        totalPorCobrar: stats?.total_por_cobrar || 0,
+        totalPorPagar: stats?.total_por_pagar || 0,
         totalVencido: stats?.total_vencido || 0,
         cantidadPendientes: stats?.cantidad_pendientes || 0,
         cantidadVencidas: stats?.cantidad_vencidas || 0,
         cantidadPagadas: stats?.cantidad_pagadas || 0,
-        promedioTiempoCobranza: 0, // Se puede calcular más tarde si es necesario
-        clientesConDeuda: stats?.clientes_con_deuda || 0
+        promedioTiempoPago: 0, // Se puede calcular más tarde si es necesario
+        proveedoresConDeuda: stats?.proveedores_con_deuda || 0
       };
     } catch (error) {
       console.error('Error al obtener estadísticas:', error);
@@ -231,17 +230,19 @@ export class CuentasPorCobrarService {
   }
 
   // Obtener pagos recientes
-  static async obtenerPagosRecientes(limite: number = 10): Promise<PagoCuenta[]> {
+  static async obtenerPagosRecientes(limite: number = 10): Promise<PagoProveedor[]> {
     try {
       const query = `
         SELECT 
-          pc.*,
-          c.nombre as cliente_nombre,
-          c.apellido as cliente_apellido
-        FROM pagos_cuentas pc
-        INNER JOIN cuentas_por_cobrar cpc ON pc.cuenta_id = cpc.id
-        INNER JOIN clientes c ON cpc.cliente_id = c.id
-        ORDER BY pc.fecha_pago DESC
+          pp.*,
+          p.nombre as proveedor_nombre,
+          p.contacto as proveedor_contacto,
+          p.telefono as proveedor_telefono,
+          COALESCE('COMPRA-' || cpp.compra_id, 'CUENTA-' || cpp.id) as numero_compra
+        FROM pagos_proveedores pp
+        INNER JOIN cuentas_por_pagar cpp ON pp.cuenta_id = cpp.id
+        INNER JOIN proveedores p ON cpp.proveedor_id = p.id
+        ORDER BY pp.fecha_pago DESC
         LIMIT ?
       `;
 
@@ -253,19 +254,19 @@ export class CuentasPorCobrarService {
   }
 
   // Registrar un pago
-  static async registrarPago(datosPago: RegistrarPagoData): Promise<{ success: boolean; pago_id?: number }> {
+  static async registrarPago(datosPago: RegistrarPagoProveedorData): Promise<{ success: boolean; pago_id?: number }> {
     try {
-      // Primero obtener la cuenta por cobrar para validar
+      // Primero obtener la cuenta por pagar para validar
       const cuentaQuery = `
-        SELECT id, saldo, monto, estado, cliente_id
-        FROM cuentas_por_cobrar 
+        SELECT id, saldo, monto, estado, proveedor_id
+        FROM cuentas_por_pagar 
         WHERE id = ?
       `;
       
       const cuenta = await this.executeGet(cuentaQuery, [datosPago.cuenta_id]);
 
       if (!cuenta) {
-        throw new Error('Cuenta por cobrar no encontrada');
+        throw new Error('Cuenta por pagar no encontrada');
       }
 
       if (cuenta.estado === 'pagada') {
@@ -279,7 +280,7 @@ export class CuentasPorCobrarService {
       // Registrar el pago con fecha de Bolivia
       const fechaHoy = getBoliviaISOString();
       const insertPagoQuery = `
-        INSERT INTO pagos_cuentas (cuenta_id, monto, metodo_pago, observaciones, fecha_pago)
+        INSERT INTO pagos_proveedores (cuenta_id, monto, metodo_pago, observaciones, fecha_pago)
         VALUES (?, ?, ?, ?, ?)
       `;
 
@@ -296,66 +297,44 @@ export class CuentasPorCobrarService {
       const nuevoEstado = nuevoSaldo <= 0 ? 'pagada' : cuenta.estado;
 
       const updateCuentaQuery = `
-        UPDATE cuentas_por_cobrar 
+        UPDATE cuentas_por_pagar 
         SET saldo = ?, estado = ?
         WHERE id = ?
       `;
 
       await this.executeRun(updateCuentaQuery, [nuevoSaldo, nuevoEstado, datosPago.cuenta_id]);
 
-      // Si la cuenta se completó, actualizar el estado de la venta
-      if (nuevoSaldo <= 0) {
-        // Obtener la venta asociada
-        const ventaQuery = `
-          SELECT venta_id 
-          FROM cuentas_por_cobrar 
-          WHERE id = ?
-        `;
-        
-        const ventaInfo = await this.executeGet(ventaQuery, [datosPago.cuenta_id]);
-        
-        if (ventaInfo && ventaInfo.venta_id) {
-          // Actualizar estado de venta a completada
-          const updateVentaQuery = `
-            UPDATE ventas 
-            SET estado = 'completada'
-            WHERE id = ?
-          `;
-          
-          await this.executeRun(updateVentaQuery, [ventaInfo.venta_id]);
-          console.log(`Venta ${ventaInfo.venta_id} marcada como completada - Crédito totalmente pagado`);
-        }
-      }
-
-      // Actualizar saldo pendiente del cliente
-      const updateClienteQuery = `
-        UPDATE clientes 
+      // Actualizar saldo pendiente del proveedor
+      const updateProveedorQuery = `
+        UPDATE proveedores 
         SET saldo_pendiente = (
           SELECT COALESCE(SUM(saldo), 0) 
-          FROM cuentas_por_cobrar 
-          WHERE cliente_id = ? AND estado != 'pagada'
+          FROM cuentas_por_pagar 
+          WHERE proveedor_id = ? AND estado != 'pagada'
         )
         WHERE id = ?
       `;
 
-      await this.executeRun(updateClienteQuery, [cuenta.cliente_id, cuenta.cliente_id]);
+      await this.executeRun(updateProveedorQuery, [cuenta.proveedor_id, cuenta.proveedor_id]);
 
-      // Registrar el pago como ingreso en la caja activa
+      // Registrar egreso en caja activa
       try {
         const resultadoCaja = await CajasService.registrarMovimiento({
-          tipo: 'ingreso',
+          tipo: 'egreso',
           monto: datosPago.monto,
-          concepto: `Pago cuenta por cobrar #${datosPago.cuenta_id}`,
-          usuario: 'Sistema' // Propiedad requerida en MovimientoCaja
-          // metodo_pago y observaciones no existen en MovimientoCaja
+          concepto: `Pago a proveedor - Cuenta #${datosPago.cuenta_id}`,
+          // metodo_pago no existe en MovimientoCaja, se elimina esta línea
+          usuario: 'Sistema', // TODO: obtener usuario actual
+          // observaciones no existe en MovimientoCaja, se elimina esta línea
+          referencia: `PAGO_PROV_${resultPago.id}`
         });
 
         if (!resultadoCaja.exito) {
-          console.warn('No se pudo registrar el pago en caja:', resultadoCaja.errores);
+          console.warn('Error al registrar pago en caja:', resultadoCaja.errores);
         }
       } catch (error) {
-        console.error('Error al registrar pago en caja:', error);
-        // No lanzamos el error para no afectar el registro del pago
+        console.warn('Error al registrar pago en caja:', error);
+        // No fallar la operación principal por errores en caja
       }
 
       return {
@@ -368,45 +347,45 @@ export class CuentasPorCobrarService {
     }
   }
 
-  // Crear nueva cuenta por cobrar
-  static async crearCuentaPorCobrar(datos: {
-    cliente_id: number;
-    venta_id?: number;
+  // Crear nueva cuenta por pagar
+  static async crearCuentaPorPagar(datos: {
+    proveedor_id: number;
+    compra_id?: number;
     monto: number;
     fecha_vencimiento?: string;
     observaciones?: string;
   }): Promise<{ success: boolean; cuenta_id?: number }> {
     try {
       const query = `
-        INSERT INTO cuentas_por_cobrar 
-        (cliente_id, venta_id, monto, saldo, fecha_vencimiento, observaciones)
+        INSERT INTO cuentas_por_pagar 
+        (proveedor_id, compra_id, monto, saldo, fecha_vencimiento, observaciones)
         VALUES (?, ?, ?, ?, ?, ?)
       `;
 
       const result = await this.executeRun(query, [
-        datos.cliente_id,
-        datos.venta_id || null,
+        datos.proveedor_id,
+        datos.compra_id || null,
         datos.monto,
         datos.monto, // saldo inicial = monto
         datos.fecha_vencimiento || null,
         datos.observaciones || null
       ]);
 
-      // Actualizar saldo pendiente del cliente
-      const updateClienteQuery = `
-        UPDATE clientes 
+      // Actualizar saldo pendiente del proveedor
+      const updateProveedorQuery = `
+        UPDATE proveedores 
         SET saldo_pendiente = saldo_pendiente + ?
         WHERE id = ?
       `;
 
-      await this.executeRun(updateClienteQuery, [datos.monto, datos.cliente_id]);
+      await this.executeRun(updateProveedorQuery, [datos.monto, datos.proveedor_id]);
 
       return {
         success: true,
         cuenta_id: result.id
       };
     } catch (error) {
-      console.error('Error al crear cuenta por cobrar:', error);
+      console.error('Error al crear cuenta por pagar:', error);
       throw error;
     }
   }
@@ -416,7 +395,7 @@ export class CuentasPorCobrarService {
     try {
       const fechaHoy = getBoliviaISOString().split('T')[0];
       const query = `
-        UPDATE cuentas_por_cobrar 
+        UPDATE cuentas_por_pagar 
         SET estado = 'vencida'
         WHERE fecha_vencimiento < DATE(?) 
         AND estado = 'pendiente'
@@ -434,18 +413,18 @@ export class CuentasPorCobrarService {
   }
 
   // Obtener histórico de pagos de una cuenta
-  static async obtenerHistoricoPagos(cuentaId: number): Promise<PagoCuenta[]> {
+  static async obtenerHistoricoPagos(cuentaId: number): Promise<PagoProveedor[]> {
     try {
       const query = `
         SELECT 
-          pc.*,
-          c.nombre as cliente_nombre,
-          c.apellido as cliente_apellido
-        FROM pagos_cuentas pc
-        INNER JOIN cuentas_por_cobrar cpc ON pc.cuenta_id = cpc.id
-        INNER JOIN clientes c ON cpc.cliente_id = c.id
-        WHERE pc.cuenta_id = ?
-        ORDER BY pc.fecha_pago DESC
+          pp.*,
+          p.nombre as proveedor_nombre,
+          p.contacto as proveedor_contacto
+        FROM pagos_proveedores pp
+        INNER JOIN cuentas_por_pagar cpp ON pp.cuenta_id = cpp.id
+        INNER JOIN proveedores p ON cpp.proveedor_id = p.id
+        WHERE pp.cuenta_id = ?
+        ORDER BY pp.fecha_pago DESC
       `;
 
       return await this.executeQuery(query, [cuentaId]);

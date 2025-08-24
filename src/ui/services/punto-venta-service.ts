@@ -85,6 +85,8 @@ export interface Venta {
 }
 
 import { InventarioService } from './inventario-service';
+import CajasService from './cajas-service';
+import { getBoliviaISOString } from '../lib/utils';
 
 export class PuntoVentaService {
   static async obtenerProductoPorCodigo(codigo: string): Promise<Producto | null> {
@@ -114,6 +116,54 @@ export class PuntoVentaService {
       return row || null;
     } catch (error) {
       console.error('Error al obtener producto por código:', error);
+      throw error;
+    }
+  }
+
+  static async buscarProductos(termino: string): Promise<Producto[]> {
+    try {
+      const query = `
+        SELECT 
+          p.id,
+          p.codigo_barras,
+          p.codigo_interno,
+          p.nombre,
+          p.descripcion,
+          p.precio_venta,
+          ia.stock_actual,
+          ia.stock_minimo,
+          p.activo,
+          p.fecha_creacion,
+          c.nombre as categoria_nombre
+        FROM inventario_actual ia
+        INNER JOIN productos p ON p.id = ia.id
+        LEFT JOIN categorias c ON p.categoria_id = c.id
+        WHERE p.activo = 1 AND (
+          p.nombre LIKE ? OR 
+          p.codigo_barras LIKE ? OR 
+          p.codigo_interno LIKE ? OR
+          p.descripcion LIKE ?
+        )
+        ORDER BY 
+          CASE 
+            WHEN p.codigo_barras = ? OR p.codigo_interno = ? THEN 1
+            WHEN p.nombre LIKE ? THEN 2
+            ELSE 3
+          END,
+          p.nombre ASC
+        LIMIT 10
+      `;
+      
+      const termSearch = `%${termino}%`;
+      const termExact = termino;
+      const termStartsWith = `${termino}%`;
+      
+      return window.electronAPI.db.query(query, [
+        termSearch, termSearch, termSearch, termSearch,
+        termExact, termExact, termStartsWith
+      ]);
+    } catch (error) {
+      console.error('Error al buscar productos:', error);
       throw error;
     }
   }
@@ -231,7 +281,7 @@ export class PuntoVentaService {
         INSERT INTO ventas (
           numero_venta, cliente_id, almacen_id, fecha_venta, metodo_pago, 
           subtotal, descuento, total, estado, observaciones, usuario
-        ) VALUES (?, ?, 1, datetime('now'), ?, ?, ?, ?, ?, ?, 'POS')
+        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, 'POS')
       `;
 
       // Generar número temporal para obtener el ID
@@ -240,6 +290,7 @@ export class PuntoVentaService {
       const ventaResult = await window.electronAPI.db.run(ventaQuery, [
         numeroTemporal,
         venta.cliente_id || null,
+        getBoliviaISOString(),
         venta.metodo_pago,
         venta.subtotal,
         venta.descuento,
@@ -293,9 +344,49 @@ export class PuntoVentaService {
         });
       }
 
+      // Registrar el pago en la tabla venta_pagos
+      // Para ventas a crédito, solo registrar si hay pago inicial
+      // Para ventas normales, registrar el total
+      if (!venta.es_credito) {
+        const fechaHoy = getBoliviaISOString();
+        await window.electronAPI.db.run(`
+          INSERT INTO venta_pagos (venta_id, metodo_pago, monto, usuario, fecha_pago)
+          VALUES (?, ?, ?, ?, ?)
+        `, [ventaId, venta.metodo_pago, venta.total, 'Sistema', fechaHoy]);
+
+        console.log(`Pago registrado en venta_pagos: ${venta.metodo_pago} - Bs ${venta.total.toFixed(2)}`);
+      }
+
       // Si es venta a crédito, crear cuenta por cobrar
       if (venta.es_credito && venta.cliente_id) {
         await this.crearCuentaPorCobrar(ventaId, venta, numeroVenta);
+      } else {
+        // Solo registrar el monto total en caja si NO es venta a crédito
+        // Para ventas a crédito, el registro se hace en crearCuentaPorCobrar con el pago inicial
+        try {
+          const cajaActiva = await CajasService.getCajaActiva();
+          if (cajaActiva) {
+            const movimiento = {
+              tipo: 'ingreso' as const,
+              monto: venta.total,
+              concepto: `Venta ${numeroVenta} (${venta.metodo_pago})`,
+              usuario: 'Sistema',
+              metodo_pago: venta.metodo_pago
+            };
+            
+            const resultado = await CajasService.registrarMovimiento(movimiento);
+            if (resultado.exito) {
+              console.log(`Transacción de caja registrada para venta ${numeroVenta} - ${venta.metodo_pago}`);
+            } else {
+              console.warn('Error al registrar venta en caja:', resultado.mensaje);
+            }
+          } else {
+            console.warn('No hay caja activa para registrar la transacción');
+          }
+        } catch (error) {
+          console.error('Error al registrar transacción en caja:', error);
+          // No lanzamos el error para no fallar la venta
+        }
       }
 
       return ventaId;
@@ -335,6 +426,43 @@ export class PuntoVentaService {
           - Monto total: Bs ${venta.total.toFixed(2)}
           - Pago inicial: Bs ${pagoInicial.toFixed(2)}
           - Saldo pendiente: Bs ${montoAdeudado.toFixed(2)}`);
+      }
+
+      // Registrar pago inicial en caja si es mayor a 0 (todos los métodos de pago)
+      if (pagoInicial > 0) {
+        // Registrar pago inicial en venta_pagos
+        const fechaHoy = getBoliviaISOString();
+        await window.electronAPI.db.run(`
+          INSERT INTO venta_pagos (venta_id, metodo_pago, monto, usuario, fecha_pago)
+          VALUES (?, ?, ?, ?, ?)
+        `, [ventaId, venta.metodo_pago, pagoInicial, 'Sistema', fechaHoy]);
+
+        console.log(`Pago inicial registrado en venta_pagos: ${venta.metodo_pago} - Bs ${pagoInicial.toFixed(2)}`);
+
+        try {
+          const cajaActiva = await CajasService.getCajaActiva();
+          if (cajaActiva) {
+            const movimiento = {
+              tipo: 'ingreso' as const,
+              monto: pagoInicial,
+              concepto: `Pago inicial - ${numeroVenta} (${venta.metodo_pago})`,
+              usuario: 'Sistema',
+              metodo_pago: venta.metodo_pago
+            };
+            
+            const resultado = await CajasService.registrarMovimiento(movimiento);
+            if (resultado.exito) {
+              console.log(`Transacción de caja registrada para pago inicial: Bs ${pagoInicial.toFixed(2)} - ${venta.metodo_pago}`);
+            } else {
+              console.warn('Error al registrar pago inicial:', resultado.mensaje);
+            }
+          } else {
+            console.warn('No hay caja activa para registrar el pago inicial');
+          }
+        } catch (error) {
+          console.error('Error al registrar pago inicial en caja:', error);
+          // No lanzamos el error para no fallar la venta
+        }
       }
     } catch (error) {
       console.error('Error al crear cuenta por cobrar:', error);
@@ -389,11 +517,29 @@ export class PuntoVentaService {
   // Registrar pago y actualizar saldo
   static async registrarPagoCredito(cuentaId: number, montoPago: number, metodoPago: string, observaciones?: string): Promise<void> {
     try {
-      // Registrar el pago
+      // Obtener información de la cuenta por cobrar
+      const cuenta = await window.electronAPI.db.get(`
+        SELECT venta_id FROM cuentas_por_cobrar WHERE id = ?
+      `, [cuentaId]);
+
+      if (!cuenta) {
+        throw new Error('Cuenta por cobrar no encontrada');
+      }
+
+      // Registrar el pago con fecha de Bolivia
+      const fechaHoy = getBoliviaISOString();
       await window.electronAPI.db.run(`
-        INSERT INTO pagos_cuentas (cuenta_id, monto, metodo_pago, observaciones)
-        VALUES (?, ?, ?, ?)
-      `, [cuentaId, montoPago, metodoPago, observaciones || '']);
+        INSERT INTO pagos_cuentas (cuenta_id, monto, metodo_pago, observaciones, fecha_pago)
+        VALUES (?, ?, ?, ?, ?)
+      `, [cuentaId, montoPago, metodoPago, observaciones || '', fechaHoy]);
+
+      // Registrar el pago en venta_pagos
+      await window.electronAPI.db.run(`
+        INSERT INTO venta_pagos (venta_id, metodo_pago, monto, usuario, fecha_pago)
+        VALUES (?, ?, ?, ?, ?)
+      `, [cuenta.venta_id, metodoPago, montoPago, 'Sistema', fechaHoy]);
+
+      console.log(`Pago de crédito registrado en venta_pagos: ${metodoPago} - Bs ${montoPago.toFixed(2)}`);
 
       // Actualizar el saldo de la cuenta
       await window.electronAPI.db.run(`
@@ -404,6 +550,26 @@ export class PuntoVentaService {
 
       // Verificar si la venta debe marcarse como completada
       await this.actualizarEstadoVentaSiCompletada(cuentaId);
+
+      // Registrar como movimiento en caja (todos los métodos de pago)
+      try {
+        const resultado = await CajasService.registrarMovimiento({
+          tipo: 'ingreso',
+          monto: montoPago,
+          concepto: `Cobro CxC - Cuenta #${cuentaId}`,
+          // metodo_pago no existe en MovimientoCaja, se elimina esta línea
+          usuario: 'Sistema'
+        });
+        
+        if (resultado.exito) {
+          console.log(`Movimiento de caja registrado para pago de crédito: Bs ${montoPago.toFixed(2)} - ${metodoPago}`);
+        } else {
+          console.warn('Error al registrar movimiento en caja:', resultado.mensaje);
+        }
+      } catch (error) {
+        console.error('Error al registrar movimiento en caja para pago:', error);
+        // No lanzamos el error para no fallar el pago
+      }
 
       console.log(`Pago registrado: Bs ${montoPago.toFixed(2)} para cuenta ${cuentaId}`);
     } catch (error) {

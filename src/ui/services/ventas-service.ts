@@ -1,4 +1,6 @@
-    // Servicio para gestionar las ventas
+// Servicio para gestionar las ventas
+import { getBoliviaISOString } from '../lib/utils';
+
     export interface VentaDetalle {
     id: number;
     venta_id: number;
@@ -136,13 +138,14 @@
     // Obtener estadísticas de ventas
     static async obtenerEstadisticasVentas(): Promise<any> {
         try {
+        const fechaHoy = getBoliviaISOString().split('T')[0];
         const ventasHoy = await window.electronAPI.db.get(`
             SELECT 
             COUNT(*) as cantidad,
             COALESCE(SUM(total), 0) as total
             FROM ventas 
-            WHERE DATE(fecha_venta) = DATE('now')
-        `);
+            WHERE DATE(fecha_venta) = DATE(?)
+        `, [fechaHoy]);
 
         const ventasSemana = await window.electronAPI.db.get(`
             SELECT 
@@ -209,6 +212,12 @@
     // Cancelar una venta (cambiar estado)
     static async cancelarVenta(ventaId: number, motivo?: string): Promise<void> {
         try {
+        // Obtener información de la venta antes de cancelarla
+        const venta = await this.obtenerVentaPorId(ventaId);
+        if (!venta) {
+            throw new Error('Venta no encontrada');
+        }
+
         const query = `
             UPDATE ventas 
             SET 
@@ -219,14 +228,59 @@
 
         await window.electronAPI.db.run(query, [motivo || 'Sin motivo especificado', ventaId]);
 
-        // Restaurar stock de los productos
+        // Restaurar stock de los productos creando movimientos de entrada
         const detalles = await this.obtenerDetallesVenta(ventaId);
         for (const detalle of detalles) {
+            // Obtener el stock actual antes del movimiento
+            const stockAnterior = await window.electronAPI.db.get(`
+                SELECT COALESCE(stock_actual, 0) as stock_actual 
+                FROM inventario_actual 
+                WHERE id = ?
+            `, [detalle.producto_id]);
+            
+            const stockPrevio = stockAnterior?.stock_actual || 0;
+            const stockNuevo = stockPrevio + detalle.cantidad;
+            
+            // Crear movimiento de entrada para restaurar el stock
             await window.electronAPI.db.run(`
-            UPDATE productos 
-            SET stock_actual = stock_actual + ?
-            WHERE (id = ? OR rowid = ?)
-            `, [detalle.cantidad, detalle.producto_id, detalle.producto_id]);
+                INSERT INTO movimientos (
+                    producto_id, almacen_id, tipo_movimiento, cantidad,
+                    stock_anterior, stock_nuevo, observaciones, usuario
+                ) VALUES (?, 1, 'entrada', ?, ?, ?, ?, 'sistema')
+            `, [
+                detalle.producto_id,
+                detalle.cantidad,
+                stockPrevio,
+                stockNuevo,
+                `Restauración por cancelación de venta #${ventaId}`
+            ]);
+        }
+
+        // Registrar transacción de cancelación en caja (egreso para revertir el ingreso)
+        try {
+            const CajasService = (await import('./cajas-service')).default;
+            const cajaActiva = await CajasService.getCajaActiva();
+            if (cajaActiva) {
+                const movimiento = {
+                    tipo: 'egreso' as const,
+                    monto: venta.total,
+                    concepto: `Cancelación venta ${venta.numero_venta}`,
+                    usuario: 'Sistema',
+                    metodo_pago: venta.metodo_pago
+                };
+                
+                const resultado = await CajasService.registrarMovimiento(movimiento);
+                if (resultado.exito) {
+                    console.log(`Transacción de cancelación registrada en caja: -Bs ${venta.total.toFixed(2)}`);
+                } else {
+                    console.warn('Error al registrar cancelación:', resultado.mensaje);
+                }
+            } else {
+                console.warn('No hay caja activa para registrar la cancelación');
+            }
+        } catch (error) {
+            console.error('Error al registrar cancelación en caja:', error);
+            // No lanzamos el error para no fallar la cancelación
         }
         } catch (error) {
         console.error('Error al cancelar venta:', error);
@@ -242,6 +296,110 @@
     // Estados de venta disponibles
     static getEstadosVenta(): string[] {
         return ['completada', 'pendiente', 'cancelada'];
+    }
+
+    // Actualizar una venta existente
+    static async actualizarVenta(ventaId: number, datos: {
+        metodo_pago?: string;
+        estado?: string;
+        observaciones?: string;
+        descuento?: number;
+        subtotal?: number;
+        total?: number;
+    }): Promise<void> {
+        try {
+            const sets: string[] = [];
+            const params: any[] = [];
+
+            if (datos.metodo_pago !== undefined) {
+                sets.push('metodo_pago = ?');
+                params.push(datos.metodo_pago);
+            }
+
+            if (datos.estado !== undefined) {
+                sets.push('estado = ?');
+                params.push(datos.estado);
+            }
+
+            if (datos.observaciones !== undefined) {
+                sets.push('observaciones = ?');
+                params.push(datos.observaciones);
+            }
+
+            if (datos.descuento !== undefined) {
+                sets.push('descuento = ?');
+                params.push(datos.descuento);
+            }
+
+            if (datos.subtotal !== undefined) {
+                sets.push('subtotal = ?');
+                params.push(datos.subtotal);
+            }
+
+            if (datos.total !== undefined) {
+                sets.push('total = ?');
+                params.push(datos.total);
+            }
+
+            if (sets.length === 0) {
+                throw new Error('No hay datos para actualizar');
+            }
+
+            // Agregar fecha de modificación
+            sets.push('fecha_modificacion = ?');
+            params.push(getBoliviaISOString());
+
+            const query = `UPDATE ventas SET ${sets.join(', ')} WHERE id = ?`;
+            params.push(ventaId);
+            await window.electronAPI.db.run(query, params);
+
+            // Si se actualiza el total, también actualizar la transacción de caja correspondiente
+            if (datos.total !== undefined) {
+                try {
+                    const CajasService = (await import('./cajas-service')).default;
+                    
+                    // Buscar la transacción de caja relacionada con esta venta
+                    const transaccion = await window.electronAPI.db.get(`
+                        SELECT id, monto FROM caja_transacciones 
+                        WHERE referencia = ? AND tipo = 'ingreso'
+                    `, [`venta_${ventaId}`]);
+
+                    if (transaccion) {
+                        // Calcular la diferencia para registrar un ajuste
+                        const diferencia = datos.total - transaccion.monto;
+                        
+                        if (diferencia !== 0) {
+                            const cajaActiva = await CajasService.getCajaActiva();
+                            if (cajaActiva) {
+                                const movimiento = {
+                                    tipo: 'ajuste' as const,
+                                    monto: Math.abs(diferencia),
+                                    concepto: `Ajuste por modificación de venta #${ventaId} (${diferencia > 0 ? '+' : '-'}Bs ${Math.abs(diferencia).toFixed(2)})`,
+                                    usuario: 'Sistema',
+                                    metodo_pago: datos.metodo_pago || 'efectivo'
+                                };
+                                
+                                const resultado = await CajasService.registrarMovimiento(movimiento);
+                                if (resultado.exito) {
+                                    console.log(`Ajuste de caja registrado para venta_${ventaId}: ${diferencia > 0 ? '+' : '-'}Bs ${Math.abs(diferencia).toFixed(2)}`);
+                                } else {
+                                    console.warn('Error al registrar ajuste:', resultado.mensaje);
+                                }
+                            }
+                        }
+                    } else {
+                        console.warn(`No se encontró transacción de caja para venta_${ventaId}`);
+                    }
+                } catch (error) {
+                    console.error('Error al actualizar transacción de caja:', error);
+                    // No lanzamos el error para no fallar la actualización de la venta
+                }
+            }
+
+        } catch (error) {
+            console.error('Error al actualizar venta:', error);
+            throw error;
+        }
     }
     }
 

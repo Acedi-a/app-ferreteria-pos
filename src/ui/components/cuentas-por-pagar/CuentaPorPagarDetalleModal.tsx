@@ -1,27 +1,25 @@
-// src/components/cuentas-por-cobrar/CuentaDetalleModal.tsx
+// src/ui/components/cuentas-por-pagar/CuentaPorPagarDetalleModal.tsx
 import { useState, useEffect } from "react";
-import { X, FileText, User, CreditCard, History, DollarSign, Calendar, Printer } from "lucide-react";
+import { X, FileText, CreditCard, History, DollarSign, Calendar, Printer, Factory } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
-import type { CuentaPorCobrar, PagoCuenta } from "../../services/cuentas-por-cobrar-service";
-import { CuentasPorCobrarService } from "../../services/cuentas-por-cobrar-service";
-import { printPagoReceipt } from "./PaymentReceiptRenderer";
-import { formatBoliviaDate, formatBoliviaDateOnly } from "../../lib/utils";
+import type { CuentaPorPagar, PagoProveedor } from "../../services/cuentas-por-pagar-service";
+import { CuentasPorPagarService } from "../../services/cuentas-por-pagar-service";
 
-interface CuentaDetalleModalProps {
-  cuenta: CuentaPorCobrar | null;
+interface CuentaPorPagarDetalleModalProps {
+  cuenta: CuentaPorPagar | null;
   isOpen: boolean;
   onClose: () => void;
   onImprimir?: () => void;
 }
 
-export default function CuentaDetalleModal({
+export default function CuentaPorPagarDetalleModal({
   cuenta,
   isOpen,
   onClose,
   onImprimir
-}: CuentaDetalleModalProps) {
-  const [pagos, setPagos] = useState<PagoCuenta[]>([]);
+}: CuentaPorPagarDetalleModalProps) {
+  const [pagos, setPagos] = useState<PagoProveedor[]>([]);
   const [loadingPagos, setLoadingPagos] = useState(false);
 
   useEffect(() => {
@@ -35,7 +33,7 @@ export default function CuentaDetalleModal({
     
     try {
       setLoadingPagos(true);
-      const historico = await CuentasPorCobrarService.obtenerHistoricoPagos(cuenta.id);
+      const historico = await CuentasPorPagarService.obtenerHistoricoPagos(cuenta.id);
       setPagos(historico);
     } catch (error) {
       console.error('Error al cargar histórico de pagos:', error);
@@ -45,11 +43,21 @@ export default function CuentaDetalleModal({
   };
 
   const formatearFecha = (fecha: string) => {
-    return formatBoliviaDate(fecha);
+    return new Date(fecha).toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const formatearFechaCorta = (fecha: string) => {
-    return formatBoliviaDateOnly(fecha);
+    return new Date(fecha).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const getBadgeEstado = (estado: string) => {
@@ -80,10 +88,10 @@ export default function CuentaDetalleModal({
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                Detalles de Cuenta por Cobrar
+                Detalles de Cuenta por Pagar
               </h2>
               <p className="text-sm text-gray-600">
-                ID: {cuenta.id} - {cuenta.cliente_nombre} {cuenta.cliente_apellido}
+                ID: {cuenta.id} - {cuenta.proveedor_nombre}
               </p>
             </div>
           </div>
@@ -113,33 +121,39 @@ export default function CuentaDetalleModal({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Información de la cuenta */}
             <div className="space-y-6">
-              {/* Datos del cliente */}
+              {/* Datos del proveedor */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <User className="h-5 w-5 text-gray-600" />
-                  Información del Cliente
+                  <Factory className="h-5 w-5 text-gray-600" />
+                  Información del Proveedor
                 </h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Nombre:</span>
                     <span className="font-medium text-gray-900">
-                      {cuenta.cliente_nombre} {cuenta.cliente_apellido}
+                      {cuenta.proveedor_nombre}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Código:</span>
-                    <span className="font-medium text-gray-900">{cuenta.cliente_codigo}</span>
+                    <span className="font-medium text-gray-900">{cuenta.proveedor_codigo}</span>
                   </div>
-                  {cuenta.cliente_telefono && (
+                  {cuenta.proveedor_contacto && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Contacto:</span>
+                      <span className="font-medium text-gray-900">{cuenta.proveedor_contacto}</span>
+                    </div>
+                  )}
+                  {cuenta.proveedor_telefono && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Teléfono:</span>
-                      <span className="font-medium text-gray-900">{cuenta.cliente_telefono}</span>
+                      <span className="font-medium text-gray-900">{cuenta.proveedor_telefono}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Información de la venta */}
+              {/* Información de la compra */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-gray-600" />
@@ -151,9 +165,9 @@ export default function CuentaDetalleModal({
                     <span className="font-medium text-gray-900">{cuenta.id}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Venta:</span>
+                    <span className="text-gray-600">Compra:</span>
                     <span className="font-medium text-blue-600">
-                      {cuenta.numero_venta || `VENTA-${cuenta.venta_id || cuenta.id}`}
+                      {cuenta.numero_compra || `COMPRA-${cuenta.compra_id || cuenta.id}`}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -193,9 +207,9 @@ export default function CuentaDetalleModal({
               </div>
 
               {/* Resumen financiero */}
-              <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-400">
+              <div className="bg-orange-50 rounded-lg p-4 border-l-4 border-orange-400">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-blue-600" />
+                  <DollarSign className="h-5 w-5 text-orange-600" />
                   Resumen Financiero
                 </h3>
                 <div className="space-y-3">
@@ -207,7 +221,7 @@ export default function CuentaDetalleModal({
                     <span className="text-gray-600">Total Pagado:</span>
                     <span className="font-bold text-green-600">Bs {totalPagado.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-sm border-t border-blue-200 pt-2">
+                  <div className="flex justify-between text-sm border-t border-orange-200 pt-2">
                     <span className="text-gray-600">Saldo Pendiente:</span>
                     <span className={`font-bold text-lg ${
                       cuenta.saldo > 0 ? 'text-red-600' : 'text-green-600'
@@ -224,7 +238,7 @@ export default function CuentaDetalleModal({
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
-                        className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                        className="bg-orange-500 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${(totalPagado / cuenta.monto) * 100}%` }}
                       ></div>
                     </div>
@@ -281,13 +295,13 @@ export default function CuentaDetalleModal({
                       >
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-bold text-green-600">
+                            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold text-orange-600">
                                 {index + 1}
                               </span>
                             </div>
                             <div>
-                              <div className="font-medium text-green-600">
+                              <div className="font-medium text-orange-600">
                                 Bs {pago.monto.toFixed(2)}
                               </div>
                               <div className="text-xs text-gray-500">
@@ -295,30 +309,14 @@ export default function CuentaDetalleModal({
                               </div>
                             </div>
                           </div>
-                          <Badge className="bg-blue-100 text-blue-800 border-blue-200 capitalize text-xs">
-                            {pago.metodo_pago}
-                          </Badge>
+                          <div className="text-right">
+                            <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {pago.metodo_pago}
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-2 flex justify-end">
-          <Button
-                            variant="outline"
-                            className="text-gray-600 hover:text-gray-800 text-xs"
-                            onClick={async () => {
-                              try {
-            // No mostrar historial en el recibo de un pago específico,
-            // pero pásalo para cálculo correcto de saldos.
-            await printPagoReceipt(cuenta, { ...pago }, { mostrarHistorial: false, historial: pagos });
-                              } catch (e) {
-                                console.error(e);
-                              }
-                            }}
-                          >
-                            <Printer className="h-3 w-3 mr-1" /> Imprimir este pago
-                          </Button>
-                        </div>
-                        
                         {pago.observaciones && (
-                          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded border mt-2">
+                          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded mt-2">
                             {pago.observaciones}
                           </div>
                         )}

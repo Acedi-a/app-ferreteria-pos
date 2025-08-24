@@ -26,7 +26,7 @@ export function FiltrosReportes({
         <div style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
           <div style={{ minWidth: 200 }}>
             <label>Período de Análisis</label>
-            <Select value={preset} onChange={(e: any) => setPreset(e.target.value as Preset)}>
+            <Select value={preset} onValueChange={(value: string) => setPreset(value as Preset)}>
               <option value="today">Hoy</option>
               <option value="week">Esta semana</option>
               <option value="month">Este mes</option>

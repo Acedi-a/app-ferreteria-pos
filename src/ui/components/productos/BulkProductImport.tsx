@@ -411,14 +411,7 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
                       <div className="relative">
                         <Select
                           value={mapping[key] || ''}
-                          onChange={(e) => setMap(key, e.target.value)}
-                          className={`w-full transition-all ${
-                            isRequired && !isMapped 
-                              ? 'border-red-300 bg-red-50/50' 
-                              : isMapped 
-                                ? 'border-green-300 bg-green-50/50' 
-                                : 'border-gray-300'
-                          }`}
+                          onValueChange={(value) => setMap(key, value)}
                         >
                           <option value="">— Seleccionar columna —</option>
                           {parsed.headers.map((h) => (

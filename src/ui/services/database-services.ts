@@ -1,5 +1,6 @@
 // Servicios específicos para cada módulo de la aplicación
 // Estos servicios encapsulan las operaciones CRUD para cada entidad
+import { getBoliviaISOString } from '../lib/utils';
 
 export interface Producto {
   id?: number;
@@ -141,10 +142,11 @@ export class ProductoService {
     const sql = `
       UPDATE productos SET 
       ${campos.map(campo => `${campo} = ?`).join(', ')},
-      fecha_modificacion = CURRENT_TIMESTAMP
+      fecha_modificacion = ?
       WHERE id = ?
     `;
     const valores = campos.map(campo => (producto as any)[campo]);
+    valores.push(getBoliviaISOString());
     valores.push(id);
     
     await window.electronAPI.db.run(sql, valores);
@@ -156,7 +158,7 @@ export class ProductoService {
 
   static async obtenerStockBajo(): Promise<Producto[]> {
     return window.electronAPI.db.query(
-      'SELECT * FROM productos WHERE activo = 1 AND stock_actual <= stock_minimo ORDER BY stock_actual'
+      'SELECT p.*, ia.stock_actual FROM productos p JOIN inventario_actual ia ON p.id = ia.id WHERE p.activo = 1 AND ia.stock_actual <= p.stock_minimo ORDER BY ia.stock_actual'
     );
   }
 }
@@ -214,10 +216,11 @@ export class ClienteService {
     const sql = `
       UPDATE clientes SET 
       ${campos.map(campo => `${campo} = ?`).join(', ')},
-      fecha_modificacion = CURRENT_TIMESTAMP
+      fecha_modificacion = ?
       WHERE id = ?
     `;
     const valores = campos.map(campo => (cliente as any)[campo]);
+    valores.push(getBoliviaISOString());
     valores.push(id);
     
     await window.electronAPI.db.run(sql, valores);
@@ -329,13 +332,14 @@ export class CuentaPorCobrarService {
   }
 
   static async obtenerVencidas(): Promise<CuentaPorCobrar[]> {
+    const fechaHoy = getBoliviaISOString().split('T')[0];
     return window.electronAPI.db.query(`
       SELECT cpc.*, c.nombre as cliente_nombre, c.apellido as cliente_apellido
       FROM cuentas_por_cobrar cpc
       JOIN clientes c ON cpc.cliente_id = c.id
-      WHERE cpc.estado = 'vencido' OR (cpc.estado = 'pendiente' AND cpc.fecha_vencimiento < DATE('now'))
+      WHERE cpc.estado = 'vencido' OR (cpc.estado = 'pendiente' AND cpc.fecha_vencimiento < DATE(?))
       ORDER BY cpc.fecha_vencimiento ASC
-    `);
+    `, [fechaHoy]);
   }
 
   static async registrarPago(cuentaId: number, monto: number, metodoPago = 'efectivo'): Promise<void> {
