@@ -8,9 +8,10 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from ".
 import type { Categoria, Producto, TipoUnidad } from "../../services/productos-service";
 import { MovimientosService } from "../../services/movimientos-service";
 import { productosService } from "../../services/productos-service";
+import { ProveedoresService } from "../../services/proveedores-service";
 
 // Claves soportadas en el import (incluye stock_actual que no es campo directo en productos)
-type ColumnKey = keyof Pick<Producto, 'codigo_interno' | 'codigo_barras' | 'nombre' | 'descripcion' | 'marca' | 'precio_venta' | 'costo_unitario' | 'stock_minimo' | 'categoria_id' | 'tipo_unidad_id' | 'unidad_medida' | 'activo' | 'imagen_url' | 'venta_fraccionada'> | 'stock_actual';
+type ColumnKey = keyof Pick<Producto, 'codigo_interno' | 'codigo_barras' | 'nombre' | 'descripcion' | 'marca' | 'precio_venta' | 'costo_unitario' | 'stock_minimo' | 'categoria_id' | 'tipo_unidad_id' | 'unidad_medida' | 'activo' | 'imagen_url' | 'venta_fraccionada'> | 'stock_actual' | 'proveedor';
 
 interface BulkProductImportProps {
   isOpen: boolean;
@@ -41,14 +42,15 @@ const FIELD_LABELS: Record<ColumnKey, string> = {
   unidad_medida: 'Unidad Medida',
   activo: 'Activo (1/0, true/false, sí/no)',
   imagen_url: 'Imagen URL',
-  venta_fraccionada: 'Venta Fraccionada (Si/No)'
+  venta_fraccionada: 'Venta Fraccionada (Si/No)',
+  proveedor: 'Proveedor (Nombre/Empresa)'
 };
 
 const REQUIRED_FIELDS: ColumnKey[] = ['codigo_interno', 'nombre', 'precio_venta', 'stock_minimo'];
 
 // Orden estable para generar plantilla CSV
 const TEMPLATE_ORDER: ColumnKey[] = [
-  'codigo_interno','codigo_barras','nombre','descripcion','marca','precio_venta','costo_unitario','stock_actual','stock_minimo','categoria_id','tipo_unidad_id','unidad_medida','activo','venta_fraccionada','imagen_url'
+  'codigo_interno','codigo_barras','nombre','descripcion','marca','precio_venta','costo_unitario','stock_actual','stock_minimo','categoria_id','tipo_unidad_id','unidad_medida','activo','venta_fraccionada','proveedor','imagen_url'
 ];
 
 function guessMapping(headers: string[]): Partial<Record<ColumnKey, string>> {
@@ -71,6 +73,7 @@ function guessMapping(headers: string[]): Partial<Record<ColumnKey, string>> {
     ['unidad_medida', ['unidad_medida', 'um', 'unidad', 'unit_name']],
     ['activo', ['activo', 'active', 'habilitado', 'enabled']],
     ['venta_fraccionada', ['venta_fraccionada', 'fraccionada', 'fraccionado', 'venta fraccionada', 'permite fraccionado']],
+    ['proveedor', ['proveedor', 'supplier', 'proveedor_nombre', 'proveedor_name', 'vendor', 'empresa', 'distribuidor']],
     ['imagen_url', ['imagen', 'imagen_url', 'image', 'image_url', 'foto']]
   ];
   for (const [field, alts] of pairs) {
@@ -156,6 +159,7 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
       unidad_medida: 'UNIDAD',
       activo: 'true',
       venta_fraccionada: 'No',
+      proveedor: 'Ferretería Central',
       imagen_url: ''
     };
     const example = withExample ? ('\n' + headers.map(h => exampleValues[h] ?? '').join(',')) : '';
@@ -218,6 +222,33 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
     for (let i = 0; i < parsed.rows.length; i++) {
       const r = parsed.rows[i];
       try {
+        // Registrar el proveedor primero si se proporciona
+        if (m.proveedor) {
+          const nombreProveedor = r[m.proveedor]?.toString().trim();
+          if (nombreProveedor) {
+            // Buscar si el proveedor ya existe
+            const proveedorExistente = await ProveedoresService.buscar(nombreProveedor);
+            const exactMatch = proveedorExistente.find(p => p.nombre.trim().toLowerCase() === nombreProveedor.toLowerCase());
+            
+            if (!exactMatch) {
+              // Crear nuevo proveedor si no existe
+              try {
+                await ProveedoresService.crear({
+                  nombre: nombreProveedor,
+                  telefono: '',
+                  email: '',
+                  direccion: '',
+                  ciudad: '',
+                  activo: true
+                });
+                details.push(`Fila ${i + 2}: creado proveedor "${nombreProveedor}"`);
+              } catch (error) {
+                console.warn('No se pudo crear proveedor:', error);
+              }
+            }
+          }
+        }
+
         const producto: Partial<Producto> = {
           codigo_interno: r[m.codigo_interno]?.toString().trim(),
           codigo_barras: m.codigo_barras ? r[m.codigo_barras]?.toString().trim() : undefined,
@@ -461,7 +492,9 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
                       <li>Los campos con punto rojo son obligatorios</li>
                       <li>Puedes mapear categorías por ID numérico o por nombre exacto</li>
                       <li>Los tipos de unidad se pueden mapear por ID, nombre o abreviación</li>
+                      <li><strong>Proveedores se registran automáticamente:</strong> Si no existe se crea con el nombre proporcionado</li>
                       <li>El campo "Activo" acepta: 1/0, true/false, sí/no</li>
+                      <li>Los proveedores se procesan <strong>antes</strong> que los productos para mantener control interno</li>
                     </ul>
                   </div>
                 </div>
