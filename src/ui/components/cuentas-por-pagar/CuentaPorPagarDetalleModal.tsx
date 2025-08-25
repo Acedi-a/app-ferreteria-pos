@@ -134,16 +134,6 @@ export default function CuentaPorPagarDetalleModal({
                       {cuenta.proveedor_nombre}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Código:</span>
-                    <span className="font-medium text-gray-900">{cuenta.proveedor_codigo}</span>
-                  </div>
-                  {cuenta.proveedor_contacto && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Contacto:</span>
-                      <span className="font-medium text-gray-900">{cuenta.proveedor_contacto}</span>
-                    </div>
-                  )}
                   {cuenta.proveedor_telefono && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Teléfono:</span>

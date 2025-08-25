@@ -4,14 +4,11 @@ import { getBoliviaISOString } from '../lib/utils';
 
 export interface Proveedor {
   id: number;
-  codigo: string;
   nombre: string;
-  contacto?: string;
   telefono?: string;
   email?: string;
   direccion?: string;
   ciudad?: string;
-  documento?: string;
   activo: boolean;
   fecha_creacion: string;
   saldo_pendiente: number;
@@ -30,9 +27,7 @@ export interface CuentaPorPagar {
   fecha_creacion: string;
   
   // Datos del proveedor (JOIN)
-  proveedor_codigo?: string;
   proveedor_nombre?: string;
-  proveedor_contacto?: string;
   proveedor_telefono?: string;
   
   // Datos calculados
@@ -50,7 +45,6 @@ export interface PagoProveedor {
   
   // Datos del proveedor (JOIN)
   proveedor_nombre?: string;
-  proveedor_contacto?: string;
   proveedor_telefono?: string;
   
   // Datos de la cuenta (JOIN/calculados)
@@ -119,8 +113,8 @@ export class CuentasPorPagarService {
       if (filtros.proveedor && filtros.proveedor.trim() !== '') {
         whereClauses.push(`(
           p.nombre LIKE ? OR 
-          p.contacto LIKE ? OR 
-          p.codigo LIKE ?
+          p.telefono LIKE ? OR 
+          p.email LIKE ?
         )`);
         const proveedorParam = `%${filtros.proveedor}%`;
         params.push(proveedorParam, proveedorParam, proveedorParam);
@@ -160,9 +154,7 @@ export class CuentasPorPagarService {
       const query = `
         SELECT 
           cpp.*,
-          p.codigo as proveedor_codigo,
           p.nombre as proveedor_nombre,
-          p.contacto as proveedor_contacto,
           p.telefono as proveedor_telefono,
           COALESCE('COMPRA-' || cpp.compra_id, 'CUENTA-' || cpp.id) as numero_compra,
           CASE 
@@ -236,7 +228,6 @@ export class CuentasPorPagarService {
         SELECT 
           pp.*,
           p.nombre as proveedor_nombre,
-          p.contacto as proveedor_contacto,
           p.telefono as proveedor_telefono,
           COALESCE('COMPRA-' || cpp.compra_id, 'CUENTA-' || cpp.id) as numero_compra
         FROM pagos_proveedores pp
@@ -419,7 +410,7 @@ export class CuentasPorPagarService {
         SELECT 
           pp.*,
           p.nombre as proveedor_nombre,
-          p.contacto as proveedor_contacto
+          p.telefono as proveedor_telefono
         FROM pagos_proveedores pp
         INNER JOIN cuentas_por_pagar cpp ON pp.cuenta_id = cpp.id
         INNER JOIN proveedores p ON cpp.proveedor_id = p.id
