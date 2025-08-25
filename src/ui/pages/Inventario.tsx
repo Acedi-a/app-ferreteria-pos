@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Download, Upload } from "lucide-react";
+import { Download, Upload, Plus, Minus } from "lucide-react";
 
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -10,6 +10,7 @@ import { InventoryFilters } from "../components/inventario/InventoryFilters";
 import { InventoryTable } from "../components/inventario/InventoryTable";
 import { MovementsTable } from "../components/inventario/MovementsTable";
 import AdjustStockModal, { type Proveedor } from "../components/inventario/AdjustStockModal";
+import MovementModal from "../components/inventario/MovementModal";
 
 export default function Inventario() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,6 +25,8 @@ export default function Inventario() {
   const [ajusteProveedorId, setAjusteProveedorId] = useState<number | undefined>(undefined);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [totalComprasRecientes, setTotalComprasRecientes] = useState<number>(0);
+  const [showMovementModal, setShowMovementModal] = useState(false);
+  const [movementType, setMovementType] = useState<'entrada' | 'salida'>('entrada');
 
   const categorias = ["Todas", ...Array.from(new Set(inventario.map(i => i.categoria || "Sin categoría")))];
 
@@ -133,6 +136,12 @@ export default function Inventario() {
   // costo removido del modal
   const handleProveedorIdChange = useCallback((v: number | undefined) => setAjusteProveedorId(v), []);
 
+  // Handlers para el nuevo modal de movimientos
+  const handleMovementModalClose = useCallback(() => setShowMovementModal(false), []);
+  const handleMovementSuccess = useCallback(() => {
+    cargarDatos();
+  }, []);
+
   // Nota: Evitar declarar componentes anidados (como AdjustModal) dentro del render para no forzar remounts
 
   return (
@@ -144,6 +153,26 @@ export default function Inventario() {
           <p className="text-sm text-slate-500">Monitorea y gestiona el stock de productos</p>
         </div>
         <div className="flex space-x-2">
+          <Button 
+            onClick={() => {
+              setMovementType('entrada');
+              setShowMovementModal(true);
+            }}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Registrar Entrada
+          </Button>
+          <Button 
+            onClick={() => {
+              setMovementType('salida');
+              setShowMovementModal(true);
+            }}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            <Minus className="mr-2 h-4 w-4" />
+            Registrar Salida
+          </Button>
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Exportar Inventario
@@ -194,7 +223,8 @@ export default function Inventario() {
         </CardContent>
       </Card>
 
-  {showAdjustModal && (
+      {/* Modal de ajuste individual */}
+      {showAdjustModal && (
         <AdjustStockModal
           open={showAdjustModal}
           product={adjustingProduct}
@@ -209,6 +239,16 @@ export default function Inventario() {
           onObservaciones={handleObservacionesChange}
           onProveedorId={handleProveedorIdChange}
           onAplicar={aplicarAjuste}
+        />
+      )}
+
+      {/* Modal de movimientos masivos */}
+      {showMovementModal && (
+        <MovementModal
+          open={showMovementModal}
+          tipo={movementType}
+          onClose={handleMovementModalClose}
+          onSuccess={handleMovementSuccess}
         />
       )}
     </div>

@@ -1,5 +1,5 @@
 // src/pages/Ventas.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useToast } from "../components/ui/use-toast";
 import VentasStats from "../components/ventas/VentasStats";
 import VentasTable from "../components/ventas/VentasTable";
@@ -10,6 +10,7 @@ import { VentasService } from "../services/ventas-service";
 import { printTicket } from "../components/ventas/TicketRenderer";
 import type { Venta, VentaDetalle, FiltrosVenta } from "../services/ventas-service";
 import { getBoliviaDateString, getBoliviaDateDaysAgo } from "../lib/utils";
+import { useCajaChange } from "../contexts/CajaContext";
 
 export default function Ventas() {
   const { toast } = useToast();
@@ -48,11 +49,7 @@ export default function Ventas() {
     cargarVentas();
   }, [filtros]);
 
-  const cargarDatos = async () => {
-    await Promise.all([cargarVentas(), cargarEstadisticas()]);
-  };
-
-  const cargarVentas = async () => {
+  const cargarVentas = useCallback(async () => {
     try {
       setLoading(true);
       const ventasData = await VentasService.obtenerVentas(filtros, 100);
@@ -67,9 +64,9 @@ export default function Ventas() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filtros, toast]);
 
-  const cargarEstadisticas = async () => {
+  const cargarEstadisticas = useCallback(async () => {
     try {
       setLoadingStats(true);
       const statsData = await VentasService.obtenerEstadisticasVentas();
@@ -84,7 +81,14 @@ export default function Ventas() {
     } finally {
       setLoadingStats(false);
     }
-  };
+  }, [toast]);
+
+  const cargarDatos = useCallback(async () => {
+    await Promise.all([cargarVentas(), cargarEstadisticas()]);
+  }, [cargarVentas, cargarEstadisticas]);
+
+  // Recargar datos cuando cambie la caja
+  useCajaChange(cargarDatos);
 
   const verDetallesVenta = async (venta: Venta) => {
     try {

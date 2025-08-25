@@ -75,3 +75,15 @@ export function getBoliviaDateDaysAgo(days: number): string {
   date.setDate(date.getDate() - days);
   return date.toISOString().split('T')[0];
 }
+
+/**
+ * Formatea un número como moneda boliviana
+ */
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+}

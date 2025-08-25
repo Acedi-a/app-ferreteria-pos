@@ -95,11 +95,11 @@ export default function PuntoVenta() {
   const [productosEncontrados, setProductosEncontrados] = useState<Producto[]>([]);
   const [terminoBusqueda, setTerminoBusqueda] = useState("");
   // Sugerencias en tiempo real
-  const [sugerencias, setSugerencias] = useState<Producto[]>([]);
-  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+
+
   // Confirmación de registro
-  const [mostrarConfirmacionRegistro, setMostrarConfirmacionRegistro] = useState(false);
-  const [productoARegistrar, setProductoARegistrar] = useState("");
+
+
   const [nuevoProd, setNuevoProd] = useState({
     codigo_interno: "",
     codigo_barras: "",
@@ -126,23 +126,16 @@ export default function PuntoVenta() {
           const productosConvertidos = productos.map(convertirProductoBase);
           
           if (productosConvertidos.length === 0) {
-            // Si no se encuentran productos, mostrar confirmación de registro
-            setSugerencias([]);
-            setMostrarSugerencias(false);
-            setProductoARegistrar(inputCodigo.trim());
-            setMostrarConfirmacionRegistro(true);
+            // Si no se encuentran productos, no hacer nada por ahora
           } else {
-            setSugerencias(productosConvertidos.slice(0, 5)); // Máximo 5 sugerencias
-            setMostrarSugerencias(true);
+            // Productos encontrados, no hacer nada por ahora
           }
         } catch (error) {
           console.error('Error en búsqueda en tiempo real:', error);
-          setSugerencias([]);
-          setMostrarSugerencias(false);
+          // Error en búsqueda
         }
       } else {
-        setSugerencias([]);
-        setMostrarSugerencias(false);
+        // Campo vacío
       }
     }, 800); // Aumenté el debounce a 800ms para evitar mostrar el modal muy rápido
 
@@ -296,70 +289,17 @@ export default function PuntoVenta() {
     setTimeout(() => scanInputRef.current?.focus(), 0);
   };
 
-  const seleccionarSugerencia = (producto: Producto) => {
-    // Agregar el producto al carrito
-    setProductosDisponibles(prev => prev.some(p => p.id === producto.id) ? prev : [...prev, producto]);
-    agregarProducto(producto);
-    // Limpiar input y sugerencias
-    setInputCodigo("");
-    setSugerencias([]);
-    setMostrarSugerencias(false);
-    scanInputRef.current?.focus();
-  };
 
-  const manejarCambioInput = (valor: string) => {
-    setInputCodigo(valor);
-    // Si el campo se vacía, ocultar sugerencias y confirmación
-    if (valor.trim() === "") {
-      setSugerencias([]);
-      setMostrarSugerencias(false);
-      setMostrarConfirmacionRegistro(false);
-    }
-    // Si el usuario sigue escribiendo después de que aparezca el modal, cerrarlo
-    if (showCrearProducto && valor.trim() !== codigoEscaneado) {
-      setShowCrearProducto(false);
-    }
-    // Si el usuario sigue escribiendo después de que aparezca la confirmación, cerrarla
-    if (mostrarConfirmacionRegistro && valor.trim() !== productoARegistrar) {
-      setMostrarConfirmacionRegistro(false);
-    }
-  };
 
-  const confirmarRegistroProducto = () => {
-    setCodigoEscaneado(productoARegistrar);
-    setNuevoProd({
-      codigo_interno: productoARegistrar,
-      codigo_barras: "",
-      nombre: "",
-      precio_venta: "",
-      costo_unitario: "",
-      stock_actual: "1",
-      stock_minimo: "0"
-    });
-    setMostrarConfirmacionRegistro(false);
-    setShowCrearProducto(true);
-  };
 
-  const cancelarRegistroProducto = () => {
-    setMostrarConfirmacionRegistro(false);
-    setProductoARegistrar("");
-    setInputCodigo("");
-    scanInputRef.current?.focus();
-  };
 
-  const manejarBlurInput = () => {
-    // Ocultar sugerencias después de un pequeño delay para permitir clicks
-    setTimeout(() => {
-      setMostrarSugerencias(false);
-    }, 200);
-  };
 
-  const manejarFocusInput = () => {
-    // Mostrar sugerencias si hay texto y resultados
-    if (inputCodigo.trim().length >= 2 && sugerencias.length > 0) {
-      setMostrarSugerencias(true);
-    }
-  };
+
+
+
+
+
+
 
   // Selección desde el buscador tipoahead
   const onSelectProductoBuscado = (p: ProductoBase) => {

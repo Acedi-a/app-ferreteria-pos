@@ -8,17 +8,17 @@ export interface Producto {
   descripcion?: string;
   marca?: string;
   venta_fraccionada?: boolean;
-  costo_unitario?: number; // nuevo: costo base en maestro
-  precio_venta: number; // precio de venta sugerido
+  costo_unitario?: number; 
+  precio_venta: number; 
   stock_minimo: number;
+  stock_actual?: number; // Stock actual desde inventario_actual
   categoria_id?: number;
   tipo_unidad_id?: number;
   unidad_medida?: string;
   activo: boolean;
   fecha_creacion?: string;
   fecha_actualizacion?: string;
-  imagen_url?: string; // nueva columna para imagen
-  // Campos calculados/join
+  imagen_url?: string; 
   categoria_nombre?: string;
   tipo_unidad_nombre?: string;
   tipo_unidad_abreviacion?: string;
@@ -49,9 +49,16 @@ export interface TipoUnidad {
 class ProductosService {
   private marcaSupported: boolean | null = null;
 
+  private verificarElectronAPI() {
+    if (!window.electronAPI?.db) {
+      throw new Error('La aplicación Electron no está disponible. Por favor, ejecute la aplicación desde Electron.');
+    }
+  }
+
   private async hasMarcaColumn(): Promise<boolean> {
     if (this.marcaSupported !== null) return this.marcaSupported;
     try {
+      this.verificarElectronAPI();
       const cols = await window.electronAPI.db.query("PRAGMA table_info('productos')");
       this.marcaSupported = Array.isArray(cols) && cols.some((c: any) => c.name === 'marca');
     } catch {
@@ -61,13 +68,16 @@ class ProductosService {
   }
   // Productos CRUD - Solo datos maestros
   async obtenerProductos(): Promise<Producto[]> {
+    this.verificarElectronAPI();
     const result = await window.electronAPI.db.query(`
       SELECT 
         p.*,
+        ia.stock_actual,
         c.nombre as categoria_nombre,
         tu.nombre as tipo_unidad_nombre,
         tu.abreviacion as tipo_unidad_abreviacion
       FROM productos p
+      LEFT JOIN inventario_actual ia ON p.id = ia.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
       ORDER BY p.nombre ASC
@@ -76,14 +86,17 @@ class ProductosService {
   }
 
   async buscarProductos(termino: string): Promise<Producto[]> {
+    this.verificarElectronAPI();
     const includeMarca = await this.hasMarcaColumn();
     const baseSql = `
       SELECT 
         p.*,
+        ia.stock_actual,
         c.nombre as categoria_nombre,
         tu.nombre as tipo_unidad_nombre,
         tu.abreviacion as tipo_unidad_abreviacion
       FROM productos p
+      LEFT JOIN inventario_actual ia ON p.id = ia.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
       WHERE 
@@ -101,6 +114,7 @@ class ProductosService {
   }
 
   async crearProducto(producto: Omit<Producto, 'id' | 'fecha_creacion' | 'fecha_actualizacion'>): Promise<number> {
+    this.verificarElectronAPI();
     const campos = [];
     const valores = [];
     const placeholders = [];

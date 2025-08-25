@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Download, FileText, Package, Users, DollarSign, TrendingUp } from "lucide-react";
-import { getBoliviaDate, getBoliviaDateString } from "../lib/utils";
+import { getBoliviaDate } from "../lib/utils";
 
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";

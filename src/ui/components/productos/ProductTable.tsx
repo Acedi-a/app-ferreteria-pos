@@ -132,8 +132,7 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
               <TableCell className="py-4 px-6">
                 <div>
                   <div className="text-sm font-medium text-gray-900">
-                    {/* Stock actual removed - now shown from inventario_actual */}
-                    -
+                    {product.stock_actual ?? 0}
                   </div>
                   <div className="text-xs text-gray-500">Min: {product.stock_minimo}</div>
                 </div>

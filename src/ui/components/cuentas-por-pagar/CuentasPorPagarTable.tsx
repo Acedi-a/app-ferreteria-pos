@@ -125,12 +125,9 @@ export default function CuentasPorPagarTable({
                       <div className="font-medium text-gray-900">
                         {cuenta.proveedor_nombre}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        Código: {cuenta.proveedor_codigo}
-                      </div>
                       {cuenta.proveedor_telefono && (
-                        <div className="text-xs text-gray-400">
-                          {cuenta.proveedor_telefono}
+                        <div className="text-sm text-gray-500">
+                          Tel: {cuenta.proveedor_telefono}
                         </div>
                       )}
                     </div>
@@ -206,10 +203,10 @@ export default function CuentasPorPagarTable({
                       <Button
                         variant="outline"
                         onClick={() => onVerDetalles(cuenta)}
-                        className="h-8 w-8 p-0 text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                        className="h-12  text-gray-600 hover:text-blue-600 hover:bg-blue-50"
                         title="Ver detalles"
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-10 " />
                       </Button>
 
                       {/* Registrar pago - solo si tiene saldo pendiente */}
@@ -217,10 +214,10 @@ export default function CuentasPorPagarTable({
                         <Button
                           variant="outline"
                           onClick={() => onRegistrarPago(cuenta)}
-                          className="h-8 w-8 p-0 text-gray-600 hover:text-green-600 hover:bg-green-50"
+                          className="h-12 text-gray-600 hover:text-green-600 hover:bg-green-50"
                           title="Registrar pago"
                         >
-                          <DollarSign className="h-4 w-4" />
+                          <DollarSign className="h-10" />
                         </Button>
                       )}
 
@@ -229,10 +226,10 @@ export default function CuentasPorPagarTable({
                         <Button
                           variant="outline"
                           onClick={() => onImprimir(cuenta)}
-                          className="h-8 w-8 p-0 text-gray-600 hover:text-purple-600 hover:bg-purple-50"
+                          className="h-12 text-gray-600 hover:text-purple-600 hover:bg-purple-50"
                           title="Imprimir"
                         >
-                          <Printer className="h-4 w-4" />
+                          <Printer className="h-10" />
                         </Button>
                       )}
                     </div>

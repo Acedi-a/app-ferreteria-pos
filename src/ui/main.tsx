@@ -18,6 +18,7 @@ import Configuracion from './pages/Configuracion';
 import Cajas from './pages/Cajas';
 import CategoriaTipo from './pages/CategoriaTipo';
 import { Toaster } from "./components/ui/toaster";
+import { CajaProvider } from './contexts/CajaContext';
 
 // Prevenir scroll en inputs numéricos
 document.addEventListener('DOMContentLoaded', () => {
@@ -68,26 +69,28 @@ function addScrollPrevention() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <HashRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/punto-venta" element={<PuntoVenta />} />
-          <Route path="/productos" element={<Productos />} />
-          <Route path="/productos/masivos" element={<ProductosMasivos />} />
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/proveedores" element={<Proveedores />} />
-          <Route path="/ventas" element={<Ventas />} />
-          <Route path="/inventario" element={<Inventario />} />
-          <Route path="/reportes" element={<Reportes />} />
-          <Route path="/cuentas-por-cobrar" element={<CuentasPorCobrar />} />
-          <Route path="/cuentas-por-pagar" element={<CuentasPorPagar />} />
-          <Route path="/cajas" element={<Cajas />} />
-          <Route path="/configuracion" element={<Configuracion />} />
-          <Route path='/categoria-unidad' element={<CategoriaTipo />} />
-        </Routes>
-      </Layout>
-    </HashRouter>
-    <Toaster />
+    <CajaProvider>
+      <HashRouter>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/punto-venta" element={<PuntoVenta />} />
+            <Route path="/productos" element={<Productos />} />
+            <Route path="/productos/masivos" element={<ProductosMasivos />} />
+            <Route path="/clientes" element={<Clientes />} />
+            <Route path="/proveedores" element={<Proveedores />} />
+            <Route path="/ventas" element={<Ventas />} />
+            <Route path="/inventario" element={<Inventario />} />
+            <Route path="/reportes" element={<Reportes />} />
+            <Route path="/cuentas-por-cobrar" element={<CuentasPorCobrar />} />
+            <Route path="/cuentas-por-pagar" element={<CuentasPorPagar />} />
+            <Route path="/cajas" element={<Cajas />} />
+            <Route path="/configuracion" element={<Configuracion />} />
+            <Route path='/categoria-unidad' element={<CategoriaTipo />} />
+          </Routes>
+        </Layout>
+      </HashRouter>
+      <Toaster />
+    </CajaProvider>
   </React.StrictMode>
 );

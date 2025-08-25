@@ -89,7 +89,7 @@ export default function Configuracion() {
         );
       case 'tickets':
         return (
-          <TicketsTab message={message} saving={saving} ticketsConfig={ticketsConfig} setTicketsConfig={setTicketsConfig} onSave={guardarTickets} />
+          <TicketsTab message={message} ticketsConfig={ticketsConfig} setTicketsConfig={setTicketsConfig} onSave={guardarTickets} />
         );
       case 'sistema':
         return (

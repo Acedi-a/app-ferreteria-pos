@@ -1,10 +1,27 @@
+import { CajasService } from './cajas-service';
+
 export interface RangoFechas {
   desde?: string; // YYYY-MM-DD
   hasta?: string; // YYYY-MM-DD
 }
 
 export class ReportesService {
+  private static verificarElectronAPI() {
+    if (!window.electronAPI?.db) {
+      throw new Error('La aplicación Electron no está disponible. Por favor, ejecute la aplicación desde Electron.');
+    }
+  }
+
   static async ventasPorDia(rango: RangoFechas) {
+    this.verificarElectronAPI();
+    
+    // Obtener caja activa
+    const cajaActiva = await CajasService.getCajaActiva();
+    
+    if (!cajaActiva) {
+      return [];
+    }
+    
     const filtroFecha = rango.desde && rango.hasta
       ? `DATE(v.fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -16,6 +33,7 @@ export class ReportesService {
     const params: any[] = [];
     if (rango.desde) params.push(rango.desde);
     if (rango.hasta) params.push(rango.hasta);
+    params.push(cajaActiva.id);
 
     return window.electronAPI.db.query(`
       SELECT 
@@ -24,7 +42,7 @@ export class ReportesService {
         COALESCE(SUM(v.total), 0) as total,
         CASE WHEN COUNT(*) = 0 THEN 0 ELSE ROUND(SUM(v.total) * 1.0 / COUNT(*), 2) END as promedio
       FROM ventas v
-      WHERE ${filtroFecha}
+      WHERE ${filtroFecha} AND v.estado != 'cancelada' AND v.caja_id = ?
       GROUP BY DATE(v.fecha_venta)
       ORDER BY fecha DESC
       LIMIT 31
@@ -32,6 +50,15 @@ export class ReportesService {
   }
 
   static async topProductos(rango: RangoFechas, limite = 10) {
+    this.verificarElectronAPI();
+    
+    // Obtener caja activa
+    const cajaActiva = await CajasService.getCajaActiva();
+    
+    if (!cajaActiva) {
+      return [];
+    }
+    
     const filtroFecha = rango.desde && rango.hasta
       ? `DATE(v.fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -43,6 +70,7 @@ export class ReportesService {
     const params: any[] = [];
     if (rango.desde) params.push(rango.desde);
     if (rango.hasta) params.push(rango.hasta);
+    params.push(cajaActiva.id);
     params.push(limite);
 
     return window.electronAPI.db.query(`
@@ -53,7 +81,7 @@ export class ReportesService {
       FROM venta_detalles vd
       INNER JOIN ventas v ON v.id = vd.venta_id
       INNER JOIN productos p ON p.id = vd.producto_id
-      WHERE ${filtroFecha}
+      WHERE ${filtroFecha} AND v.estado != 'cancelada' AND v.caja_id = ?
       GROUP BY p.id, p.nombre
       ORDER BY ingresos DESC
       LIMIT ?
@@ -61,6 +89,15 @@ export class ReportesService {
   }
 
   static async mejoresClientes(rango: RangoFechas, limite = 10) {
+    this.verificarElectronAPI();
+    
+    // Obtener caja activa
+    const cajaActiva = await CajasService.getCajaActiva();
+    
+    if (!cajaActiva) {
+      return [];
+    }
+    
     const filtroFecha = rango.desde && rango.hasta
       ? `DATE(v.fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -72,6 +109,7 @@ export class ReportesService {
     const params: any[] = [];
     if (rango.desde) params.push(rango.desde);
     if (rango.hasta) params.push(rango.hasta);
+    params.push(cajaActiva.id);
     params.push(limite);
 
     return window.electronAPI.db.query(`
@@ -82,7 +120,7 @@ export class ReportesService {
         MAX(DATE(v.fecha_venta)) as ultima
       FROM ventas v
       LEFT JOIN clientes c ON c.id = v.cliente_id
-      WHERE ${filtroFecha}
+      WHERE ${filtroFecha} AND v.estado != 'cancelada' AND v.caja_id = ?
       GROUP BY c.id, nombre
       ORDER BY total DESC
       LIMIT ?
@@ -90,6 +128,8 @@ export class ReportesService {
   }
 
   static async inventarioPorCategoria() {
+    this.verificarElectronAPI();
+    
     return window.electronAPI.db.query(`
       SELECT 
         COALESCE(ia.categoria, 'Sin categoría') as categoria,
@@ -103,6 +143,23 @@ export class ReportesService {
   }
 
   static async resumenFinanciero(rango: RangoFechas) {
+    this.verificarElectronAPI();
+    
+    // Obtener caja activa
+    const cajaActiva = await CajasService.getCajaActiva();
+    
+    if (!cajaActiva) {
+      return {
+        ingresos: 0,
+        costos: 0,
+        utilidad_bruta: 0,
+        gastos: 0,
+        utilidad_neta: 0,
+        margen_bruto: 0,
+        margen_neto: 0,
+      };
+    }
+    
     const filtroVentas = rango.desde && rango.hasta
       ? `DATE(fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -117,9 +174,10 @@ export class ReportesService {
     const params: any[] = [];
     if (rango.desde) params.push(rango.desde);
     if (rango.hasta) params.push(rango.hasta);
+    params.push(cajaActiva.id);
 
     const ingresos = await window.electronAPI.db.get(`
-      SELECT COALESCE(SUM(total), 0) as total FROM ventas WHERE ${filtroVentas}
+      SELECT COALESCE(SUM(total), 0) as total FROM ventas WHERE ${filtroVentas} AND estado != 'cancelada' AND caja_id = ?
     `, params);
 
     const costos = await window.electronAPI.db.get(`
@@ -151,6 +209,15 @@ export class ReportesService {
 
   // --- Reportes detallados ---
   static async ventasCabecera(rango: RangoFechas) {
+    this.verificarElectronAPI();
+    
+    // Obtener caja activa
+    const cajaActiva = await CajasService.getCajaActiva();
+    
+    if (!cajaActiva) {
+      return [];
+    }
+    
     const filtro = rango.desde && rango.hasta
       ? `DATE(v.fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -162,6 +229,7 @@ export class ReportesService {
     const params: any[] = [];
     if (rango.desde) params.push(rango.desde);
     if (rango.hasta) params.push(rango.hasta);
+    params.push(cajaActiva.id);
 
     return window.electronAPI.db.query(`
       SELECT
@@ -177,13 +245,20 @@ export class ReportesService {
         (SELECT COUNT(1) FROM venta_detalles vd WHERE vd.venta_id = v.id) AS items
       FROM ventas v
       LEFT JOIN clientes c ON c.id = v.cliente_id
-      WHERE ${filtro}
+      WHERE ${filtro} AND v.estado != 'cancelada' AND v.caja_id = ?
       ORDER BY v.fecha_venta DESC, v.id DESC
       LIMIT 500
     `, params);
   }
 
   static async ventasItems(rango: RangoFechas) {
+    // Obtener caja activa
+    const cajaActiva = await CajasService.getCajaActiva();
+    
+    if (!cajaActiva) {
+      return [];
+    }
+    
     const filtro = rango.desde && rango.hasta
       ? `DATE(v.fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -195,6 +270,7 @@ export class ReportesService {
     const params: any[] = [];
     if (rango.desde) params.push(rango.desde);
     if (rango.hasta) params.push(rango.hasta);
+    params.push(cajaActiva.id);
 
     return window.electronAPI.db.query(`
       SELECT 
@@ -212,7 +288,7 @@ export class ReportesService {
       INNER JOIN productos p ON p.id = vd.producto_id
       LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id
       LEFT JOIN clientes c ON c.id = v.cliente_id
-      WHERE ${filtro}
+      WHERE ${filtro} AND v.estado != 'cancelada' AND v.caja_id = ?
       ORDER BY v.fecha_venta DESC, v.id DESC, vd.id ASC
       LIMIT 1000
     `, params);
@@ -313,7 +389,7 @@ export class ReportesService {
         COALESCE(SUM(v.total), 0) AS total,
         COALESCE(AVG(v.total), 0) AS promedio
       FROM ventas v
-      WHERE ${filtro}
+      WHERE ${filtro} AND v.estado != 'cancelada'
       GROUP BY COALESCE(v.usuario, 'N/D')
       ORDER BY total DESC
       LIMIT 50
@@ -349,7 +425,7 @@ export class ReportesService {
                SUM(vd.subtotal) AS ingresos
         FROM venta_detalles vd
         INNER JOIN ventas v ON v.id = vd.venta_id
-        WHERE ${filtroV}
+        WHERE ${filtroV} AND v.estado != 'cancelada'
         GROUP BY vd.producto_id
       )
       SELECT 

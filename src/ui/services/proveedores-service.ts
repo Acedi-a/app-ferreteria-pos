@@ -1,14 +1,11 @@
 // Servicio para manejar los proveedores
 export interface Proveedor {
   id?: number;
-  codigo: string;
   nombre: string;
-  contacto?: string;
   telefono?: string;
   email?: string;
   direccion?: string;
   ciudad?: string;
-  documento?: string;
   activo: boolean;
   fecha_creacion?: string;
   // Campos derivados/estadísticos (si se integran compras más adelante)
@@ -17,11 +14,18 @@ export interface Proveedor {
 }
 
 export class ProveedoresService {
+  private static verificarElectronAPI() {
+    if (!window.electronAPI?.db) {
+      throw new Error('La aplicación Electron no está disponible. Por favor, ejecute la aplicación desde Electron.');
+    }
+  }
+
   // Listar proveedores (por defecto todos, activos primero)
   static async obtenerTodos(): Promise<Proveedor[]> {
+    this.verificarElectronAPI();
     return window.electronAPI.db.query(`
       SELECT 
-        id, codigo, nombre, contacto, telefono, email, direccion, ciudad, documento, 
+        id, nombre, telefono, email, direccion, ciudad, 
         activo, fecha_creacion,
         0 as total_compras,
         NULL as ultima_compra
@@ -31,9 +35,10 @@ export class ProveedoresService {
   }
 
   static async obtenerPorId(id: number): Promise<Proveedor | null> {
+    this.verificarElectronAPI();
     const result = await window.electronAPI.db.get(`
       SELECT 
-        id, codigo, nombre, contacto, telefono, email, direccion, ciudad, documento, 
+        id, nombre, telefono, email, direccion, ciudad, 
         activo, fecha_creacion,
         0 as total_compras,
         NULL as ultima_compra
@@ -43,47 +48,37 @@ export class ProveedoresService {
     return result || null;
   }
 
-  static async obtenerPorCodigo(codigo: string): Promise<Proveedor | null> {
-    const result = await window.electronAPI.db.get(`
-      SELECT 
-        id, codigo, nombre, contacto, telefono, email, direccion, ciudad, documento, 
-        activo, fecha_creacion,
-        0 as total_compras,
-        NULL as ultima_compra
-      FROM proveedores 
-      WHERE codigo = ?
-    `, [codigo]);
-    return result || null;
+  static async obtenerPorCodigo(_codigo: string): Promise<Proveedor | null> {
+    // Esta función ya no es relevante ya que no tenemos código
+    // La mantenemos por compatibilidad pero retorna null
+    return null;
   }
 
   static async buscar(termino: string): Promise<Proveedor[]> {
     const like = `%${termino}%`;
     return window.electronAPI.db.query(`
       SELECT 
-        id, codigo, nombre, contacto, telefono, email, direccion, ciudad, documento, 
+        id, nombre, telefono, email, direccion, ciudad, 
         activo, fecha_creacion,
         0 as total_compras,
         NULL as ultima_compra
       FROM proveedores 
-      WHERE nombre LIKE ? OR codigo LIKE ? OR contacto LIKE ? OR documento LIKE ?
+      WHERE nombre LIKE ? OR telefono LIKE ? OR email LIKE ?
       ORDER BY activo DESC, nombre
-    `, [like, like, like, like]);
+    `, [like, like, like]);
   }
 
   static async crear(proveedor: Omit<Proveedor, 'id' | 'fecha_creacion' | 'total_compras' | 'ultima_compra'>): Promise<number> {
     const result = await window.electronAPI.db.run(`
       INSERT INTO proveedores (
-        codigo, nombre, contacto, telefono, email, direccion, ciudad, documento, activo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        nombre, telefono, email, direccion, ciudad, activo
+      ) VALUES (?, ?, ?, ?, ?, ?)
     `, [
-      proveedor.codigo,
       proveedor.nombre,
-      proveedor.contacto || '',
       proveedor.telefono || '',
       proveedor.email || '',
       proveedor.direccion || '',
       proveedor.ciudad || '',
-      proveedor.documento || '',
       proveedor.activo ? 1 : 0
     ]);
     return result.id!;
@@ -93,14 +88,11 @@ export class ProveedoresService {
     const campos: string[] = [];
     const valores: any[] = [];
 
-    if (proveedor.codigo !== undefined) { campos.push('codigo = ?'); valores.push(proveedor.codigo); }
     if (proveedor.nombre !== undefined) { campos.push('nombre = ?'); valores.push(proveedor.nombre); }
-    if (proveedor.contacto !== undefined) { campos.push('contacto = ?'); valores.push(proveedor.contacto); }
     if (proveedor.telefono !== undefined) { campos.push('telefono = ?'); valores.push(proveedor.telefono); }
     if (proveedor.email !== undefined) { campos.push('email = ?'); valores.push(proveedor.email); }
     if (proveedor.direccion !== undefined) { campos.push('direccion = ?'); valores.push(proveedor.direccion); }
     if (proveedor.ciudad !== undefined) { campos.push('ciudad = ?'); valores.push(proveedor.ciudad); }
-    if (proveedor.documento !== undefined) { campos.push('documento = ?'); valores.push(proveedor.documento); }
     if (proveedor.activo !== undefined) { campos.push('activo = ?'); valores.push(proveedor.activo ? 1 : 0); }
 
     if (campos.length === 0) return;
@@ -117,29 +109,16 @@ export class ProveedoresService {
     await window.electronAPI.db.run('UPDATE proveedores SET activo = 0 WHERE id = ?', [id]);
   }
 
-  static async existeCodigo(codigo: string, idExcluir?: number): Promise<boolean> {
-    let query = 'SELECT COUNT(*) as count FROM proveedores WHERE codigo = ?';
-    const params: any[] = [codigo];
-    if (idExcluir) {
-      query += ' AND id != ?';
-      params.push(idExcluir);
-    }
-    const result = await window.electronAPI.db.get(query, params);
-    return (result?.count || 0) > 0;
+  static async existeCodigo(_codigo: string, _idExcluir?: number): Promise<boolean> {
+    // Esta función ya no es relevante ya que no tenemos código
+    // La mantenemos por compatibilidad pero siempre retorna false
+    return false;
   }
 
   static async generarCodigo(): Promise<string> {
-    const result = await window.electronAPI.db.get(`
-      SELECT codigo FROM proveedores 
-      WHERE codigo LIKE 'P%'
-      ORDER BY CAST(SUBSTR(codigo, 2) AS INTEGER) DESC 
-      LIMIT 1
-    `);
-
-    if (!result) return 'P001';
-    const numeroActual = parseInt(result.codigo.substring(1));
-    const siguiente = numeroActual + 1;
-    return `P${siguiente.toString().padStart(3, '0')}`;
+    // Esta función ya no es relevante ya que no tenemos código
+    // La mantenemos por compatibilidad pero retorna un string vacío
+    return '';
   }
 
   static async obtenerEstadisticas(): Promise<{

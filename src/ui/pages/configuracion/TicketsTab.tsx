@@ -1,15 +1,13 @@
-import { CheckCircle, Receipt, Save } from "lucide-react";
-import { Button } from "../../components/ui/Button";
+import { CheckCircle, Receipt } from "lucide-react";
 
 interface Props {
   message: { type: 'success' | 'error'; text: string } | null;
-  saving: boolean;
   ticketsConfig: any;
   setTicketsConfig: (v: any) => void;
   onSave: () => void;
 }
 
-export default function TicketsTab({ message, saving, ticketsConfig, setTicketsConfig, onSave }: Props) {
+export default function TicketsTab({ message, ticketsConfig, setTicketsConfig, onSave }: Props) {
   return (
     <div className="space-y-6">
       {message && (

@@ -5,13 +5,13 @@ import { saveAs } from 'file-saver';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/Dialog";
 import { Button } from "../ui/Button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/Table";
-import { Select } from "../ui/Select";
 import type { Categoria, Producto, TipoUnidad } from "../../services/productos-service";
 import { MovimientosService } from "../../services/movimientos-service";
 import { productosService } from "../../services/productos-service";
+import { ProveedoresService } from "../../services/proveedores-service";
 
 // Claves soportadas en el import (incluye stock_actual que no es campo directo en productos)
-type ColumnKey = keyof Pick<Producto, 'codigo_interno' | 'codigo_barras' | 'nombre' | 'descripcion' | 'marca' | 'precio_venta' | 'costo_unitario' | 'stock_minimo' | 'categoria_id' | 'tipo_unidad_id' | 'unidad_medida' | 'activo' | 'imagen_url'> | 'stock_actual';
+type ColumnKey = keyof Pick<Producto, 'codigo_interno' | 'codigo_barras' | 'nombre' | 'descripcion' | 'marca' | 'precio_venta' | 'costo_unitario' | 'stock_minimo' | 'categoria_id' | 'tipo_unidad_id' | 'unidad_medida' | 'activo' | 'imagen_url' | 'venta_fraccionada'> | 'stock_actual' | 'proveedor';
 
 interface BulkProductImportProps {
   isOpen: boolean;
@@ -41,14 +41,16 @@ const FIELD_LABELS: Record<ColumnKey, string> = {
   tipo_unidad_id: 'Tipo Unidad (ID o Nombre)',
   unidad_medida: 'Unidad Medida',
   activo: 'Activo (1/0, true/false, sí/no)',
-  imagen_url: 'Imagen URL'
+  imagen_url: 'Imagen URL',
+  venta_fraccionada: 'Venta Fraccionada (Si/No)',
+  proveedor: 'Proveedor (Nombre/Empresa)'
 };
 
 const REQUIRED_FIELDS: ColumnKey[] = ['codigo_interno', 'nombre', 'precio_venta', 'stock_minimo'];
 
 // Orden estable para generar plantilla CSV
 const TEMPLATE_ORDER: ColumnKey[] = [
-  'codigo_interno','codigo_barras','nombre','descripcion','marca','precio_venta','costo_unitario','stock_actual','stock_minimo','categoria_id','tipo_unidad_id','unidad_medida','activo','imagen_url'
+  'codigo_interno','codigo_barras','nombre','descripcion','marca','precio_venta','costo_unitario','stock_actual','stock_minimo','categoria_id','tipo_unidad_id','unidad_medida','activo','venta_fraccionada','proveedor','imagen_url'
 ];
 
 function guessMapping(headers: string[]): Partial<Record<ColumnKey, string>> {
@@ -70,6 +72,8 @@ function guessMapping(headers: string[]): Partial<Record<ColumnKey, string>> {
     ['tipo_unidad_id', ['tipo_unidad', 'unidad', 'tipo_unidad_id', 'unit', 'unidad_medida']],
     ['unidad_medida', ['unidad_medida', 'um', 'unidad', 'unit_name']],
     ['activo', ['activo', 'active', 'habilitado', 'enabled']],
+    ['venta_fraccionada', ['venta_fraccionada', 'fraccionada', 'fraccionado', 'venta fraccionada', 'permite fraccionado']],
+    ['proveedor', ['proveedor', 'supplier', 'proveedor_nombre', 'proveedor_name', 'vendor', 'empresa', 'distribuidor']],
     ['imagen_url', ['imagen', 'imagen_url', 'image', 'image_url', 'foto']]
   ];
   for (const [field, alts] of pairs) {
@@ -154,6 +158,8 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
       tipo_unidad_id: '1',
       unidad_medida: 'UNIDAD',
       activo: 'true',
+      venta_fraccionada: 'No',
+      proveedor: 'Ferretería Central',
       imagen_url: ''
     };
     const example = withExample ? ('\n' + headers.map(h => exampleValues[h] ?? '').join(',')) : '';
@@ -166,6 +172,14 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
     if (typeof v === 'boolean') return v;
     const s = String(v ?? '').toLowerCase().trim();
     return ['1', 'true', 'sí', 'si', 'activo', 'yes', 'y'].includes(s);
+  };
+
+  const normalizeVentaFraccionada = (v: any): boolean => {
+    if (v === null || v === undefined || v === '') return false;
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'number') return v === 1;
+    const s = String(v).toLowerCase().trim();
+    return ['1', 'si', 'sí', 'yes', 'y', 'true'].includes(s);
   };
 
   const toNumber = (v: any): number | undefined => {
@@ -208,6 +222,33 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
     for (let i = 0; i < parsed.rows.length; i++) {
       const r = parsed.rows[i];
       try {
+        // Registrar el proveedor primero si se proporciona
+        if (m.proveedor) {
+          const nombreProveedor = r[m.proveedor]?.toString().trim();
+          if (nombreProveedor) {
+            // Buscar si el proveedor ya existe
+            const proveedorExistente = await ProveedoresService.buscar(nombreProveedor);
+            const exactMatch = proveedorExistente.find(p => p.nombre.trim().toLowerCase() === nombreProveedor.toLowerCase());
+            
+            if (!exactMatch) {
+              // Crear nuevo proveedor si no existe
+              try {
+                await ProveedoresService.crear({
+                  nombre: nombreProveedor,
+                  telefono: '',
+                  email: '',
+                  direccion: '',
+                  ciudad: '',
+                  activo: true
+                });
+                details.push(`Fila ${i + 2}: creado proveedor "${nombreProveedor}"`);
+              } catch (error) {
+                console.warn('No se pudo crear proveedor:', error);
+              }
+            }
+          }
+        }
+
         const producto: Partial<Producto> = {
           codigo_interno: r[m.codigo_interno]?.toString().trim(),
           codigo_barras: m.codigo_barras ? r[m.codigo_barras]?.toString().trim() : undefined,
@@ -221,6 +262,7 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
           tipo_unidad_id: m.tipo_unidad_id ? resolveTipoUnidadId(r[m.tipo_unidad_id]) : undefined,
           unidad_medida: m.unidad_medida ? r[m.unidad_medida]?.toString().trim() : undefined,
           activo: m.activo ? normalizeBool(r[m.activo]) : true,
+          venta_fraccionada: m.venta_fraccionada ? normalizeVentaFraccionada(r[m.venta_fraccionada]) : false,
           imagen_url: m.imagen_url ? r[m.imagen_url]?.toString().trim() : undefined,
         };
 
@@ -409,9 +451,10 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
                         )}
                       </div>
                       <div className="relative">
-                        <Select
+                        <select
                           value={mapping[key] || ''}
-                          onValueChange={(value) => setMap(key, value)}
+                          onChange={(e) => setMap(key, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 bg-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none cursor-pointer"
                         >
                           <option value="">— Seleccionar columna —</option>
                           {parsed.headers.map((h) => (
@@ -419,9 +462,14 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
                               {h}
                             </option>
                           ))}
-                        </Select>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
                         {isMapped && (
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
                             <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
@@ -444,7 +492,9 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
                       <li>Los campos con punto rojo son obligatorios</li>
                       <li>Puedes mapear categorías por ID numérico o por nombre exacto</li>
                       <li>Los tipos de unidad se pueden mapear por ID, nombre o abreviación</li>
+                      <li><strong>Proveedores se registran automáticamente:</strong> Si no existe se crea con el nombre proporcionado</li>
                       <li>El campo "Activo" acepta: 1/0, true/false, sí/no</li>
+                      <li>Los proveedores se procesan <strong>antes</strong> que los productos para mantener control interno</li>
                     </ul>
                   </div>
                 </div>

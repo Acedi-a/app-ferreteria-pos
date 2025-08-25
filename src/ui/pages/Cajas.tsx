@@ -24,6 +24,7 @@ import CajasService, {
 import EditarVentaModal from '../components/modals/EditarVentaModal';
 import NuevaVentaModal from '../components/modals/NuevaVentaModal';
 import CancelarVentaModal from '../components/modals/CancelarVentaModal';
+import { useCaja } from '../contexts/CajaContext';
 
 function currency(n: number | undefined | null) { 
   if (n === undefined || n === null || isNaN(n)) return 'Bs 0.00';
@@ -40,6 +41,7 @@ interface KPI {
 
 export default function Cajas() {
   const { toast } = useToast();
+  const { refreshCaja } = useCaja();
   const [loading, setLoading] = useState(true);
   const [cajaActiva, setCajaActiva] = useState<Caja | null>(null);
   const [resumen, setResumen] = useState<ResumenCaja | null>(null);
@@ -223,6 +225,7 @@ export default function Cajas() {
         setModalApertura(false);
         setMontoInicial('0');
         await cargar();
+        await refreshCaja(); // Notificar cambio de caja
       } else {
         toast({ title: 'Error', description: resultado.mensaje, variant: 'destructive' });
       }
@@ -276,6 +279,7 @@ export default function Cajas() {
         setModalCierre(false);
         setObservacionesCierre('');
         await cargar();
+        await refreshCaja(); // Notificar cambio de caja
       } else {
         toast({ title: 'Error', description: resultado.mensaje, variant: 'destructive' });
       }
@@ -308,6 +312,7 @@ export default function Cajas() {
         setModalReapertura(false);
         setCajaIdReabriendo(null);
         await cargar();
+        await refreshCaja(); // Notificar cambio de caja
       } else {
         toast({ 
           title: 'Error al reabrir', 

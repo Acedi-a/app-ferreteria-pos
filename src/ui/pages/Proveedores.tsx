@@ -67,14 +67,14 @@ export default function Proveedores() {
   const handleEdit = (prov: Proveedor) => {
     setEditingProvider(prov);
     setFormData({
-      codigo: prov.codigo,
+      codigo: '',
       nombre: prov.nombre,
-      contacto: prov.contacto || "",
+      contacto: '',
       telefono: prov.telefono || "",
       email: prov.email || "",
       direccion: prov.direccion || "",
       ciudad: prov.ciudad || "",
-      documento: prov.documento || "",
+      documento: '',
       activo: prov.activo,
     });
     setShowModal(true);

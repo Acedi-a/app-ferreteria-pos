@@ -18,43 +18,67 @@ export interface Cliente {
 }
 
 export class ClientesService {
+  private static verificarElectronAPI() {
+    if (!window.electronAPI?.db) {
+      throw new Error('La aplicación Electron no está disponible. Por favor, ejecute la aplicación desde Electron.');
+    }
+  }
+
   // Obtener todos los clientes
   static async obtenerTodos(): Promise<Cliente[]> {
+    this.verificarElectronAPI();
     return window.electronAPI.db.query(`
       SELECT 
-  id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
-        documento, tipo_documento, activo, fecha_creacion,
-        COALESCE(saldo_pendiente, 0) as saldo_pendiente,
-        COALESCE(total_compras, 0) as total_compras
-      FROM clientes 
-      ORDER BY nombre, apellido
+        c.id, c.codigo, c.nombre, c.apellido, c.genero, c.telefono, c.email, c.direccion, c.ciudad,
+        c.documento, c.tipo_documento, c.activo, c.fecha_creacion,
+        COALESCE(c.saldo_pendiente, 0) as saldo_pendiente,
+        COALESCE(
+          (SELECT SUM(vd.precio_unitario * vd.cantidad) 
+           FROM ventas v 
+           JOIN venta_detalles vd ON v.id = vd.venta_id 
+           WHERE v.cliente_id = c.id), 0
+        ) as total_compras
+      FROM clientes c
+      ORDER BY c.nombre, c.apellido
     `);
   }
 
   // Obtener un cliente por ID
   static async obtenerPorId(id: number): Promise<Cliente | null> {
+    this.verificarElectronAPI();
     const result = await window.electronAPI.db.get(`
       SELECT 
-  id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
-        documento, tipo_documento, activo, fecha_creacion,
-        COALESCE(saldo_pendiente, 0) as saldo_pendiente,
-        COALESCE(total_compras, 0) as total_compras
-      FROM clientes 
-      WHERE id = ?
+        c.id, c.codigo, c.nombre, c.apellido, c.genero, c.telefono, c.email, c.direccion, c.ciudad,
+        c.documento, c.tipo_documento, c.activo, c.fecha_creacion,
+        COALESCE(c.saldo_pendiente, 0) as saldo_pendiente,
+        COALESCE(
+          (SELECT SUM(vd.precio_unitario * vd.cantidad) 
+           FROM ventas v 
+           JOIN venta_detalles vd ON v.id = vd.venta_id 
+           WHERE v.cliente_id = c.id), 0
+        ) as total_compras
+      FROM clientes c
+      WHERE c.id = ?
     `, [id]);
     return result || null;
   }
 
   // Obtener cliente por código
   static async obtenerPorCodigo(codigo: string): Promise<Cliente | null> {
+    this.verificarElectronAPI();
     const result = await window.electronAPI.db.get(`
       SELECT 
-  id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
-        documento, tipo_documento, activo, fecha_creacion,
-        COALESCE(saldo_pendiente, 0) as saldo_pendiente,
-        COALESCE(total_compras, 0) as total_compras
-      FROM clientes 
-      WHERE codigo = ?
+        c.id, c.codigo, c.nombre, c.apellido, c.genero, c.telefono, c.email, c.direccion, c.ciudad,
+        c.documento, c.tipo_documento, c.activo, c.fecha_creacion,
+        COALESCE(c.saldo_pendiente, 0) as saldo_pendiente,
+        COALESCE(
+          (SELECT SUM(vd.precio_unitario * vd.cantidad) 
+           FROM ventas v 
+           JOIN venta_detalles vd ON v.id = vd.venta_id 
+           WHERE v.cliente_id = c.id), 0
+        ) as total_compras
+      FROM clientes c
+      WHERE c.codigo = ?
     `, [codigo]);
     return result || null;
   }
@@ -64,23 +88,28 @@ export class ClientesService {
     const terminoLike = `%${termino}%`;
     return window.electronAPI.db.query(`
       SELECT 
-  id, codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
-        documento, tipo_documento, activo, fecha_creacion,
-        COALESCE(saldo_pendiente, 0) as saldo_pendiente,
-        COALESCE(total_compras, 0) as total_compras
-      FROM clientes 
-      WHERE nombre LIKE ? OR apellido LIKE ? OR codigo LIKE ? OR documento LIKE ?
-      ORDER BY nombre, apellido
+        c.id, c.codigo, c.nombre, c.apellido, c.genero, c.telefono, c.email, c.direccion, c.ciudad,
+        c.documento, c.tipo_documento, c.activo, c.fecha_creacion,
+        COALESCE(c.saldo_pendiente, 0) as saldo_pendiente,
+        COALESCE(
+          (SELECT SUM(vd.precio_unitario * vd.cantidad) 
+           FROM ventas v 
+           JOIN venta_detalles vd ON v.id = vd.venta_id 
+           WHERE v.cliente_id = c.id), 0
+        ) as total_compras
+      FROM clientes c
+      WHERE c.nombre LIKE ? OR c.apellido LIKE ? OR c.codigo LIKE ? OR c.documento LIKE ?
+      ORDER BY c.nombre, c.apellido
     `, [terminoLike, terminoLike, terminoLike, terminoLike]);
   }
 
   // Crear un nuevo cliente
-  static async crear(cliente: Omit<Cliente, 'id' | 'fecha_creacion'>): Promise<number> {
+  static async crear(cliente: Omit<Cliente, 'id' | 'fecha_creacion' | 'total_compras'>): Promise<number> {
     const result = await window.electronAPI.db.run(`
       INSERT INTO clientes (
         codigo, nombre, apellido, genero, telefono, email, direccion, ciudad,
-        documento, tipo_documento, activo, saldo_pendiente, total_compras
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        documento, tipo_documento, activo, saldo_pendiente
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       cliente.codigo,
       cliente.nombre,
@@ -93,15 +122,14 @@ export class ClientesService {
       cliente.documento || '',
       cliente.tipo_documento,
       cliente.activo ? 1 : 0,
-      cliente.saldo_pendiente || 0,
-      cliente.total_compras || 0
+      cliente.saldo_pendiente || 0
     ]);
     
     return result.id!;
   }
 
   // Actualizar un cliente existente
-  static async actualizar(id: number, cliente: Partial<Omit<Cliente, 'id' | 'fecha_creacion'>>): Promise<void> {
+  static async actualizar(id: number, cliente: Partial<Omit<Cliente, 'id' | 'fecha_creacion' | 'total_compras'>>): Promise<void> {
     // Construir dinámicamente la consulta UPDATE solo con los campos proporcionados
     const campos = [];
     const valores = [];
@@ -153,10 +181,6 @@ export class ClientesService {
     if (cliente.saldo_pendiente !== undefined) {
       campos.push('saldo_pendiente = ?');
       valores.push(cliente.saldo_pendiente);
-    }
-    if (cliente.total_compras !== undefined) {
-      campos.push('total_compras = ?');
-      valores.push(cliente.total_compras);
     }
     
     if (campos.length === 0) {

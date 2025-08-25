@@ -84,31 +84,29 @@ export default function Layout({ children }: LayoutProps) {
         sidebarCollapsed ? 'w-20' : 'w-72'
       }`}>
         {/* Header del sidebar */}
-        <div className="flex h-20 items-center justify-center border-b border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800 relative">
+        <div className="flex h-24 items-center justify-center border-b border-gray-300 bg-white relative">
           {sidebarCollapsed ? (
-            <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
-      {/* Reemplazo de icono por logo */}
-      <img 
-        src={logoClaudio} 
-        alt="Claudio" 
-        className="h-full w-auto object-contain" 
-      />
-    </div>
+            <div className="p-2">
+              <img 
+                src={logoClaudio} 
+                alt="Ferreteria Claudio" 
+                className="h-12 w-auto object-contain" 
+              />
+            </div>
           ) : (
-            <Link to="/" className="flex items-center gap-3 text-white">
-      <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
-        {/* Reemplazo de icono por logo */}
-        <img 
-          src={logoClaudio} 
-          alt="Claudio" 
-          className="h-12 w-auto object-contain" 
-        />
-      </div>
-      <div className="flex flex-col">
-        <span className="text-xl font-light tracking-wide text-white">Ferreteria</span>
-        <span className="text-xs opacity-80 font-light text-gray-300">Sistema de Gestión</span>
-      </div>
-    </Link>
+            <Link to="/" className="flex items-center gap-4 text-gray-900">
+              <div className="p-2">
+                <img 
+                  src={logoClaudio} 
+                  alt="Ferreteria Claudio" 
+                  className="h-16 w-auto object-contain" 
+                />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold tracking-wide text-gray-900">Ferretería Claudio</span>
+                <span className="text-sm font-medium text-gray-600 tracking-wide">Sistema de Gestión</span>
+              </div>
+            </Link>
           )}
           
           {/* Botón de colapsar */}
@@ -132,13 +130,26 @@ export default function Layout({ children }: LayoutProps) {
         {/* Footer del sidebar */}
         {!sidebarCollapsed && (
           <div className="p-4 border-t border-gray-200">
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs font-medium text-gray-700">Sistema Activo</span>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-1">
+                <img 
+                  src={logoClaudio} 
+                  alt="Ferreteria Claudio" 
+                  className="h-6 w-auto object-contain" 
+                />
               </div>
-              <p className="text-xs text-gray-500 mb-1">Versión 1.0.0</p>
-              <p className="text-xs text-gray-400">© 2024 Ferreteria</p>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold tracking-wide text-gray-900">Ferretería Claudio</span>
+                <span className="text-xs font-medium text-gray-600 tracking-wide">Sistema de Gestión</span>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-slate-50 to-gray-50 p-3 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                <span className="text-xs font-semibold text-gray-700">Sistema Activo</span>
+              </div>
+              <p className="text-xs text-gray-600 mb-1">Versión 1.0.0</p>
+              <p className="text-xs text-gray-500">© 2024 Ferretería Claudio</p>
             </div>
           </div>
         )}
@@ -147,21 +158,24 @@ export default function Layout({ children }: LayoutProps) {
       {/* Contenido principal */}
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-72'}`}>
         {/* Header móvil */}
-        <header className="flex items-center gap-4 border-b border-gray-200 bg-white px-6 md:hidden shadow-sm">
+        <header className="flex items-center gap-4 border-b border-gray-300 bg-white px-6 md:hidden shadow-sm h-16">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="rounded-lg  border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors"
+            className="rounded-lg p-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors"
           >
             <Menu className="h-5 w-5" />
           </button>
           <Link to="/" className="flex items-center gap-3 text-gray-900">
-            <div className="p-3 bg-white rounded-lg">
-              {/* Reemplazo de icono por logo */}
-              <img src={logoClaudio} alt="Claudio" className="h-8 w-auto object-contain" />
+            <div className="p-1">
+              <img 
+                src={logoClaudio} 
+                alt="Ferreteria Claudio" 
+                className="h-8 w-auto object-contain" 
+              />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-medium tracking-wide text-white">Ferreteria</span>
-              <span className="text-xs text-gray-300 font-light">Sistema de Gestión</span>
+              <span className="text-lg font-bold tracking-wide text-gray-900">Ferretería Claudio</span>
+              <span className="text-xs font-medium text-gray-600 tracking-wide">Sistema de Gestión</span>
             </div>
           </Link>
         </header>
@@ -175,19 +189,18 @@ export default function Layout({ children }: LayoutProps) {
             />
             <aside className="fixed left-0 top-0 h-full w-80 bg-white shadow-lg border-r border-gray-200">
               {/* Header del sidebar móvil */}
-              <div className="flex h-20 items-center justify-between border-b border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800 px-6">
+              <div className="flex h-24 items-center justify-between border-b border-gray-700 bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 px-6 shadow-xl">
                 <Link
                   to="/"
-                  className="flex items-center gap-3 text-gray-900"
+                  className="flex items-center gap-3 text-white hover:scale-105 transition-transform duration-300 group"
                   onClick={() => setSidebarOpen(false)}
                 >
-                  <div className="p-2.5 bg-white/10 rounded-lg border border-white/20">
-                    {/* Reemplazo de icono por logo */}
-                    <img src={logoClaudio} alt="Claudio" className="h-8 w-auto object-contain" />
+                  <div className="p-3 bg-white/15 rounded-2xl backdrop-blur-md border border-white/30 shadow-lg group-hover:bg-white/20 transition-all duration-300">
+                    <img src={logoClaudio} alt="Ferreteria Claudio" className="h-8 w-auto object-contain filter drop-shadow-sm" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-lg font-medium tracking-wide text-white">Ferreteria</span>
-                    <span className="text-xs text-gray-300 font-light">Sistema de Gestión</span>
+                    <span className="text-lg font-semibold tracking-wide text-white drop-shadow-sm">Ferretería Claudio</span>
+                    <span className="text-xs opacity-90 font-medium text-blue-200 tracking-wider uppercase">Sistema de Gestión</span>
                   </div>
                 </Link>
                 <button
@@ -204,14 +217,27 @@ export default function Layout({ children }: LayoutProps) {
               </nav>
               
               {/* Footer del sidebar móvil */}
-              <div className="p-4 border-t border-gray-200">
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs font-medium text-gray-700">Sistema Activo</span>
+              <div className="border-t border-gray-300 bg-white p-4">
+                <div className="flex items-center gap-3 text-gray-900 mb-4">
+                <div className="p-1">
+                  <img 
+                    src={logoClaudio} 
+                    alt="Ferreteria Claudio" 
+                    className="h-6 w-auto object-contain" 
+                  />
+                </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold tracking-wide text-gray-900">Ferretería Claudio</span>
+                    <span className="text-xs font-medium text-gray-600 tracking-wide">Sistema de Gestión</span>
                   </div>
-                  <p className="text-xs text-gray-500 mb-1">Versión 1.0.0</p>
-                  <p className="text-xs text-gray-400">© 2024 Ferreteria</p>
+                </div>
+                <div className="bg-gradient-to-br from-slate-50 to-gray-50 p-3 rounded-lg border border-gray-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    <span className="text-xs font-semibold text-gray-700">Sistema Activo</span>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-1">Versión 1.0.0</p>
+                  <p className="text-xs text-gray-500">© 2024 Ferretería Claudio</p>
                 </div>
               </div>
             </aside>

@@ -79,13 +79,13 @@ export function ProviderTable({ providers, loading, searchTerm, onEdit, onDelete
                       <div className="text-sm font-medium text-gray-900 truncate">{prov.nombre}</div>
                       <div className="flex items-center space-x-2 mt-1">
                         <CreditCard className="h-4 w-4 text-gray-400" />
-                        <span className="text-xs text-gray-500 font-medium tracking-wide">{prov.codigo}</span>
+                        <span className="text-xs text-gray-500 font-medium tracking-wide">ID: {prov.id}</span>
                       </div>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell className="px-4 py-4">
-                  <div className="text-sm text-gray-900 font-medium">{prov.documento || 'Sin documento'}</div>
+                  <div className="text-sm text-gray-900 font-medium">{prov.email || 'Sin email'}</div>
                 </TableCell>
                 <TableCell className="px-4 py-4">
                   <div className="space-y-1">

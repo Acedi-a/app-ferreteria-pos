@@ -1,5 +1,4 @@
 import { Card } from '../../components/ui/Card';
-import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import type { RangoFechas } from '../../services/reportes-service';
 
@@ -26,14 +25,18 @@ export function FiltrosReportes({
         <div style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
           <div style={{ minWidth: 200 }}>
             <label>Período de Análisis</label>
-            <Select value={preset} onValueChange={(value: string) => setPreset(value as Preset)}>
+            <select 
+              value={preset} 
+              onChange={(e) => setPreset(e.target.value as Preset)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
               <option value="today">Hoy</option>
               <option value="week">Esta semana</option>
               <option value="month">Este mes</option>
               <option value="quarter">Este trimestre</option>
               <option value="year">Este año</option>
               <option value="custom">Personalizado</option>
-            </Select>
+            </select>
           </div>
           {preset === 'custom' && (
             <>

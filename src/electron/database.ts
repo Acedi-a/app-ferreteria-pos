@@ -788,6 +788,26 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
     } catch (e) {
       console.error('Migration check/add auditoria_cajas columns failed:', e);
     }
+
+    // Agregar columna caja_id a ventas si no existe
+    try {
+      const ventasCols: any[] = await this.query("PRAGMA table_info('ventas')");
+      const hasCajaId = ventasCols.some((c: any) => c.name === 'caja_id');
+      if (!hasCajaId) {
+        console.log('Migrating: adding ventas.caja_id ...');
+        await this.run("ALTER TABLE ventas ADD COLUMN caja_id INTEGER");
+        console.log('Migration done: ventas.caja_id');
+        
+        // Actualizar ventas existentes con la primera caja disponible
+        const primeracaja = await this.get("SELECT id FROM cajas ORDER BY id LIMIT 1");
+        if (primeracaja) {
+          await this.run("UPDATE ventas SET caja_id = ? WHERE caja_id IS NULL", [primeracaja.id]);
+          console.log('Migration done: updated existing ventas with caja_id');
+        }
+      }
+    } catch (e) {
+      console.error('Migration check/add ventas.caja_id failed:', e);
+    }
   }
 
   // Backup: cierra, copia y reabre

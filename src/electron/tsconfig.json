@@ -9,7 +9,6 @@
     "include": [
         "main.ts",
         "utils.ts",
-        "database.ts",
-        "preload.ts"
+        "database.ts"
     ]
 }

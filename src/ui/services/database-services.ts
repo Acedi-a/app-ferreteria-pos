@@ -238,6 +238,7 @@ export class VentaService {
       SELECT v.*, c.nombre as cliente_nombre, c.apellido as cliente_apellido
       FROM ventas v
       LEFT JOIN clientes c ON v.cliente_id = c.id
+      WHERE v.estado != 'cancelada'
       ORDER BY v.fecha_venta DESC
     `);
   }
@@ -311,7 +312,7 @@ export class VentaService {
       SELECT v.*, c.nombre as cliente_nombre, c.apellido as cliente_apellido
       FROM ventas v
       LEFT JOIN clientes c ON v.cliente_id = c.id
-      WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
+      WHERE DATE(v.fecha_venta) BETWEEN ? AND ? AND v.estado != 'cancelada'
       ORDER BY v.fecha_venta DESC
     `, [fechaInicio, fechaFin]);
   }

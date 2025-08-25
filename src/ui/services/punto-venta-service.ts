@@ -89,7 +89,14 @@ import CajasService from './cajas-service';
 import { getBoliviaISOString } from '../lib/utils';
 
 export class PuntoVentaService {
+  private static verificarElectronAPI() {
+    if (!window.electronAPI?.db) {
+      throw new Error('La aplicación Electron no está disponible. Por favor, ejecute la aplicación desde Electron.');
+    }
+  }
+
   static async obtenerProductoPorCodigo(codigo: string): Promise<Producto | null> {
+    this.verificarElectronAPI();
     try {
       const query = `
         SELECT 
@@ -120,53 +127,7 @@ export class PuntoVentaService {
     }
   }
 
-  static async buscarProductos(termino: string): Promise<Producto[]> {
-    try {
-      const query = `
-        SELECT 
-          p.id,
-          p.codigo_barras,
-          p.codigo_interno,
-          p.nombre,
-          p.descripcion,
-          p.precio_venta,
-          ia.stock_actual,
-          ia.stock_minimo,
-          p.activo,
-          p.fecha_creacion,
-          c.nombre as categoria_nombre
-        FROM inventario_actual ia
-        INNER JOIN productos p ON p.id = ia.id
-        LEFT JOIN categorias c ON p.categoria_id = c.id
-        WHERE p.activo = 1 AND (
-          p.nombre LIKE ? OR 
-          p.codigo_barras LIKE ? OR 
-          p.codigo_interno LIKE ? OR
-          p.descripcion LIKE ?
-        )
-        ORDER BY 
-          CASE 
-            WHEN p.codigo_barras = ? OR p.codigo_interno = ? THEN 1
-            WHEN p.nombre LIKE ? THEN 2
-            ELSE 3
-          END,
-          p.nombre ASC
-        LIMIT 10
-      `;
-      
-      const termSearch = `%${termino}%`;
-      const termExact = termino;
-      const termStartsWith = `${termino}%`;
-      
-      return window.electronAPI.db.query(query, [
-        termSearch, termSearch, termSearch, termSearch,
-        termExact, termExact, termStartsWith
-      ]);
-    } catch (error) {
-      console.error('Error al buscar productos:', error);
-      throw error;
-    }
-  }
+
   // Productos
   static async obtenerProductos(): Promise<Producto[]> {
     try {
@@ -273,15 +234,21 @@ export class PuntoVentaService {
     try {
       console.log('Datos de venta recibidos en servicio:', venta);
       
+      // Verificar que hay una caja abierta
+      const cajaActiva = await CajasService.getCajaActiva();
+      if (!cajaActiva) {
+        throw new Error('No hay una caja abierta. Debe abrir una caja antes de realizar ventas.');
+      }
+
       // Determinar estado de la venta
       const estadoVenta = venta.es_credito ? 'credito' : 'completada';
 
       // Insertar venta principal primero sin numero_venta
       const ventaQuery = `
         INSERT INTO ventas (
-          numero_venta, cliente_id, almacen_id, fecha_venta, metodo_pago, 
+          numero_venta, cliente_id, caja_id, almacen_id, fecha_venta, metodo_pago, 
           subtotal, descuento, total, estado, observaciones, usuario
-        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, 'POS')
+        ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, 'POS')
       `;
 
       // Generar número temporal para obtener el ID
@@ -290,6 +257,7 @@ export class PuntoVentaService {
       const ventaResult = await window.electronAPI.db.run(ventaQuery, [
         numeroTemporal,
         venta.cliente_id || null,
+        cajaActiva.id,
         getBoliviaISOString(),
         venta.metodo_pago,
         venta.subtotal,
