@@ -98,6 +98,9 @@ export class PuntoVentaService {
   static async obtenerProductoPorCodigo(codigo: string): Promise<Producto | null> {
     this.verificarElectronAPI();
     try {
+      // Limpiar el código de caracteres especiales, espacios y caracteres de control
+    const codigoLimpio = codigo.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
+      
       const query = `
         SELECT 
           p.id,
@@ -110,6 +113,7 @@ export class PuntoVentaService {
           p.precio_venta,
           ia.stock_actual,
           ia.stock_minimo,
+          ia.costo_unitario_ultimo as precio_compra,
           p.activo,
           p.fecha_creacion,
           c.nombre as categoria_nombre
@@ -119,7 +123,7 @@ export class PuntoVentaService {
         WHERE p.activo = 1 AND (p.codigo_barras = ? OR p.codigo_interno = ?)
         LIMIT 1
       `;
-      const row = await window.electronAPI.db.get(query, [codigo, codigo]);
+      const row = await window.electronAPI.db.get(query, [codigoLimpio, codigoLimpio]);
       return row || null;
     } catch (error) {
       console.error('Error al obtener producto por código:', error);
@@ -144,6 +148,7 @@ export class PuntoVentaService {
           p.precio_venta,
           ia.stock_actual,
           ia.stock_minimo,
+          ia.costo_unitario_ultimo as precio_compra,
           p.activo,
           p.fecha_creacion,
           c.nombre as categoria_nombre
@@ -164,33 +169,75 @@ export class PuntoVentaService {
   // Búsqueda por nombre o código para POS (autocompletado)
   static async buscarProductos(termino: string, limit = 10): Promise<Producto[]> {
     try {
-      const like = `%${termino}%`;
-      const query = `
-        SELECT 
-          p.id,
-          p.codigo_barras,
-          p.codigo_interno,
-          p.nombre,
-          p.descripcion,
-          p.imagen_url,
-          p.marca,
-          p.venta_fraccionada,
-          p.precio_venta,
-          ia.stock_actual,
-          ia.stock_minimo,
-          p.activo,
-          p.fecha_creacion,
-          c.nombre as categoria_nombre
-        FROM inventario_actual ia
-        INNER JOIN productos p ON p.id = ia.id
-        LEFT JOIN categorias c ON p.categoria_id = c.id
-        WHERE p.activo = 1 AND (
-          p.nombre LIKE ? OR p.codigo_interno LIKE ? OR p.codigo_barras LIKE ?
-        )
-        ORDER BY p.nombre ASC
-        LIMIT ?
-      `;
-      return await window.electronAPI.db.query(query, [like, like, like, limit]);
+      // Limpiar el término de búsqueda de caracteres especiales, espacios y caracteres de control
+       const terminoLimpio = termino.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
+      
+      // Detectar si es un código de barras (solo números y/o guiones)
+      const isBarcode = /^[0-9\-]+$/.test(terminoLimpio);
+      
+      let query;
+      let params;
+      
+      if (isBarcode) {
+        // Búsqueda exacta por código de barras
+        query = `
+          SELECT 
+            p.id,
+            p.codigo_barras,
+            p.codigo_interno,
+            p.nombre,
+            p.descripcion,
+            p.imagen_url,
+            p.marca,
+            p.venta_fraccionada,
+            p.precio_venta,
+            ia.stock_actual,
+            ia.stock_minimo,
+            ia.costo_unitario_ultimo as precio_compra,
+            p.activo,
+            p.fecha_creacion,
+            c.nombre as categoria_nombre
+          FROM inventario_actual ia
+          INNER JOIN productos p ON p.id = ia.id
+          LEFT JOIN categorias c ON p.categoria_id = c.id
+          WHERE p.activo = 1 AND p.codigo_barras = ?
+          ORDER BY p.nombre ASC
+          LIMIT ?
+        `;
+        params = [terminoLimpio, limit];
+      } else {
+        // Búsqueda parcial por nombre, código interno y descripción
+        const like = `%${terminoLimpio}%`;
+        query = `
+          SELECT 
+            p.id,
+            p.codigo_barras,
+            p.codigo_interno,
+            p.nombre,
+            p.descripcion,
+            p.imagen_url,
+            p.marca,
+            p.venta_fraccionada,
+            p.precio_venta,
+            ia.stock_actual,
+            ia.stock_minimo,
+            ia.costo_unitario_ultimo as precio_compra,
+            p.activo,
+            p.fecha_creacion,
+            c.nombre as categoria_nombre
+          FROM inventario_actual ia
+          INNER JOIN productos p ON p.id = ia.id
+          LEFT JOIN categorias c ON p.categoria_id = c.id
+          WHERE p.activo = 1 AND (
+            p.nombre LIKE ? OR p.codigo_interno LIKE ? OR p.codigo_barras LIKE ?
+          )
+          ORDER BY p.nombre ASC
+          LIMIT ?
+        `;
+        params = [like, like, like, limit];
+      }
+      
+      return await window.electronAPI.db.query(query, params);
     } catch (error) {
       console.error('Error al buscar productos:', error);
       throw error;
@@ -339,7 +386,7 @@ export class PuntoVentaService {
               monto: venta.total,
               concepto: `Venta ${numeroVenta} (${venta.metodo_pago})`,
               usuario: 'Sistema',
-              metodo_pago: venta.metodo_pago
+              referencia: `venta_${ventaId}`
             };
             
             const resultado = await CajasService.registrarMovimiento(movimiento);
@@ -394,6 +441,11 @@ export class PuntoVentaService {
           - Monto total: Bs ${venta.total.toFixed(2)}
           - Pago inicial: Bs ${pagoInicial.toFixed(2)}
           - Saldo pendiente: Bs ${montoAdeudado.toFixed(2)}`);
+
+        // Actualizar estadísticas de clientes si la función está disponible
+        if (typeof (window as any).actualizarEstadisticasClientes === 'function') {
+          (window as any).actualizarEstadisticasClientes();
+        }
       }
 
       // Registrar pago inicial en caja si es mayor a 0 (todos los métodos de pago)

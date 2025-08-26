@@ -19,21 +19,42 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, onQu
   const [loading, setLoading] = React.useState(false);
   const [highlight, setHighlight] = React.useState(0);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const internalInputRef = React.useRef<HTMLInputElement>(null);
 
   // Cargar data en vivo con debounce
   React.useEffect(() => {
     const term = value.trim();
     if (!term) { setResults([]); setOpen(false); return; }
     setLoading(true);
+    
+    // Detectar si es un código de barras (solo números y/o guiones)
+    const isBarcode = /^[0-9\-]+$/.test(term);
+    
+    // Para códigos de barras, esperar más tiempo para asegurar que el código esté completo
+    const delay = isBarcode ? 300 : 200;
+    
     const id = setTimeout(async () => {
       try {
+        // Si es código de barras, intentar búsqueda exacta primero
+        if (isBarcode) {
+          const exactMatch = await PuntoVentaService.obtenerProductoPorCodigo(term);
+          if (exactMatch) {
+            setResults([exactMatch]);
+            setOpen(true);
+            setHighlight(0);
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Si no es código de barras o no se encontró coincidencia exacta
         const list = await PuntoVentaService.buscarProductos(term, 12);
         setResults(list);
         setOpen(list.length > 0);
         setHighlight(0);
       } catch {}
       setLoading(false);
-    }, 200);
+    }, delay);
     return () => clearTimeout(id);
   }, [value]);
 
@@ -48,6 +69,29 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, onQu
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
+
+  // Efecto simple para enfocar cuando autoFocus está activo
+  React.useEffect(() => {
+    if (autoFocus && internalInputRef?.current) {
+      internalInputRef.current.focus();
+    }
+  }, [autoFocus]);
+
+  // Exponer método de enfoque al componente padre
+  React.useImperativeHandle(inputRef, () => ({
+    focus: () => {
+      if (internalInputRef?.current) {
+        internalInputRef.current.blur();
+        setTimeout(() => {
+          internalInputRef.current.focus();
+          internalInputRef.current.click();
+        }, 0);
+      }
+    },
+    blur: () => internalInputRef?.current?.blur(),
+    value: internalInputRef?.current?.value || '',
+    click: () => internalInputRef?.current?.click()
+  }), []);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Atajo: Shift + Espacio => alta rápida con el nombre actual
@@ -86,11 +130,12 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, onQu
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
-            ref={inputRef}
+            ref={internalInputRef}
             autoFocus={autoFocus}
             value={value}
             onChange={(e) => { onChange(e.target.value); setOpen(true); }}
             onKeyDown={onKeyDown}
+
             placeholder={placeholder}
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />

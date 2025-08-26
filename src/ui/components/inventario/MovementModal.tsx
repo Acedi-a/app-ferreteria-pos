@@ -48,8 +48,10 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
   const [showNewProductForm, setShowNewProductForm] = useState(false);
   const [newProduct, setNewProduct] = useState({
     codigo_interno: "",
+    codigo_barras: "",
     nombre: "",
     precio_venta: 0,
+    costo_unitario: 0,
     stock_minimo: 0
   });
   const [isProcessing, setIsProcessing] = useState(false);
@@ -97,9 +99,15 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
   }, []);
 
   useEffect(() => {
+    // Detectar si es un código de barras (solo números y/o guiones)
+    const isBarcode = /^[0-9\-]+$/.test(searchTerm.trim());
+    
+    // Si es código de barras, búsqueda inmediata; si no, usar debounce
+    const delay = isBarcode ? 0 : 300;
+    
     const timeoutId = setTimeout(() => {
       buscarProductos(searchTerm);
-    }, 300);
+    }, delay);
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm, buscarProductos]);
@@ -144,8 +152,10 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
     try {
       const productoId = await productosService.crearProducto({
         codigo_interno: newProduct.codigo_interno,
+        codigo_barras: newProduct.codigo_barras || undefined,
         nombre: newProduct.nombre,
         precio_venta: newProduct.precio_venta,
+        costo_unitario: newProduct.costo_unitario,
         stock_minimo: newProduct.stock_minimo,
         activo: true
       });
@@ -153,19 +163,19 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
       const newItem: MovementItem = {
         id: productoId,
         producto_id: productoId,
-        codigo_barras: newProduct.codigo_interno,
+        codigo_barras: newProduct.codigo_barras || newProduct.codigo_interno,
         nombre: newProduct.nombre,
         precio_venta: newProduct.precio_venta,
         stock_actual: 0,
         cantidad: 1,
-        costo_unitario: 0,
-        costo_total: 0,
+        costo_unitario: newProduct.costo_unitario,
+        costo_total: newProduct.costo_unitario,
         es_nuevo: true
       };
 
       setMovementItems(prev => [...prev, newItem]);
       setShowNewProductForm(false);
-      setNewProduct({ codigo_interno: "", nombre: "", precio_venta: 0, stock_minimo: 0 });
+      setNewProduct({ codigo_interno: "", codigo_barras: "", nombre: "", precio_venta: 0, costo_unitario: 0, stock_minimo: 0 });
       toast({ 
           title: 'Producto creado y agregado a la lista',
           variant: 'success'
@@ -356,6 +366,15 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
                       />
                     </div>
                     <div>
+                      <label className="block text-sm font-medium mb-1">Código de Barras</label>
+                      <input
+                        type="text"
+                        value={newProduct.codigo_barras}
+                        onChange={(e) => setNewProduct(prev => ({ ...prev, codigo_barras: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-sm font-medium mb-1">Nombre *</label>
                       <input
                         type="text"
@@ -376,14 +395,24 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">Stock Mínimo</label>
+                        <label className="block text-sm font-medium mb-1">Costo Unitario</label>
                         <input
                           type="number"
-                          value={newProduct.stock_minimo}
-                          onChange={(e) => setNewProduct(prev => ({ ...prev, stock_minimo: Number(e.target.value) }))}
+                          step="0.01"
+                          value={newProduct.costo_unitario}
+                          onChange={(e) => setNewProduct(prev => ({ ...prev, costo_unitario: Number(e.target.value) }))}
                           className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Stock Mínimo</label>
+                      <input
+                        type="number"
+                        value={newProduct.stock_minimo}
+                        onChange={(e) => setNewProduct(prev => ({ ...prev, stock_minimo: Number(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
                     <div className="flex gap-2">
                       <Button onClick={crearYAgregarProducto} size="sm">

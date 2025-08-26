@@ -62,6 +62,17 @@ export default function Clientes() {
     }
   }, [searchTerm]);
 
+  // Exponer función para actualizar estadísticas globalmente
+  useEffect(() => {
+    // Crear función global para actualizar estadísticas desde otras páginas
+    (window as any).actualizarEstadisticasClientes = cargarEstadisticas;
+    
+    // Limpiar al desmontar
+    return () => {
+      delete (window as any).actualizarEstadisticasClientes;
+    };
+  }, []);
+
   const cargarDatos = async () => {
     await Promise.all([cargarClientes(), cargarEstadisticas()]);
   };

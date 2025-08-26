@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Download, FileText, Package, Users, DollarSign, TrendingUp } from "lucide-react";
+
+interface GastosData {
+  categoria: string;
+  monto: number;
+  descripcion: string;
+  fecha: string;
+}
 import { getBoliviaDate } from "../lib/utils";
 
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
@@ -69,6 +76,7 @@ const reportTypes: ReportType[] = [
   { id: "clientes", name: "Reporte de Clientes", icon: <Users className="h-6 w-6" /> },
   { id: "inventario", name: "Estado de Inventario", icon: <BarChart3 className="h-6 w-6" /> },
   { id: "financiero", name: "Reporte Financiero", icon: <TrendingUp className="h-6 w-6" /> },
+  { id: "gastos", name: "Reporte de Gastos", icon: <FileText className="h-6 w-6" /> },
 ];
 function toISO(d: Date) { return d.toISOString().slice(0, 10); }
 function rangoPorSeleccion(sel: string, desde?: string, hasta?: string): RangoFechas {
@@ -128,6 +136,7 @@ export default function Reportes() {
   const [cxcRows, setCxcRows] = useState<CxCRow[]>([]);
   const [ventasUsuario, setVentasUsuario] = useState<VentasUsuarioRow[]>([]);
   const [margenProducto, setMargenProducto] = useState<MargenProductoRow[]>([]);
+  const [gastosData, setGastosData] = useState<GastosData[]>([]);
 
   const rango = useMemo<RangoFechas>(() => (
     rangoPorSeleccion(dateRange, customDesde || undefined, customHasta || undefined)
@@ -137,7 +146,7 @@ export default function Reportes() {
     const cargar = async () => {
       setLoading(true);
       try {
-        const [v, t, c, i, f, vc, vi, ci, cx, vu, mp] = await Promise.all([
+        const [v, t, c, i, f, vc, vi, ci, cx, vu, mp, gd] = await Promise.all([
           ReportesService.ventasPorDia(rango),
           ReportesService.topProductos(rango, 10),
           ReportesService.mejoresClientes(rango, 10),
@@ -149,6 +158,7 @@ export default function Reportes() {
           ReportesService.cxcDetalle(rango),
           ReportesService.ventasPorUsuario(rango),
           ReportesService.margenPorProducto(rango, 50),
+          ReportesService.gastosDetallados(rango),
         ]);
         setSalesData(v as SalesData[]);
         setTopProducts(t as ProductData[]);
@@ -161,6 +171,7 @@ export default function Reportes() {
         setCxcRows(cx as CxCRow[]);
         setVentasUsuario(vu as VentasUsuarioRow[]);
         setMargenProducto(mp as MargenProductoRow[]);
+        setGastosData(gd as GastosData[]);
       } finally {
         setLoading(false);
       }
@@ -327,6 +338,95 @@ export default function Reportes() {
     </div>
   );
 
+  const renderGastosReport = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Pagos a Proveedores</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              Bs {gastosData.reduce((sum, gasto) => sum + gasto.monto, 0).toFixed(2)}
+            </div>
+            <p className="text-sm text-slate-600 mt-1">
+              {gastosData.length} pagos realizados
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Promedio por Pago</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              Bs {gastosData.length > 0 ? (gastosData.reduce((sum, gasto) => sum + gasto.monto, 0) / gastosData.length).toFixed(2) : '0.00'}
+            </div>
+            <p className="text-sm text-slate-600 mt-1">
+              Por pago a proveedor
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Proveedores Pagados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              {new Set(gastosData.map(g => g.descripcion.split(' - ')[0].replace('Pago a ', ''))).size}
+            </div>
+            <p className="text-sm text-slate-600 mt-1">
+              Diferentes proveedores
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Historial de Pagos a Proveedores</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-2">Fecha</th>
+                  <th className="text-left p-2">Categoría</th>
+                  <th className="text-left p-2">Descripción</th>
+                  <th className="text-right p-2">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gastosData.map((gasto, index) => (
+                  <tr key={index} className="border-b hover:bg-slate-50">
+                    <td className="p-2">{gasto.fecha}</td>
+                    <td className="p-2">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                        {gasto.categoria}
+                      </span>
+                    </td>
+                    <td className="p-2">{gasto.descripcion}</td>
+                    <td className="p-2 text-right font-medium text-red-600">
+                      Bs {gasto.monto.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {gastosData.length === 0 && (
+              <div className="text-center py-8 text-slate-500">
+                No hay gastos registrados en el período seleccionado
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   const renderReport = () => {
     switch (selectedReport) {
       case "ventas":
@@ -339,6 +439,8 @@ export default function Reportes() {
         return renderInventoryReport();
       case "financiero":
         return renderFinancialReport();
+      case "gastos":
+        return renderGastosReport();
       default:
         return renderSalesReport();
     }
@@ -477,6 +579,16 @@ export default function Reportes() {
       if (fmt === 'csv') ExportService.exportCSV(row, cols, 'resumen_financiero', range);
       if (fmt === 'xlsx') ExportService.exportExcel(row, cols, 'resumen_financiero', range);
       if (fmt === 'pdf') ExportService.exportPDF(row, cols, 'Resumen financiero', range);
+    } else if (selectedReport === 'gastos') {
+      const cols: ColumnDef<GastosData>[] = [
+        { header: 'Fecha', accessor: 'fecha' },
+        { header: 'Categoría', accessor: 'categoria' },
+        { header: 'Descripción', accessor: 'descripcion' },
+        { header: 'Monto', accessor: 'monto' },
+      ];
+      if (fmt === 'csv') ExportService.exportCSV(gastosData, cols, 'gastos_detallados', range);
+      if (fmt === 'xlsx') ExportService.exportExcel(gastosData, cols, 'gastos_detallados', range);
+      if (fmt === 'pdf') ExportService.exportPDF(gastosData, cols, 'Gastos detallados', range);
     }
   };
 

@@ -403,6 +403,7 @@ SELECT
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.caja_id = c.id
     AND vp.metodo_pago = 'efectivo'
   ), 0) AS ventas_efectivo,
   COALESCE((
@@ -410,6 +411,7 @@ SELECT
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.caja_id = c.id
     AND vp.metodo_pago = 'tarjeta'
   ), 0) AS ventas_tarjeta,
   COALESCE((
@@ -417,6 +419,7 @@ SELECT
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.caja_id = c.id
     AND vp.metodo_pago = 'transferencia'
   ), 0) AS ventas_transferencia,
   COALESCE((
@@ -424,6 +427,7 @@ SELECT
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.caja_id = c.id
     AND vp.metodo_pago = 'mixto'
   ), 0) AS ventas_mixto,
   -- Total de ventas
@@ -431,6 +435,7 @@ SELECT
     SELECT SUM(v.total) FROM ventas v
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.caja_id = c.id
     AND v.estado != 'cancelada'
   ), 0) AS total_ventas,
   -- Cobros de cuentas por cobrar en efectivo
@@ -453,16 +458,24 @@ SELECT
     WHERE pp.fecha_pago >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR pp.fecha_pago <= c.fecha_cierre)
   ), 0) AS total_pagos_proveedores,
-  -- Saldo final calculado: monto inicial + total ingresos - total egresos + ajustes
+  -- Saldo final calculado: monto inicial + solo ingresos (ventas)
   c.monto_inicial + 
   COALESCE((
-    SELECT SUM(CASE 
-      WHEN ct.tipo = 'ingreso' THEN ct.monto
-      WHEN ct.tipo = 'egreso' THEN -ct.monto
-      WHEN ct.tipo = 'ajuste' THEN ct.monto
-      ELSE 0 END)
-    FROM caja_transacciones ct WHERE ct.caja_id = c.id
-  ), 0) AS saldo_final_calculado
+    SELECT SUM(monto)
+    FROM caja_transacciones ct 
+    WHERE ct.caja_id = c.id AND ct.tipo = 'ingreso'
+  ), 0) AS saldo_final_calculado,
+  -- Ganancia/Pérdida: diferencia entre precio de venta y costo de productos vendidos
+  COALESCE((
+    SELECT SUM((vd.precio_unitario - COALESCE(p.costo_unitario, 0)) * vd.cantidad)
+    FROM venta_detalles vd
+    INNER JOIN ventas v ON v.id = vd.venta_id
+    INNER JOIN productos p ON p.id = vd.producto_id
+    WHERE v.fecha_venta >= c.fecha_apertura 
+    AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.caja_id = c.id
+    AND v.estado != 'cancelada'
+  ), 0) AS ganancia_perdida
 FROM cajas c;
 
 -- Vista para transacciones de caja con detalles enriquecidos

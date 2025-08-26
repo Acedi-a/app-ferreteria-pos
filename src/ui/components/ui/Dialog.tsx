@@ -10,9 +10,10 @@ interface DialogProps {
 interface DialogContentProps {
   children: React.ReactNode;
   className?: string;
+  onClose?: () => void;
 }
 
-export const Dialog: React.FC<DialogProps> = ({ open, children }) => {
+export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
   useEffect(() => {
     if (open) {
       document.body.classList.add("overflow-hidden");
@@ -26,14 +27,39 @@ export const Dialog: React.FC<DialogProps> = ({ open, children }) => {
     };
   }, [open]);
   
+  // Manejar el cierre con la tecla Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && open) {
+        onOpenChange(false);
+      }
+    };
+    
+    if (open) {
+      document.addEventListener('keydown', handleEscape);
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open, onOpenChange]);
+  
   return open ? <>{children}</> : null;
 };
 
-export const DialogContent: React.FC<DialogContentProps> = ({ children, className = "" }) =>
+export const DialogContent: React.FC<DialogContentProps> = ({ children, className = "", onClose }) =>
   createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && onClose) {
+          onClose();
+        }
+      }}
+    >
       <div
         className={`max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl ${className}`}
+        onClick={(e) => e.stopPropagation()}
       >
         {children}
       </div>

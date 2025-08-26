@@ -340,6 +340,11 @@ export class CuentasPorCobrarService {
 
       await this.executeRun(updateClienteQuery, [cuenta.cliente_id, cuenta.cliente_id]);
 
+      // Actualizar estadísticas de clientes si la función está disponible
+      if (typeof (window as any).actualizarEstadisticasClientes === 'function') {
+        (window as any).actualizarEstadisticasClientes();
+      }
+
       // Registrar el pago como ingreso en la caja activa
       try {
         const resultadoCaja = await CajasService.registrarMovimiento({
@@ -400,6 +405,11 @@ export class CuentasPorCobrarService {
       `;
 
       await this.executeRun(updateClienteQuery, [datos.monto, datos.cliente_id]);
+
+      // Actualizar estadísticas de clientes si la función está disponible
+      if (typeof (window as any).actualizarEstadisticasClientes === 'function') {
+        (window as any).actualizarEstadisticasClientes();
+      }
 
       return {
         success: true,

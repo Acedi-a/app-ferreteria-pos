@@ -49,7 +49,7 @@ const convertirProductoBase = (producto: ProductoBase): Producto => ({
   codigo: producto.codigo_interno || producto.codigo_barras || '',
   codigoBarras: producto.codigo_barras || '',
   nombre: producto.nombre,
-  precio: producto.precio_venta,
+  precio: Number(producto.precio_venta),
   stock: producto.stock_actual,
   ventaFraccionada: false, // Por defecto false ya que no existe en la BD
   unidadMedida: 'unidad', // Por defecto ya que no existe en ProductoBase
@@ -119,10 +119,18 @@ export default function PuntoVenta() {
 
   // Búsqueda en tiempo real con debounce
   useEffect(() => {
+    const term = inputCodigo.trim();
+    
+    // Detectar si es un código de barras (solo números y/o guiones)
+    const isBarcode = /^[0-9\-]+$/.test(term);
+    
+    // Si es código de barras, búsqueda inmediata; si no, usar debounce
+    const delay = isBarcode ? 0 : 800;
+    
     const timeoutId = setTimeout(async () => {
-      if (inputCodigo.trim().length >= 2) {
+      if (term.length >= 2) {
         try {
-          const productos = await PuntoVentaService.buscarProductos(inputCodigo.trim());
+          const productos = await PuntoVentaService.buscarProductos(term);
           const productosConvertidos = productos.map(convertirProductoBase);
           
           if (productosConvertidos.length === 0) {
@@ -137,7 +145,7 @@ export default function PuntoVenta() {
       } else {
         // Campo vacío
       }
-    }, 800); // Aumenté el debounce a 800ms para evitar mostrar el modal muy rápido
+    }, delay);
 
     return () => clearTimeout(timeoutId);
   }, [inputCodigo]);
@@ -199,7 +207,7 @@ export default function PuntoVenta() {
         nombre: producto.nombre,
         precio: producto.precio,
         cantidad: cantidadInicial,
-        subtotal: producto.precio * cantidadInicial,
+        subtotal: Number(producto.precio) * cantidadInicial,
         ventaFraccionada: producto.ventaFraccionada,
         unidadMedida: producto.unidadMedida,
       };
@@ -212,7 +220,8 @@ export default function PuntoVenta() {
 
   // Buscar producto por código (barras o interno) y agregar al carrito
   const onScanEnter = async () => {
-    const termino = inputCodigo.trim();
+    // Limpiar el código de caracteres especiales, espacios y caracteres de control
+    const termino = inputCodigo.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
     if (!termino) return;
     
     try {
@@ -235,6 +244,10 @@ export default function PuntoVenta() {
         const desea = window.confirm(`No se encontró ningún producto con "${termino}". ¿Desea registrar un nuevo producto?`);
         if (!desea) {
           setInputCodigo("");
+          // Reenfocar input de escaneo después de cancelar
+          setTimeout(() => {
+            scanInputRef.current?.focus?.();
+          }, 100);
           return;
         }
         setCodigoEscaneado(termino);
@@ -278,15 +291,19 @@ export default function PuntoVenta() {
     setShowBusquedaProductos(false);
     setInputCodigo("");
     // Reenfocar input de escaneo
-    setTimeout(() => scanInputRef.current?.focus(), 0);
+    setTimeout(() => {
+      scanInputRef.current?.focus?.();
+    }, 100);
   };
   
   const cerrarBusquedaProductos = () => {
     setShowBusquedaProductos(false);
     setProductosEncontrados([]);
     setTerminoBusqueda("");
-    // Reenfocar input de escaneo
-    setTimeout(() => scanInputRef.current?.focus(), 0);
+    setInputCodigo("");
+    setTimeout(() => {
+      scanInputRef.current?.focus?.();
+    }, 100);
   };
 
 
@@ -307,7 +324,7 @@ export default function PuntoVenta() {
     setProductosDisponibles(prev => prev.some(x => x.id === prod.id) ? prev : [...prev, prod]);
     agregarProducto(prod);
     setInputCodigo("");
-    setTimeout(() => scanInputRef.current?.focus(), 0);
+    setTimeout(() => scanInputRef.current?.focus?.(), 50);
   };
 
   const guardarNuevoProducto = async () => {
@@ -362,7 +379,7 @@ export default function PuntoVenta() {
       setShowCrearProducto(false);
       setInputCodigo("");
       // Reenfocar input de escaneo
-      setTimeout(() => scanInputRef.current?.focus(), 0);
+      setTimeout(() => scanInputRef.current?.focus?.(), 50);
     } catch (e) {
       console.error(e);
       toast({ title: 'Error al crear', description: String(e), variant: 'destructive' });
@@ -387,13 +404,13 @@ export default function PuntoVenta() {
     // No permitir superar stock
     if (cantidadSolicitada > stock) {
       const ajustada = stock;
-      setProductos(productos.map(p => p.id === id ? { ...p, cantidad: ajustada, subtotal: p.precio * ajustada } : p));
+      setProductos(productos.map(p => p.id === id ? { ...p, cantidad: ajustada, subtotal: Number(p.precio) * ajustada } : p));
       toast({ title: "Stock insuficiente", description: `Se ajustó la cantidad de ${prod.nombre} a ${stock} (stock disponible).`, variant: "destructive" });
       return;
     }
 
     // Actualización normal dentro de stock
-    setProductos(productos.map(p => p.id === id ? { ...p, cantidad: cantidadSolicitada, subtotal: p.precio * cantidadSolicitada } : p));
+    setProductos(productos.map(p => p.id === id ? { ...p, cantidad: cantidadSolicitada, subtotal: Number(p.precio) * cantidadSolicitada } : p));
   };
 
   const eliminarProducto = (id: number) => {
@@ -733,7 +750,14 @@ export default function PuntoVenta() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCrearProducto(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => {
+                setShowCrearProducto(false);
+                setInputCodigo("");
+                // Reenfocar input de escaneo después de cancelar
+                setTimeout(() => {
+                  scanInputRef.current?.focus?.();
+                }, 200);
+              }}>Cancelar</Button>
               <Button onClick={guardarNuevoProducto}>Guardar y agregar</Button>
             </DialogFooter>
           </DialogContent>

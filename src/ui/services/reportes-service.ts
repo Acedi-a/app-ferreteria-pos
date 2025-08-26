@@ -91,13 +91,6 @@ export class ReportesService {
   static async mejoresClientes(rango: RangoFechas, limite = 10) {
     this.verificarElectronAPI();
     
-    // Obtener caja activa
-    const cajaActiva = await CajasService.getCajaActiva();
-    
-    if (!cajaActiva) {
-      return [];
-    }
-    
     const filtroFecha = rango.desde && rango.hasta
       ? `DATE(v.fecha_venta) BETWEEN DATE(?) AND DATE(?)`
       : rango.desde
@@ -109,7 +102,6 @@ export class ReportesService {
     const params: any[] = [];
     if (rango.desde) params.push(rango.desde);
     if (rango.hasta) params.push(rango.hasta);
-    params.push(cajaActiva.id);
     params.push(limite);
 
     return window.electronAPI.db.query(`
@@ -120,7 +112,7 @@ export class ReportesService {
         MAX(DATE(v.fecha_venta)) as ultima
       FROM ventas v
       LEFT JOIN clientes c ON c.id = v.cliente_id
-      WHERE ${filtroFecha} AND v.estado != 'cancelada' AND v.caja_id = ?
+      WHERE ${filtroFecha} AND v.estado != 'cancelada'
       GROUP BY c.id, nombre
       ORDER BY total DESC
       LIMIT ?
@@ -168,27 +160,51 @@ export class ReportesService {
       ? `DATE(fecha_venta) <= DATE(?)`
       : `1=1`;
 
-    const filtroCompras = filtroVentas.replaceAll('fecha_venta', 'fecha_compra');
-    const filtroGastos = filtroVentas.replaceAll('fecha_venta', 'fecha_gasto');
+    const filtroCompras = rango.desde && rango.hasta
+      ? `DATE(fecha_compra) BETWEEN DATE(?) AND DATE(?)`
+      : rango.desde
+      ? `DATE(fecha_compra) >= DATE(?)`
+      : rango.hasta
+      ? `DATE(fecha_compra) <= DATE(?)`
+      : `1=1`;
 
-    const params: any[] = [];
-    if (rango.desde) params.push(rango.desde);
-    if (rango.hasta) params.push(rango.hasta);
-    params.push(cajaActiva.id);
+    const filtroGastos = rango.desde && rango.hasta
+      ? `DATE(fecha_gasto) BETWEEN DATE(?) AND DATE(?)`
+      : rango.desde
+      ? `DATE(fecha_gasto) >= DATE(?)`
+      : rango.hasta
+      ? `DATE(fecha_gasto) <= DATE(?)`
+      : `1=1`;
+
+    // Parámetros para ventas (incluye caja_id)
+    const paramsVentas: any[] = [];
+    if (rango.desde) paramsVentas.push(rango.desde);
+    if (rango.hasta) paramsVentas.push(rango.hasta);
+    paramsVentas.push(cajaActiva.id);
+
+    // Parámetros para compras (sin caja_id)
+    const paramsCompras: any[] = [];
+    if (rango.desde) paramsCompras.push(rango.desde);
+    if (rango.hasta) paramsCompras.push(rango.hasta);
+
+    // Parámetros para gastos (sin caja_id)
+    const paramsGastos: any[] = [];
+    if (rango.desde) paramsGastos.push(rango.desde);
+    if (rango.hasta) paramsGastos.push(rango.hasta);
 
     const ingresos = await window.electronAPI.db.get(`
       SELECT COALESCE(SUM(total), 0) as total FROM ventas WHERE ${filtroVentas} AND estado != 'cancelada' AND caja_id = ?
-    `, params);
+    `, paramsVentas);
 
     const costos = await window.electronAPI.db.get(`
       SELECT COALESCE(SUM(cd.subtotal), 0) as total FROM compra_detalles cd 
       INNER JOIN compras c ON c.id = cd.compra_id
       WHERE ${filtroCompras}
-    `, params);
+    `, paramsCompras);
 
     const gastos = await window.electronAPI.db.get(`
       SELECT COALESCE(SUM(monto), 0) as total FROM gastos WHERE ${filtroGastos}
-    `, params);
+    `, paramsGastos);
 
     const utilidad_bruta = (ingresos?.total || 0) - (costos?.total || 0);
     const utilidad_neta = utilidad_bruta - (gastos?.total || 0);
@@ -447,5 +463,63 @@ export class ReportesService {
       ORDER BY margen DESC
       LIMIT ?
     `, params);
+  }
+
+  static async gastosDetallados(rango: RangoFechas) {
+    this.verificarElectronAPI();
+    
+    const filtroPagos = rango.desde && rango.hasta
+      ? `DATE(pp.fecha_pago) BETWEEN ? AND ?`
+      : rango.desde
+      ? `DATE(pp.fecha_pago) >= ?`
+      : rango.hasta
+      ? `DATE(pp.fecha_pago) <= ?`
+      : `1=1`;
+
+    const params: any[] = [];
+    if (rango.desde) params.push(rango.desde);
+    if (rango.hasta) params.push(rango.hasta);
+
+    return window.electronAPI.db.query(`
+      SELECT 
+        DATE(pp.fecha_pago) AS fecha,
+        'Pago a Proveedor' as categoria,
+        'Pago a ' || p.nombre || ' - Cuenta #' || pp.cuenta_id as descripcion,
+        pp.monto,
+        pp.metodo_pago,
+        pp.observaciones
+      FROM pagos_proveedores pp
+      INNER JOIN cuentas_por_pagar cpp ON cpp.id = pp.cuenta_id
+      INNER JOIN proveedores p ON p.id = cpp.proveedor_id
+      WHERE ${filtroPagos}
+      ORDER BY pp.fecha_pago DESC
+      LIMIT 500
+    `, params);
+  }
+
+  static async totalPagosProveedores(rango: RangoFechas) {
+    this.verificarElectronAPI();
+    
+    const filtroPagos = rango.desde && rango.hasta
+      ? `DATE(pp.fecha_pago) BETWEEN ? AND ?`
+      : rango.desde
+      ? `DATE(pp.fecha_pago) >= ?`
+      : rango.hasta
+      ? `DATE(pp.fecha_pago) <= ?`
+      : `1=1`;
+
+    const params: any[] = [];
+    if (rango.desde) params.push(rango.desde);
+    if (rango.hasta) params.push(rango.hasta);
+
+    const result = await window.electronAPI.db.query(`
+      SELECT COALESCE(SUM(pp.monto), 0) as total
+      FROM pagos_proveedores pp
+      INNER JOIN cuentas_por_pagar cpp ON cpp.id = pp.cuenta_id
+      INNER JOIN proveedores p ON p.id = cpp.proveedor_id
+      WHERE ${filtroPagos}
+    `, params);
+
+    return result[0]?.total || 0;
   }
 }

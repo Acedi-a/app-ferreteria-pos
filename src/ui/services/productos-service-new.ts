@@ -60,6 +60,30 @@ class ProductosService {
   }
 
   async buscarProductos(termino: string): Promise<Producto[]> {
+    // Limpiar el término de búsqueda de caracteres especiales, espacios y caracteres de control
+     const terminoLimpio = termino.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
+    
+    // Detectar si es un código de barras (solo números y/o guiones)
+    const isBarcode = /^[0-9\-]+$/.test(terminoLimpio);
+    
+    let whereClause;
+    let params;
+    
+    if (isBarcode) {
+      // Búsqueda exacta para código de barras
+      whereClause = `p.codigo_barras = ?`;
+      params = [terminoLimpio];
+    } else {
+      // Búsqueda parcial para texto normal
+      whereClause = `
+        p.nombre LIKE ? OR 
+        p.codigo_interno LIKE ? OR 
+        p.codigo_barras LIKE ? OR
+        p.descripcion LIKE ? OR
+        c.nombre LIKE ?`;
+      params = [`%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`];
+    }
+    
     const result = await window.electronAPI.db.query(`
       SELECT 
         p.*,
@@ -69,14 +93,9 @@ class ProductosService {
       FROM productos p
       LEFT JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
-      WHERE 
-        p.nombre LIKE ? OR 
-        p.codigo_interno LIKE ? OR 
-        p.codigo_barras LIKE ? OR
-        p.descripcion LIKE ? OR
-        c.nombre LIKE ?
+      WHERE ${whereClause}
       ORDER BY p.nombre ASC
-    `, [`%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`]);
+    `, params);
     return result || [];
   }
 
@@ -215,6 +234,9 @@ class ProductosService {
   }
 
   async obtenerProductoPorCodigo(codigo: string): Promise<Producto | null> {
+    // Limpiar el código de caracteres especiales, espacios y caracteres de control
+    const codigoLimpio = codigo.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
+    
     const result = await window.electronAPI.db.get(`
       SELECT 
         p.*,
@@ -225,7 +247,7 @@ class ProductosService {
       LEFT JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
       WHERE p.codigo_interno = ? OR p.codigo_barras = ?
-    `, [codigo, codigo]);
+    `, [codigoLimpio, codigoLimpio]);
     return result || null;
   }
 
@@ -238,7 +260,7 @@ class ProductosService {
         COALESCE(SUM(ia.valor_total), 0) as valorInventario,
         COUNT(CASE WHEN p.activo = 1 THEN 1 END) as productosActivos
       FROM inventario_actual ia
-      JOIN productos p ON p.id = ia.id
+      INNER JOIN productos p ON p.id = ia.id
     `);
     
     return {

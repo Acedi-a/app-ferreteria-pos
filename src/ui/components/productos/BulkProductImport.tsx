@@ -63,11 +63,11 @@ function guessMapping(headers: string[]): Partial<Record<ColumnKey, string>> {
     ['nombre', ['nombre', 'producto', 'name', 'titulo', 'título']],
     ['descripcion', ['descripcion', 'descripción', 'description', 'detalle']],
   ['marca', ['marca', 'brand', 'fabricante', 'maker']],
-    ['precio_venta', ['precio_venta', 'precio', 'price', 'pvp', 'venta']],
+    ['precio_venta', ['precio_venta', 'precio', 'price', 'pvp', 'venta', 'precio de venta', 'precio_de_venta', 'precioventa']],
     ['costo_unitario', ['costo_unitario', 'costo', 'cost', 'compra']],
   // Priorizar detectar 'stock' como stock_actual para evitar confundir con stock_minimo
   ['stock_actual', ['stock_actual', 'stock', 'existencia', 'existencias', 'qty', 'cantidad']],
-  ['stock_minimo', ['stock_minimo', 'stock min', 'minimo', 'mínimo', 'min stock']],
+  ['stock_minimo', ['stock_minimo', 'stock min', 'minimo', 'mínimo', 'min stock', 'stock_min', 'stockmin', 'stock mínimo']],
     ['categoria_id', ['categoria', 'categoría', 'categoria_id', 'category']],
     ['tipo_unidad_id', ['tipo_unidad', 'unidad', 'tipo_unidad_id', 'unit', 'unidad_medida']],
     ['unidad_medida', ['unidad_medida', 'um', 'unidad', 'unit_name']],
@@ -183,8 +183,32 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
   };
 
   const toNumber = (v: any): number | undefined => {
-    if (v === null || v === undefined || v === '') return undefined;
-    const n = Number(String(v).replace(/,/g, '.'));
+    if (v === null || v === undefined) return undefined;
+    const str = String(v).trim();
+    if (str === '') return undefined;
+    
+    // Remover prefijos de moneda comunes (Bs, $, €, etc.) y espacios
+    let cleanStr = str
+      .replace(/^(Bs\.?|\$|€|£|¥|₹|₽|₩|₪|₦|₨|₡|₵|₴|₸|₺|₼|₾|₿)\s*/i, '')
+      .replace(/\s/g, ''); // Remover espacios
+    
+    // Manejar separadores de miles y decimales
+    // Si hay comas, asumimos que son separadores de miles y el punto es decimal
+    if (cleanStr.includes(',') && cleanStr.includes('.')) {
+      // Formato: 1,234.56 - remover comas
+      cleanStr = cleanStr.replace(/,/g, '');
+    } else if (cleanStr.includes(',') && !cleanStr.includes('.')) {
+      // Formato: 1234,56 - convertir coma a punto decimal
+      const parts = cleanStr.split(',');
+      if (parts.length === 2 && parts[1].length <= 2) {
+        cleanStr = cleanStr.replace(',', '.');
+      } else {
+        // Múltiples comas, probablemente separadores de miles
+        cleanStr = cleanStr.replace(/,/g, '');
+      }
+    }
+    
+    const n = Number(cleanStr);
     return isNaN(n) ? undefined : n;
   };
 
@@ -255,9 +279,9 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
           nombre: r[m.nombre]?.toString().trim(),
           descripcion: m.descripcion ? r[m.descripcion]?.toString().trim() : undefined,
           marca: m.marca ? r[m.marca]?.toString().trim() : undefined,
-          precio_venta: toNumber(r[m.precio_venta])!,
+          precio_venta: toNumber(r[m.precio_venta]),
           costo_unitario: m.costo_unitario ? toNumber(r[m.costo_unitario]) : undefined,
-          stock_minimo: toNumber(r[m.stock_minimo])!,
+          stock_minimo: toNumber(r[m.stock_minimo]),
           categoria_id: m.categoria_id ? resolveCategoriaId(r[m.categoria_id]) : undefined,
           tipo_unidad_id: m.tipo_unidad_id ? resolveTipoUnidadId(r[m.tipo_unidad_id]) : undefined,
           unidad_medida: m.unidad_medida ? r[m.unidad_medida]?.toString().trim() : undefined,
@@ -268,7 +292,16 @@ export default function BulkProductImport({ isOpen, onClose, categorias, tiposUn
 
         if (!producto.codigo_interno || !producto.nombre || producto.precio_venta === undefined || producto.stock_minimo === undefined) {
           skipped++;
-          details.push(`Fila ${i + 2}: faltan campos requeridos`);
+          const missingFields = [];
+          if (!producto.codigo_interno) missingFields.push('código interno');
+          if (!producto.nombre) missingFields.push('nombre');
+          if (producto.precio_venta === undefined) {
+            missingFields.push(`precio venta (valor: '${r[m.precio_venta]}')`);
+          }
+          if (producto.stock_minimo === undefined) {
+            missingFields.push(`stock mínimo (valor: '${r[m.stock_minimo]}')`);
+          }
+          details.push(`Fila ${i + 2}: faltan campos requeridos (${missingFields.join(', ')})`);
           continue;
         }
 

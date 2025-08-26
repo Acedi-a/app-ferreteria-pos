@@ -9,7 +9,7 @@ import ProductStats from "../components/productos/ProductStats";
 import ProductTable from "../components/productos/ProductTable";
 import ProductModal from "../components/productos/ProductModal";
 import { productosService } from "../services/productos-service";
-import type { Producto, ProductoStats, Categoria, TipoUnidad } from "../services/productos-service";
+import type { Producto, ProductoStats, Categoria, TipoUnidad, PaginatedResult } from "../services/productos-service";
 
 export default function Productos() {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -24,6 +24,13 @@ export default function Productos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  
+  // Estados para paginación
+  const [paginatedData, setPaginatedData] = useState<PaginatedResult<Producto> | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(25);
+  const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(false);
   
   const [editingProduct, setEditingProduct] = useState<Producto | null>(null);
   const [formData, setFormData] = useState<Partial<Producto>>({});
@@ -55,13 +62,27 @@ const { toast } = useToast();
 
   const cargarProductos = async () => {
     try {
-      const data = await productosService.obtenerProductos();
-      setProductos(data);
+      setIsLoading(true);
+      const data = await productosService.obtenerProductosPaginados(
+        currentPage,
+        pageSize,
+        searchTerm,
+        selectedCategory
+      );
+      setPaginatedData(data);
+      setProductos(data.data);
     } catch (error) {
       console.error("Error cargando productos:", error);
       toast({ title: "Error", description: "Error al cargar productos" });
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // Efecto para recargar cuando cambian los filtros o página
+  useEffect(() => {
+    cargarProductos();
+  }, [currentPage, searchTerm, selectedCategory]);
 
   const cargarCategorias = async () => {
     try {
@@ -90,31 +111,26 @@ const { toast } = useToast();
     }
   };
 
-  const buscarProductos = async (termino: string) => {
-    if (!termino.trim()) {
-      cargarProductos();
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const data = await productosService.buscarProductos(termino);
-      setProductos(data);
-    } catch (error) {
-      console.error("Error buscando productos:", error);
-      toast({ title: "Error", description: "Error en la búsqueda" });
-    } finally {
-      setLoading(false);
-    }
+  // Funciones para manejar cambios en filtros
+  const handleSearchChange = (newSearchTerm: string) => {
+    setSearchTerm(newSearchTerm);
+    setCurrentPage(1); // Resetear a la primera página
   };
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      buscarProductos(searchTerm);
-    }, 300);
+  const handleCategoryChange = (categoryId: number | undefined) => {
+    setSelectedCategory(categoryId);
+    setCurrentPage(1); // Resetear a la primera página
+  };
 
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory(undefined);
+    setCurrentPage(1);
+  };
 
   const handleNewProduct = () => {
     setEditingProduct(null);
@@ -285,19 +301,17 @@ const { toast } = useToast();
               <div className="w-full sm:w-96">
                 <SearchBar
                   searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  onClear={() => {
-                    setSearchTerm("");
-                    cargarProductos();
-                  }}
+                  onSearchChange={handleSearchChange}
+                  onClear={clearFilters}
                   placeholder="Buscar por nombre, código o categoría..."
+                  barcodeSearch
                 />
               </div>
             </div>
           </div>
 
           {/* Tabla de productos con diseño empresarial */}
-           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+           <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto" style={{scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch'}}>
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
@@ -305,19 +319,149 @@ const { toast } = useToast();
                   <p className="text-sm text-gray-600">Administra y visualiza todos tus productos</p>
                 </div>
                 <div className="text-sm text-gray-500">
-                  Total: <span className="font-medium text-gray-900">{productos.length}</span> productos
+                  {paginatedData ? (
+                    <>Total: <span className="font-medium text-gray-900">{paginatedData.totalItems}</span> productos</>
+                  ) : (
+                    <>Total: <span className="font-medium text-gray-900">{productos.length}</span> productos</>
+                  )}
                 </div>
               </div>
             </div>
             
             {/* Table Content */}
-            <ProductTable
-              products={productos}
-              loading={loading}
-              searchTerm={searchTerm}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
+            {isLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="text-slate-500">Cargando productos...</div>
+              </div>
+            ) : (
+              <>
+                <ProductTable
+                  products={productos}
+                  loading={isLoading}
+                  searchTerm={searchTerm}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onProductUpdate={cargarProductos}
+                />
+                
+                {/* Pagination Controls */}
+                {paginatedData && paginatedData.totalPages > 1 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+                    <div className="text-sm text-slate-500">
+                      Mostrando {((paginatedData.currentPage - 1) * paginatedData.pageSize) + 1} a{' '}
+                      {Math.min(paginatedData.currentPage * paginatedData.pageSize, paginatedData.totalItems)} de{' '}
+                      {paginatedData.totalItems} productos
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {/* Botón Primera Página */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(1)}
+                        disabled={paginatedData.currentPage === 1}
+                        title="Primera página"
+                      >
+                        ««
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(paginatedData.currentPage - 1)}
+                        disabled={paginatedData.currentPage === 1}
+                      >
+                        Anterior
+                      </Button>
+                      
+                      {/* Page Numbers */}
+                      {(() => {
+                        const pages = [];
+                        const totalPages = paginatedData.totalPages;
+                        const currentPage = paginatedData.currentPage;
+
+                        // Siempre mostrar primera página
+                        if (currentPage > 3) {
+                          pages.push(
+                            <Button
+                              key={1}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(1)}
+                            >
+                              1
+                            </Button>
+                          );
+                          if (currentPage > 4) {
+                            pages.push(
+                              <span key="ellipsis1" className="px-2">
+                                ...
+                              </span>
+                            );
+                          }
+                        }
+
+                        // Páginas alrededor de la página actual
+                        for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages, currentPage + 1); i++) {
+                          pages.push(
+                            <Button
+                              key={i}
+                              variant={i === currentPage ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handlePageChange(i)}
+                            >
+                              {i}
+                            </Button>
+                          );
+                        }
+
+                        // Siempre mostrar última página
+                        if (currentPage < totalPages - 2) {
+                          if (currentPage < totalPages - 3) {
+                            pages.push(
+                              <span key="ellipsis2" className="px-2">
+                                ...
+                              </span>
+                            );
+                          }
+                          pages.push(
+                            <Button
+                              key={totalPages}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(totalPages)}
+                            >
+                              {totalPages}
+                            </Button>
+                          );
+                        }
+
+                        return pages;
+                      })()}
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(paginatedData.currentPage + 1)}
+                        disabled={paginatedData.currentPage === paginatedData.totalPages}
+                      >
+                        Siguiente
+                      </Button>
+                      
+                      {/* Botón Última Página */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(paginatedData.totalPages)}
+                        disabled={paginatedData.currentPage === paginatedData.totalPages}
+                        title="Última página"
+                      >
+                        »»
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

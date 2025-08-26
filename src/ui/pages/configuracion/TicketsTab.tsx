@@ -40,7 +40,7 @@ export default function TicketsTab({ message, ticketsConfig, setTicketsConfig, o
                 </label>
                 <div className="flex items-center space-x-2">
                   <select
-                    value={["58","80","110"].includes(ticketsConfig.ticket_ancho) ? ticketsConfig.ticket_ancho : "custom"}
+                    value={["58","74","80","110"].includes(ticketsConfig.ticket_ancho) ? ticketsConfig.ticket_ancho : "custom"}
                     onChange={(e) => {
                       if (e.target.value === "custom") return;
                       setTicketsConfig({ ...ticketsConfig, ticket_ancho: e.target.value });
@@ -48,6 +48,7 @@ export default function TicketsTab({ message, ticketsConfig, setTicketsConfig, o
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
                   >
                     <option value="58">58mm</option>
+                    <option value="74">74mm</option>
                     <option value="80">80mm</option>
                     <option value="110">110mm</option>
                     <option value="custom">Otro...</option>
@@ -58,7 +59,7 @@ export default function TicketsTab({ message, ticketsConfig, setTicketsConfig, o
                     max={200}
                     step={1}
                     placeholder="Personalizado"
-                    value={!(["58","80","110"].includes(ticketsConfig.ticket_ancho)) ? ticketsConfig.ticket_ancho : ''}
+                    value={!(["58","74","80","110"].includes(ticketsConfig.ticket_ancho)) ? ticketsConfig.ticket_ancho : ''}
                     onChange={e => {
                       const val = e.target.value;
                       setTicketsConfig({ ...ticketsConfig, ticket_ancho: val });
@@ -96,7 +97,14 @@ export default function TicketsTab({ message, ticketsConfig, setTicketsConfig, o
               />
             </div>
 
-            
+            <div className="flex justify-end pt-4 border-t border-gray-200">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+              >
+                Guardar Configuración
+              </button>
+            </div>
           </form>
         </div>
       </div>

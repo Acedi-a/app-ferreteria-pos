@@ -3,7 +3,7 @@ import { Download, Upload, Plus, Minus } from "lucide-react";
 
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { InventarioService, type InventarioItem, type TipoMovimiento } from "../services/inventario-service";
+import { InventarioService, type InventarioItem, type TipoMovimiento, type PaginatedResult } from "../services/inventario-service";
 import { ProveedoresService } from "../services/proveedores-service";
 import { InventoryStats } from "../components/inventario/InventoryStats";
 import { InventoryFilters } from "../components/inventario/InventoryFilters";
@@ -18,6 +18,10 @@ export default function Inventario() {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustingProduct, setAdjustingProduct] = useState<InventarioItem | null>(null);
   const [inventario, setInventario] = useState<InventarioItem[]>([]);
+  const [paginatedData, setPaginatedData] = useState<PaginatedResult<InventarioItem> | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [isLoading, setIsLoading] = useState(false);
   const [movimientos, setMovimientos] = useState<any[]>([]);
   const [ajusteTipo, setAjusteTipo] = useState<TipoMovimiento>("ajuste");
   const [ajusteCantidad, setAjusteCantidad] = useState<number>(0);
@@ -27,6 +31,7 @@ export default function Inventario() {
   const [totalComprasRecientes, setTotalComprasRecientes] = useState<number>(0);
   const [showMovementModal, setShowMovementModal] = useState(false);
   const [movementType, setMovementType] = useState<'entrada' | 'salida'>('entrada');
+  const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState<TipoMovimiento | 'todos'>('todos');
 
   const categorias = ["Todas", ...Array.from(new Set(inventario.map(i => i.categoria || "Sin categoría")))];
 
@@ -34,17 +39,38 @@ export default function Inventario() {
     cargarDatos();
   }, []);
 
+  useEffect(() => {
+    cargarInventario();
+  }, [currentPage, searchTerm, selectedCategory]);
+
+  useEffect(() => {
+    cargarMovimientos();
+  }, [filtroTipoMovimiento]);
+
   const cargarDatos = async () => {
     await Promise.all([cargarInventario(), cargarMovimientos(), cargarProveedores(), cargarComprasRecientes()]);
   };
 
   const cargarInventario = async () => {
-    const items = await InventarioService.listarInventario();
-    setInventario(items);
+    setIsLoading(true);
+    try {
+      const result = await InventarioService.listarInventarioPaginado(
+        currentPage, 
+        pageSize, 
+        searchTerm, 
+        selectedCategory === 'Todas' ? '' : selectedCategory
+      );
+      setPaginatedData(result);
+      setInventario(result.items);
+    } catch (error) {
+      console.error('Error cargando inventario:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const cargarMovimientos = async () => {
-    const rows = await InventarioService.listarMovimientos(50);
+    const rows = await InventarioService.listarMovimientosPorTipo(filtroTipoMovimiento, 50);
     setMovimientos(rows);
   };
 
@@ -72,21 +98,29 @@ export default function Inventario() {
     }
   };
 
-  const filteredInventory = inventario.filter((item) => {
-    const matchesSearch =
-      (item.nombre || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.codigo_interno || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "" || selectedCategory === "Todas" || (item.categoria || "") === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Ya no necesitamos filtrar aquí porque la paginación maneja los filtros
+  const filteredInventory = inventario;
 
   const stats = {
-    totalProductos: inventario.length,
+    totalProductos: paginatedData?.totalItems || 0,
     stockNormal: inventario.filter((item) => (item.stock_actual || 0) > (item.stock_minimo ?? 0)).length,
     stockBajo: inventario.filter((item) => (item.stock_actual || 0) <= (item.stock_minimo ?? 0)).length,
     valorTotal: inventario.reduce((sum, item) => sum + ((item.valor_total ?? ((item.costo_unitario_ultimo || 0) * (item.stock_actual || 0))) || 0), 0),
     totalComprasRecientes,
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
+  const handleSearchChange = (newSearchTerm: string) => {
+    setSearchTerm(newSearchTerm);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const handleCategoryChange = (newCategory: string) => {
+    setSelectedCategory(newCategory);
+    setCurrentPage(1); // Reset to first page when changing category
   };
 
   const handleAdjustStock = (product: InventarioItem) => {
@@ -126,6 +160,7 @@ export default function Inventario() {
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedCategory("");
+    setCurrentPage(1);
   };
 
   // Memoizar handlers para el modal
@@ -196,9 +231,9 @@ export default function Inventario() {
       {/* Filters */}
       <InventoryFilters
         searchTerm={searchTerm}
-        onSearchTerm={setSearchTerm}
+        onSearchTerm={handleSearchChange}
         selectedCategory={selectedCategory}
-        onSelectedCategory={setSelectedCategory}
+        onSelectedCategory={handleCategoryChange}
         categorias={categorias}
         onClear={clearFilters}
       />
@@ -206,17 +241,149 @@ export default function Inventario() {
       {/* Inventory Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Inventario de Productos</CardTitle>
+          <CardTitle>
+            Inventario de Productos
+            {paginatedData && (
+              <span className="text-sm font-normal text-slate-500 ml-2">
+                ({paginatedData.totalItems} productos total)
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <InventoryTable items={filteredInventory} onAdjust={handleAdjustStock} />
+          {isLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="text-slate-500">Cargando inventario...</div>
+            </div>
+          ) : (
+            <>
+              <InventoryTable items={filteredInventory} onAdjust={handleAdjustStock} />
+              
+              {/* Pagination Controls */}
+              {paginatedData && paginatedData.totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-slate-500">
+                    Mostrando {((paginatedData.currentPage - 1) * paginatedData.pageSize) + 1} a{' '}
+                    {Math.min(paginatedData.currentPage * paginatedData.pageSize, paginatedData.totalItems)} de{' '}
+                    {paginatedData.totalItems} productos
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {/* Botón Primera Página */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1}
+                      title="Primera página"
+                    >
+                      ««
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      Anterior
+                    </Button>
+                    
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: paginatedData.totalPages }, (_, i) => i + 1)
+                        .filter(page => {
+                          // Mostrar solo páginas cercanas a la actual
+                          const distance = Math.abs(page - currentPage);
+                          return distance <= 2 || page === 1 || page === paginatedData.totalPages;
+                        })
+                        .map((page, index, array) => {
+                          // Agregar separadores si hay saltos
+                          const prevPage = array[index - 1];
+                          const showSeparator = prevPage && page - prevPage > 1;
+                          
+                          return (
+                            <div key={page} className="flex items-center">
+                              {showSeparator && (
+                                <span className="px-2 text-slate-400">...</span>
+                              )}
+                              <Button
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handlePageChange(page)}
+                                className="w-8 h-8 p-0"
+                              >
+                                {page}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === paginatedData.totalPages}
+                    >
+                      Siguiente
+                    </Button>
+                    
+                    {/* Botón Última Página */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(paginatedData.totalPages)}
+                      disabled={currentPage === paginatedData.totalPages}
+                      title="Última página"
+                    >
+                      »»
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
       {/* Recent Movements */}
       <Card>
         <CardHeader>
-          <CardTitle>Movimientos Recientes</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Movimientos Recientes</CardTitle>
+            <div className="flex gap-2">
+              <Button
+                variant={filtroTipoMovimiento === 'todos' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFiltroTipoMovimiento('todos')}
+              >
+                Todos
+              </Button>
+              <Button
+                variant={filtroTipoMovimiento === 'entrada' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFiltroTipoMovimiento('entrada')}
+                className={filtroTipoMovimiento === 'entrada' ? 'bg-green-600 hover:bg-green-700' : ''}
+              >
+                Entradas
+              </Button>
+              <Button
+                variant={filtroTipoMovimiento === 'salida' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFiltroTipoMovimiento('salida')}
+                className={filtroTipoMovimiento === 'salida' ? 'bg-red-600 hover:bg-red-700' : ''}
+              >
+                Salidas
+              </Button>
+              <Button
+                variant={filtroTipoMovimiento === 'ajuste' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFiltroTipoMovimiento('ajuste')}
+                className={filtroTipoMovimiento === 'ajuste' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+              >
+                Ajustes
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <MovementsTable rows={movimientos} />

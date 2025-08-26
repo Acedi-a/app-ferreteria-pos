@@ -26,11 +26,67 @@ export interface Movimiento {
   observaciones?: string | null;
 }
 
+export interface PaginatedResult<T> {
+  items: T[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
 export class InventarioService {
   static async listarInventario(): Promise<InventarioItem[]> {
     return window.electronAPI.db.query(`
       SELECT * FROM inventario_actual ORDER BY nombre
     `);
+  }
+
+  static async listarInventarioPaginado(
+    page: number = 1, 
+    pageSize: number = 10, 
+    searchTerm: string = '', 
+    categoria: string = ''
+  ): Promise<PaginatedResult<InventarioItem>> {
+    const offset = (page - 1) * pageSize;
+    
+    // Construir condiciones WHERE
+    let whereConditions = [];
+    let params: any[] = [];
+    
+    if (searchTerm) {
+      whereConditions.push('(LOWER(nombre) LIKE ? OR LOWER(codigo_interno) LIKE ?)');
+      const searchPattern = `%${searchTerm.toLowerCase()}%`;
+      params.push(searchPattern, searchPattern);
+    }
+    
+    if (categoria && categoria !== '' && categoria !== 'Todas') {
+      whereConditions.push('categoria = ?');
+      params.push(categoria);
+    }
+    
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    
+    // Obtener total de elementos
+    const countQuery = `SELECT COUNT(*) as total FROM inventario_actual ${whereClause}`;
+    const countResult = await window.electronAPI.db.get(countQuery, params);
+    const totalItems = countResult?.total || 0;
+    
+    // Obtener elementos paginados
+    const dataQuery = `
+      SELECT * FROM inventario_actual 
+      ${whereClause}
+      ORDER BY nombre 
+      LIMIT ? OFFSET ?
+    `;
+    const items = await window.electronAPI.db.query(dataQuery, [...params, pageSize, offset]);
+    
+    return {
+      items,
+      totalItems,
+      totalPages: Math.ceil(totalItems / pageSize),
+      currentPage: page,
+      pageSize
+    };
   }
 
   static async obtenerItem(productoId: number): Promise<InventarioItem | null> {
@@ -56,6 +112,35 @@ export class InventarioService {
       ORDER BY m.fecha_movimiento DESC, m.id DESC
       LIMIT ?
     `, [limit]);
+  }
+
+  static async listarMovimientosPorTipo(tipoMovimiento: TipoMovimiento | 'todos' = 'todos', limit = 50): Promise<any[]> {
+    let whereClause = '';
+    let params: any[] = [];
+    
+    if (tipoMovimiento !== 'todos') {
+      whereClause = 'WHERE m.tipo_movimiento = ?';
+      params.push(tipoMovimiento);
+    }
+    
+    params.push(limit);
+    
+    return window.electronAPI.db.query(`
+      SELECT 
+        m.id, m.producto_id, m.almacen_id, m.tipo_movimiento, m.cantidad,
+        m.stock_anterior, m.stock_nuevo, m.proveedor_id, m.observaciones, m.usuario, m.fecha_movimiento,
+        p.nombre AS producto, 
+        pr.nombre AS proveedor, 
+        tu.abreviacion AS tipo_unidad_abrev,
+        tu.nombre AS tipo_unidad_nombre
+      FROM movimientos m
+      INNER JOIN productos p ON p.id = m.producto_id
+      LEFT JOIN proveedores pr ON pr.id = m.proveedor_id
+      LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id
+      ${whereClause}
+      ORDER BY m.fecha_movimiento DESC, m.id DESC
+      LIMIT ?
+    `, params);
   }
 
   static async calcularComprasRecientes(dias = 30): Promise<number> {

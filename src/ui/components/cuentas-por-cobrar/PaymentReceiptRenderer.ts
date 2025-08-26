@@ -6,7 +6,7 @@ function fmt(n?: number) {
   return (n ?? 0).toFixed(2);
 }
 
-// Función helper para convertir imagen a base64
+// Función helper para convertir imagen a base64 en blanco y negro puro (umbralización)
 async function imageToBase64(src: string): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -16,7 +16,32 @@ async function imageToBase64(src: string): Promise<string> {
       const ctx = canvas.getContext('2d');
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
+      
+      // Dibujar la imagen original
       ctx?.drawImage(img, 0, 0);
+      
+      // Convertir a blanco y negro puro con umbralización
+      if (ctx) {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          // Calcular el valor de gris usando la fórmula estándar
+          const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+          
+          // Aplicar umbralización más agresiva: si es mayor a 180, blanco (255), sino negro (0)
+          // Esto hace que más regiones claras se conviertan a negro para mejor impresión térmica
+          const bw = gray > 180 ? 255 : 0;
+          
+          data[i] = bw;     // R
+          data[i + 1] = bw; // G
+          data[i + 2] = bw; // B
+          // data[i + 3] permanece igual (alpha)
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+      }
+      
       resolve(canvas.toDataURL('image/png'));
     };
     img.onerror = () => resolve(src); // Fallback a la URL original

@@ -31,7 +31,11 @@ export class ClientesService {
       SELECT 
         c.id, c.codigo, c.nombre, c.apellido, c.genero, c.telefono, c.email, c.direccion, c.ciudad,
         c.documento, c.tipo_documento, c.activo, c.fecha_creacion,
-        COALESCE(c.saldo_pendiente, 0) as saldo_pendiente,
+        COALESCE(
+          (SELECT SUM(cpc.saldo) 
+           FROM cuentas_por_cobrar cpc 
+           WHERE cpc.cliente_id = c.id AND cpc.saldo > 0), 0
+        ) as saldo_pendiente,
         COALESCE(
           (SELECT SUM(vd.precio_unitario * vd.cantidad) 
            FROM ventas v 
@@ -50,7 +54,11 @@ export class ClientesService {
       SELECT 
         c.id, c.codigo, c.nombre, c.apellido, c.genero, c.telefono, c.email, c.direccion, c.ciudad,
         c.documento, c.tipo_documento, c.activo, c.fecha_creacion,
-        COALESCE(c.saldo_pendiente, 0) as saldo_pendiente,
+        COALESCE(
+          (SELECT SUM(cpc.saldo) 
+           FROM cuentas_por_cobrar cpc 
+           WHERE cpc.cliente_id = c.id AND cpc.saldo > 0), 0
+        ) as saldo_pendiente,
         COALESCE(
           (SELECT SUM(vd.precio_unitario * vd.cantidad) 
            FROM ventas v 
@@ -70,7 +78,11 @@ export class ClientesService {
       SELECT 
         c.id, c.codigo, c.nombre, c.apellido, c.genero, c.telefono, c.email, c.direccion, c.ciudad,
         c.documento, c.tipo_documento, c.activo, c.fecha_creacion,
-        COALESCE(c.saldo_pendiente, 0) as saldo_pendiente,
+        COALESCE(
+          (SELECT SUM(cpc.saldo) 
+           FROM cuentas_por_cobrar cpc 
+           WHERE cpc.cliente_id = c.id AND cpc.saldo > 0), 0
+        ) as saldo_pendiente,
         COALESCE(
           (SELECT SUM(vd.precio_unitario * vd.cantidad) 
            FROM ventas v 
@@ -90,7 +102,11 @@ export class ClientesService {
       SELECT 
         c.id, c.codigo, c.nombre, c.apellido, c.genero, c.telefono, c.email, c.direccion, c.ciudad,
         c.documento, c.tipo_documento, c.activo, c.fecha_creacion,
-        COALESCE(c.saldo_pendiente, 0) as saldo_pendiente,
+        COALESCE(
+          (SELECT SUM(cpc.saldo) 
+           FROM cuentas_por_cobrar cpc 
+           WHERE cpc.cliente_id = c.id AND cpc.saldo > 0), 0
+        ) as saldo_pendiente,
         COALESCE(
           (SELECT SUM(vd.precio_unitario * vd.cantidad) 
            FROM ventas v 
@@ -244,8 +260,13 @@ export class ClientesService {
       SELECT 
         COUNT(*) as totalClientes,
         SUM(CASE WHEN activo = 1 THEN 1 ELSE 0 END) as clientesActivos,
-        SUM(CASE WHEN saldo_pendiente > 0 THEN 1 ELSE 0 END) as conSaldoPendiente,
-        SUM(COALESCE(saldo_pendiente, 0)) as totalPorCobrar
+        SUM(CASE WHEN EXISTS(
+          SELECT 1 FROM cuentas_por_cobrar cpc 
+          WHERE cpc.cliente_id = clientes.id AND cpc.saldo > 0
+        ) THEN 1 ELSE 0 END) as conSaldoPendiente,
+        COALESCE(
+          (SELECT SUM(saldo) FROM cuentas_por_cobrar WHERE saldo > 0), 0
+        ) as totalPorCobrar
       FROM clientes
     `);
     

@@ -20,6 +20,7 @@ export function InventoryTable({ items, onAdjust }: InventoryTableProps) {
           <TableHead>Categoría</TableHead>
           <TableHead>Stock Actual</TableHead>
           <TableHead>Stock Mínimo</TableHead>
+          <TableHead>Precio Venta</TableHead>
           <TableHead>Costo Unit.</TableHead>
           <TableHead>Valor Total</TableHead>
           <TableHead>Estado</TableHead>
@@ -55,6 +56,9 @@ export function InventoryTable({ items, onAdjust }: InventoryTableProps) {
               </TableCell>
               <TableCell>
                 {item.stock_minimo ?? 0} {item.tipo_unidad_abrev || item.unidad_medida || 'uds'}
+              </TableCell>
+              <TableCell className="font-medium text-green-600">
+                Bs {(item.precio_venta ?? 0).toFixed(2)}
               </TableCell>
               <TableCell>
                 Bs {(item.costo_unitario_ultimo ?? 0).toFixed(2)}

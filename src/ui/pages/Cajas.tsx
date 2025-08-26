@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { 
   Plus, Minus, Lock, Unlock, History, DollarSign, RefreshCcw, Eye, Pencil, Trash2, Edit, 
   ShoppingCart, X, CreditCard, Banknote, Smartphone, AlertCircle, CheckCircle, Clock, BarChart3,
-  PieChart, Receipt, Wallet, ArrowUpRight, ArrowDownRight, FileText
+  PieChart, Receipt, Wallet, ArrowUpRight, ArrowDownRight, FileText, TrendingUp
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -21,6 +21,7 @@ import CajasService, {
   // type AuditoriaCaja, // No utilizada
   type MovimientoCaja 
 } from '../services/cajas-service';
+import { VentasService, type VentaDetalle } from '../services/ventas-service';
 import EditarVentaModal from '../components/modals/EditarVentaModal';
 import NuevaVentaModal from '../components/modals/NuevaVentaModal';
 import CancelarVentaModal from '../components/modals/CancelarVentaModal';
@@ -91,12 +92,59 @@ export default function Cajas() {
   const [cajaResumenFinanciero, setCajaResumenFinanciero] = useState<Caja | null>(null);
   const [resumenFinanciero, setResumenFinanciero] = useState<ResumenCaja | null>(null);
 
+  // Estados para detalles de productos vendidos
+  const [detallesVentasExpandidas, setDetallesVentasExpandidas] = useState<Set<number>>(new Set());
+  const [detallesProductos, setDetallesProductos] = useState<Map<number, VentaDetalle[]>>(new Map());
+  const [cargandoDetalles, setCargandoDetalles] = useState<Set<number>>(new Set());
+
   // Variable derivada para el resumen actual
   const resumenActual = modoVistaCompleta ? resumenSeleccionada : resumen;
 
   const cargar = async () => {
     try {
       setLoading(true);
+      
+      // Limpiar todos los estados antes de cargar nuevos datos
+      setCajaSeleccionada(null);
+      setResumenSeleccionada(null);
+      setTransaccionesSeleccionada([]);
+      setModalResumenFinanciero(false);
+      setModalReapertura(false);
+      setCajaIdReabriendo(null);
+      setCajaResumenFinanciero(null);
+      setResumenFinanciero(null);
+      
+      // Mock data for browser testing when ElectronAPI is not available
+      if (typeof window !== 'undefined' && !(window as any).electronAPI) {
+        console.log('Using mock data for cajas historicas');
+        const mockCajasHistoricas = [
+          {
+            id: 1,
+            fecha_apertura: '2025-08-25T18:04:30.000Z',
+            fecha_cierre: '2025-08-25T18:04:33.000Z',
+            usuario: 'admin',
+            monto_inicial: 1000,
+            estado: 'cerrada' as const,
+            saldo_final: 1500
+          },
+          {
+            id: 2,
+            fecha_apertura: '2025-08-24T10:00:00.000Z',
+            fecha_cierre: '2025-08-24T18:00:00.000Z',
+            usuario: 'admin',
+            monto_inicial: 800,
+            estado: 'cerrada' as const,
+            saldo_final: 1200
+          }
+        ];
+        setCajaActiva(null);
+        setCajasHistoricas(mockCajasHistoricas);
+        setResumen(null);
+        setTransacciones([]);
+        setLoading(false);
+        return;
+      }
+      
       const [activa, historicas] = await Promise.all([
         CajasService.getCajaActiva(),
         CajasService.listarCajas({ limite: 50 })
@@ -156,13 +204,36 @@ export default function Cajas() {
   };
 
   const mostrarResumenFinanciero = async (caja: Caja) => {
+    console.log('mostrarResumenFinanciero called with caja:', caja);
+    console.log('Current modalResumenFinanciero state:', modalResumenFinanciero);
     try {
+      // Mock data for browser testing when ElectronAPI is not available
+      if (typeof window !== 'undefined' && !(window as any).electronAPI) {
+        console.log('Using mock data for browser testing');
+        const mockResumen = {
+          monto_inicial: 1000,
+          ventas_efectivo: 500,
+          ventas_tarjeta: 300,
+          ventas_transferencia: 200,
+          total_ventas: 1000,
+          total_egresos: 100,
+          saldo_final_calculado: 1900
+        };
+        setCajaResumenFinanciero(caja);
+        setResumenFinanciero(mockResumen);
+        console.log('Setting modalResumenFinanciero to true');
+        setModalResumenFinanciero(true);
+        console.log('modalResumenFinanciero should now be:', true);
+        return;
+      }
+      
       const resumen = await CajasService.resumenFinanciero(caja.id);
+      console.log('resumen financiero loaded:', resumen);
       setCajaResumenFinanciero(caja);
       setResumenFinanciero(resumen);
       setModalResumenFinanciero(true);
     } catch (e: any) {
-      console.error(e);
+      console.error('Error loading resumen financiero:', e);
       toast({ title: 'Error', description: e.message || 'No se pudo cargar el resumen financiero', variant: 'destructive' });
     }
   };
@@ -183,6 +254,12 @@ export default function Cajas() {
         icono: <ShoppingCart className="h-5 w-5" />,
         color: 'text-blue-600',
         tendencia: { valor: 12.5, positiva: true }
+      },
+      {
+        titulo: 'Ganancia/Pérdida',
+        valor: resumenActual.ganancia_perdida || 0,
+        icono: <TrendingUp className="h-5 w-5" />,
+        color: resumenActual.ganancia_perdida >= 0 ? 'text-green-600' : 'text-red-600'
       },
       {
         titulo: 'Saldo Final',
@@ -221,9 +298,20 @@ export default function Cajas() {
       );
       
       if (resultado.exito) {
-        toast({ title: 'Caja abierta', description: `Saldo inicial ${currency(monto)}` });
+        // Limpiar estados antes de cargar
         setModalApertura(false);
         setMontoInicial('0');
+        setObservacionesApertura('');
+        setCajaSeleccionada(null);
+        setResumenSeleccionada(null);
+        setTransaccionesSeleccionada([]);
+        setModalResumenFinanciero(false);
+        setModalReapertura(false);
+        setCajaIdReabriendo(null);
+        setCajaResumenFinanciero(null);
+        setResumenFinanciero(null);
+        
+        toast({ title: 'Caja abierta', description: `Saldo inicial ${currency(monto)}` });
         await cargar();
         await refreshCaja(); // Notificar cambio de caja
       } else {
@@ -289,6 +377,19 @@ export default function Cajas() {
   };
 
   const solicitarReapertura = (cajaId: number) => {
+    console.log('solicitarReapertura called with cajaId:', cajaId);
+    console.log('Current modalReapertura state:', modalReapertura);
+    
+    // Mock behavior for browser testing when ElectronAPI is not available
+    if (typeof window !== 'undefined' && !(window as any).electronAPI) {
+      console.log('Using mock behavior for reapertura');
+      setCajaIdReabriendo(cajaId);
+      console.log('Setting modalReapertura to true');
+      setModalReapertura(true);
+      console.log('modalReapertura should now be:', true);
+      return;
+    }
+    
     setCajaIdReabriendo(cajaId);
     setModalReapertura(true);
   };
@@ -297,6 +398,20 @@ export default function Cajas() {
     if (!cajaIdReabriendo) return;
     
     try {
+      // Mock behavior for browser testing when ElectronAPI is not available
+      if (typeof window !== 'undefined' && !(window as any).electronAPI) {
+        console.log('Using mock behavior for confirmar reapertura');
+        toast({ 
+          title: 'Caja reabierta (Mock)', 
+          description: `Caja #${cajaIdReabriendo} reabierta exitosamente (simulación)`,
+          variant: 'default'
+        });
+        setModalReapertura(false);
+        setCajaIdReabriendo(null);
+        await cargar();
+        return;
+      }
+      
       const resultado = await CajasService.reabrirCaja(
         cajaIdReabriendo,
         'admin',
@@ -366,6 +481,47 @@ export default function Cajas() {
     toast({ title: 'Venta cancelada exitosamente' });
   };
 
+  // Función para cargar detalles de productos vendidos
+  const cargarDetallesVenta = async (ventaId: number) => {
+    if (detallesProductos.has(ventaId)) {
+      return; // Ya están cargados
+    }
+
+    setCargandoDetalles(prev => new Set(prev).add(ventaId));
+    
+    try {
+      const detalles = await VentasService.obtenerDetallesVenta(ventaId);
+      setDetallesProductos(prev => new Map(prev).set(ventaId, detalles));
+    } catch (error) {
+      console.error('Error al cargar detalles de venta:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los detalles de la venta',
+        variant: 'destructive'
+      });
+    } finally {
+      setCargandoDetalles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(ventaId);
+        return newSet;
+      });
+    }
+  };
+
+  // Función para alternar expansión de detalles de venta
+  const toggleDetallesVenta = async (ventaId: number) => {
+    const nuevasExpandidas = new Set(detallesVentasExpandidas);
+    
+    if (nuevasExpandidas.has(ventaId)) {
+      nuevasExpandidas.delete(ventaId);
+    } else {
+      nuevasExpandidas.add(ventaId);
+      await cargarDetallesVenta(ventaId);
+    }
+    
+    setDetallesVentasExpandidas(nuevasExpandidas);
+  };
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center h-64">
@@ -385,9 +541,18 @@ export default function Cajas() {
             <h1 className="text-3xl font-bold text-gray-900">Sistema de Caja</h1>
             <p className="text-gray-600 mt-1">Gestión profesional de caja y transacciones</p>
           </div>
-          <Button onClick={() => setModalApertura(true)} className="bg-green-600 hover:bg-green-700">
-            <Unlock className="h-5 w-5 mr-2" /> Abrir Caja
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              onClick={() => setModoVistaCompleta(true)} 
+              variant="outline"
+              className="border-blue-600 text-blue-600 hover:bg-blue-50"
+            >
+              <History className="h-5 w-5 mr-2" /> Ver Historial
+            </Button>
+            <Button onClick={() => setModalApertura(true)} className="bg-green-600 hover:bg-green-700">
+              <Unlock className="h-5 w-5 mr-2" /> Abrir Caja
+            </Button>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -407,9 +572,19 @@ export default function Cajas() {
           
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Últimas Cajas
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Últimas Cajas
+                </div>
+                <Button 
+                  onClick={() => setModoVistaCompleta(true)} 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                >
+                  Ver todas
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -457,6 +632,364 @@ export default function Cajas() {
                   <Input
                     type="number"
                     step="0.01"
+                    value={montoInicial}
+                    onChange={(e) => setMontoInicial(e.target.value)}
+                    className="pl-10"
+                    placeholder="0.00"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Ingrese el monto inicial con el que abre la caja</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setModalApertura(false)}>Cancelar</Button>
+              <Button onClick={abrirCaja} className="bg-green-600 hover:bg-green-700">
+                <Unlock className="h-4 w-4 mr-2" />
+                Abrir Caja
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // Vista del historial cuando no hay caja activa pero está en modo vista completa
+  if (!cajaActiva && modoVistaCompleta) {
+    // Seleccionar automáticamente la primera caja histórica si existe y no hay ninguna seleccionada
+    if (cajasFiltradas.length > 0 && !cajaSeleccionada) {
+      cargarCajaHistorica(cajasFiltradas[0]);
+    }
+    // Mostrar modales si corresponden
+    if (modalResumenFinanciero && cajaResumenFinanciero && resumenFinanciero) {
+      return (
+        <Dialog open={modalResumenFinanciero} onOpenChange={setModalResumenFinanciero}>
+          <DialogContent className="max-w-2xl" onClose={() => setModalResumenFinanciero(false)}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Resumen Financiero - Caja #{cajaResumenFinanciero?.id}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="text-center border-b pb-4">
+                <p className="text-sm text-gray-600">
+                  Abierto {new Date(cajaResumenFinanciero.fecha_apertura).toLocaleDateString()} ({new Date(cajaResumenFinanciero.fecha_apertura).toLocaleTimeString()}) por {cajaResumenFinanciero.usuario}
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Ventas</span>
+                  <span className="font-bold">{currency(resumenFinanciero.total_ventas || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center border-t pt-2">
+                  <span className="font-medium">Total de ventas</span>
+                  <span className="font-bold">{currency(resumenFinanciero.total_ventas || 0)}</span>
+                </div>
+                <div className="border-t pt-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span>Efectivo</span>
+                    <span>{currency(resumenFinanciero.ventas_efectivo || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Tarjeta</span>
+                    <span>{currency(resumenFinanciero.ventas_tarjeta || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Transferencia</span>
+                    <span>{currency(resumenFinanciero.ventas_transferencia || 0)}</span>
+                  </div>
+                  {(resumenFinanciero.ventas_tarjeta + resumenFinanciero.ventas_transferencia) > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span>Crédito</span>
+                      <span>{currency((resumenFinanciero.ventas_tarjeta || 0) + (resumenFinanciero.ventas_transferencia || 0))}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="border-t pt-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span>Saldo inicial</span>
+                    <span>{currency(resumenFinanciero.monto_inicial || 0)}</span>
+                  </div>
+                  {resumenFinanciero.total_egresos > 0 && (
+                    <div className="flex justify-between items-center text-red-600">
+                      <span>Egresos</span>
+                      <span>-{currency(resumenFinanciero.total_egresos || 0)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="border-t-2 border-black pt-3">
+                  <div className="flex justify-between items-center text-lg">
+                    <span className="font-bold">Saldo Final</span>
+                    <span className="font-bold">{currency(resumenFinanciero.saldo_final_calculado || 0)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setModalResumenFinanciero(false)}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+    if (modalReapertura && cajaIdReabriendo) {
+      return (
+        <Dialog open={modalReapertura} onOpenChange={setModalReapertura}>
+          <DialogContent className="sm:max-w-md" onClose={() => setModalReapertura(false)}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+                Confirmar Reapertura de Caja
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <p className="text-sm text-orange-800">
+                  <strong>¿Está seguro de que desea reabrir la caja #{cajaIdReabriendo}?</strong>
+                </p>
+                <p className="text-sm text-orange-700 mt-2">
+                  {cajaActiva ? (
+                    <>Esta acción cerrará automáticamente la caja activa actual (#{cajaActiva?.id}) y reabrirá la caja histórica seleccionada.</>
+                  ) : (
+                    <>Esta acción reabrirá la caja histórica seleccionada como caja activa.</>
+                  )}
+                </p>
+              </div>
+              <p className="text-sm text-gray-600">
+                La reapertura se registrará en el historial de auditoría para mantener la trazabilidad.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={cancelarReapertura}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={confirmarReapertura}
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                <Unlock className="h-4 w-4 mr-2" />
+                Confirmar Reapertura
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+    return (
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Historial de Cajas</h1>
+            <p className="text-gray-600 mt-1">Consulta y gestión del historial de cajas</p>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setModalApertura(true)} 
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Unlock className="h-4 w-4 mr-2" /> Abrir Nueva Caja
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setModoVistaCompleta(false)}
+            >
+              <History className="h-4 w-4 mr-2" /> Volver al Inicio
+            </Button>
+          </div>
+        </div>
+
+        {/* Vista de Cajas Históricas */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Lista de Cajas Históricas */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Historial de Cajas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Filtros */}
+              <div className="space-y-4 mb-4">
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-600 mb-1 block">Desde:</label>
+                    <Input
+                      type="date"
+                      value={filtroFechaDesde}
+                      onChange={(e) => setFiltroFechaDesde(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-600 mb-1 block">Hasta:</label>
+                    <Input
+                      type="date"
+                      value={filtroFechaHasta}
+                      onChange={(e) => setFiltroFechaHasta(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setFiltroFechaDesde('');
+                        setFiltroFechaHasta('');
+                      }}
+                    >
+                      Limpiar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {cajasFiltradas.map((caja) => (
+                  <div 
+                    key={caja.id} 
+                    className={`p-3 border rounded transition-colors ${
+                      cajaSeleccionada?.id === caja.id ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="cursor-pointer flex-1" onClick={() => cargarCajaHistorica(caja)}>
+                        <div className="font-medium">Caja #{caja.id}</div>
+                        <div className="text-sm text-gray-500">
+                          {new Date(caja.fecha_apertura).toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-gray-400 capitalize">
+                          Estado: {caja.estado}
+                        </div>
+                      </div>
+                      <div className="text-right flex items-center gap-2">
+                        <div>
+                          <div className="font-medium">{currency(caja.saldo_final || 0)}</div>
+                          <div className="text-xs text-gray-500">
+                            {caja.fecha_cierre ? new Date(caja.fecha_cierre).toLocaleDateString() : 'Abierta'}
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            mostrarResumenFinanciero(caja);
+                          }}
+                          className="ml-2"
+                          title="Ver resumen financiero"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {caja.estado === 'cerrada' && (
+                          <Button
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              solicitarReapertura(caja.id);
+                            }}
+                            className="ml-2 text-orange-600 hover:text-orange-700"
+                            title="Reabrir caja"
+                          >
+                            <Unlock className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {cajasFiltradas.length === 0 && cajasHistoricas.length > 0 && (
+                  <div className="text-center text-gray-500 py-8">
+                    No se encontraron cajas que coincidan con los filtros
+                  </div>
+                )}
+                {cajasHistoricas.length === 0 && (
+                  <div className="text-center text-gray-500 py-8">
+                    No hay cajas históricas
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Detalle de Caja Seleccionada */}
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {cajaSeleccionada ? `Detalle Caja #${cajaSeleccionada.id}` : 'Seleccione una caja'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {cajaSeleccionada && resumenSeleccionada ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Apertura:</span>
+                      <div className="font-medium">{new Date(cajaSeleccionada.fecha_apertura).toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Cierre:</span>
+                      <div className="font-medium">
+                        {cajaSeleccionada.fecha_cierre ? new Date(cajaSeleccionada.fecha_cierre).toLocaleString() : 'No cerrada'}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Usuario:</span>
+                      <div className="font-medium">{cajaSeleccionada.usuario || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Estado:</span>
+                      <div className="font-medium capitalize">{cajaSeleccionada.estado}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{currency(resumenSeleccionada.total_ingresos)}</div>
+                      <div className="text-sm text-gray-600">Total Ingresos</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-red-600">{currency(resumenSeleccionada.total_egresos)}</div>
+                      <div className="text-sm text-gray-600">Total Egresos</div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-center pt-4 border-t">
+                    <div className="text-3xl font-bold text-blue-600">{currency(cajaSeleccionada.saldo_final || 0)}</div>
+                    <div className="text-sm text-gray-600">Saldo Final</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  <History className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>Seleccione una caja para ver los detalles</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Modal de apertura */}
+        <Dialog open={modalApertura} onOpenChange={setModalApertura}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Unlock className="h-5 w-5" />
+                Abrir Nueva Caja
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Monto inicial</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
                     value={montoInicial}
                     onChange={(e) => setMontoInicial(e.target.value)}
                     className="pl-10"
@@ -727,61 +1260,120 @@ export default function Cajas() {
                     {(modoVistaCompleta ? transaccionesSeleccionada : transacciones).map((t) => {
                       const esVenta = t.referencia?.startsWith('venta_');
                       const ventaId = esVenta ? parseInt(t.referencia!.replace('venta_', '')) : null;
+                      const estaExpandida = ventaId ? detallesVentasExpandidas.has(ventaId) : false;
+                      const detalles = ventaId ? detallesProductos.get(ventaId) || [] : [];
+                      const cargando = ventaId ? cargandoDetalles.has(ventaId) : false;
                       
                       return (
-                        <div key={t.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-full ${
-                              t.tipo === 'ingreso' ? 'bg-green-100 text-green-600' :
-                              t.tipo === 'egreso' ? 'bg-red-100 text-red-600' :
-                              'bg-blue-100 text-blue-600'
-                            }`}>
-                              {t.tipo === 'ingreso' ? <Plus className="h-4 w-4" /> :
-                               t.tipo === 'egreso' ? <Minus className="h-4 w-4" /> :
-                               <Edit className="h-4 w-4" />}
+                        <div key={t.id} className="bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center justify-between p-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-full ${
+                                t.tipo === 'ingreso' ? 'bg-green-100 text-green-600' :
+                                t.tipo === 'egreso' ? 'bg-red-100 text-red-600' :
+                                'bg-blue-100 text-blue-600'
+                              }`}>
+                                {t.tipo === 'ingreso' ? <Plus className="h-4 w-4" /> :
+                                 t.tipo === 'egreso' ? <Minus className="h-4 w-4" /> :
+                                 <Edit className="h-4 w-4" />}
+                              </div>
+                              <div>
+                                <div className="font-medium">
+                                  {esVenta ? `Venta #${ventaId}` : t.concepto || 'Movimiento'}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {new Date(t.fecha).toLocaleString()}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant="default" className="text-xs">
+                                    {t.tipo.charAt(0).toUpperCase() + t.tipo.slice(1)}
+                                  </Badge>
+                                  {esVenta && ventaId && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => toggleDetallesVenta(ventaId)}
+                                      className="h-6 px-2 text-xs text-blue-600 hover:bg-blue-50"
+                                    >
+                                      {estaExpandida ? 'Ocultar productos' : 'Ver productos'}
+                                      <ShoppingCart className="h-3 w-3 ml-1" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="font-medium">
-                                {esVenta ? `Venta #${ventaId}` : t.concepto || 'Movimiento'}
+                            <div className="text-right">
+                              <div className={`font-bold text-lg ${
+                                t.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {t.tipo === 'ingreso' ? '+' : '-'}{currency(Math.abs(t.monto))}
                               </div>
-                              <div className="text-sm text-gray-500">
-                                {new Date(t.fecha).toLocaleString()}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="default" className="text-xs">
-                                  {t.tipo.charAt(0).toUpperCase() + t.tipo.slice(1)}
-                                </Badge>
-                              </div>
+                              {t.referencia && (
+                                <div className="text-xs text-gray-500">{t.referencia}</div>
+                              )}
+                              {esVenta && ventaId && !modoVistaCompleta && (
+                                <div className="flex gap-1 mt-2">
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => abrirEditarVenta(ventaId)}
+                                    className="h-6 px-2 text-xs"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => abrirCancelarVenta(ventaId)}
+                                    className="h-6 px-2 text-xs text-red-600 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className={`font-bold text-lg ${
-                              t.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {t.tipo === 'ingreso' ? '+' : '-'}{currency(Math.abs(t.monto))}
+                          
+                          {/* Detalles de productos expandibles */}
+                          {esVenta && ventaId && estaExpandida && (
+                            <div className="border-t border-gray-200 p-4 bg-white">
+                              {cargando ? (
+                                <div className="flex items-center justify-center py-4">
+                                  <RefreshCcw className="h-4 w-4 animate-spin mr-2" />
+                                  <span className="text-sm text-gray-600">Cargando productos...</span>
+                                </div>
+                              ) : detalles.length > 0 ? (
+                                <div className="space-y-2">
+                                  <h4 className="text-sm font-medium text-gray-700 mb-3">Productos vendidos:</h4>
+                                  <div className="space-y-2">
+                                    {detalles.map((detalle, index) => (
+                                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                                        <div className="flex-1">
+                                          <div className="font-medium text-gray-900">{detalle.producto_nombre}</div>
+                                          <div className="text-xs text-gray-500">ID: {detalle.producto_id}</div>
+                                        </div>
+                                        <div className="text-center px-3">
+                                          <div className="font-medium">{detalle.cantidad}</div>
+                                          <div className="text-xs text-gray-500">Cant.</div>
+                                        </div>
+                                        <div className="text-center px-3">
+                                          <div className="font-medium">{currency(detalle.precio_unitario)}</div>
+                                          <div className="text-xs text-gray-500">Precio</div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="font-bold text-green-600">{currency(detalle.subtotal)}</div>
+                                          <div className="text-xs text-gray-500">Subtotal</div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-center py-4 text-gray-500">
+                                  <ShoppingCart className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                                  <p className="text-sm">No se encontraron productos en esta venta</p>
+                                </div>
+                              )}
                             </div>
-                            {t.referencia && (
-                              <div className="text-xs text-gray-500">{t.referencia}</div>
-                            )}
-                            {esVenta && ventaId && !modoVistaCompleta && (
-                              <div className="flex gap-1 mt-2">
-                                <Button
-                                  variant="outline"
-                                  onClick={() => abrirEditarVenta(ventaId)}
-                                  className="h-6 px-2 text-xs"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => abrirCancelarVenta(ventaId)}
-                                  className="h-6 px-2 text-xs text-red-600 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
+                          )}
                         </div>
                       );
                     })}
@@ -873,19 +1465,17 @@ export default function Cajas() {
                               {caja.fecha_cierre ? new Date(caja.fecha_cierre).toLocaleDateString() : 'Abierta'}
                             </div>
                           </div>
-                          {!modoVistaCompleta && (
-                            <Button
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                mostrarResumenFinanciero(caja);
-                              }}
-                              className="ml-2"
-                              title="Ver resumen financiero"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              mostrarResumenFinanciero(caja);
+                            }}
+                            className="ml-2"
+                            title="Ver resumen financiero"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           {caja.estado === 'cerrada' && (
                             <Button
                               variant="outline"
@@ -1180,15 +1770,21 @@ export default function Cajas() {
                   </div>
                   <div className="flex justify-between">
                     <span>Ingresos:</span>
-                    <span className="text-green-600">{currency((resumen?.total_ventas || 0) + (cajaActiva?.monto_inicial || 0))}</span>
+                    <span className="text-green-600">{currency(resumen?.total_ingresos || 0)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Egresos:</span>
                     <span className="text-red-600">{currency(resumen?.total_egresos || 0)}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span>Ganancia/Pérdida:</span>
+                    <span className={resumen?.ganancia_perdida >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {currency(resumen?.ganancia_perdida || 0)}
+                    </span>
+                  </div>
                   <div className="flex justify-between font-bold border-t pt-2">
                     <span>Saldo Esperado:</span>
-                    <span>{currency(resumenActual?.saldo_final_calculado || 0)}</span>
+                    <span>{currency(resumen?.saldo_final_calculado || 0)}</span>
                   </div>
                 </div>
               </div>
@@ -1258,7 +1854,7 @@ export default function Cajas() {
 
       {/* Modal de Confirmación de Reapertura */}
       <Dialog open={modalReapertura} onOpenChange={setModalReapertura}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onClose={() => setModalReapertura(false)}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-orange-500" />
@@ -1299,7 +1895,7 @@ export default function Cajas() {
 
       {/* Modal de Resumen Financiero */}
       <Dialog open={modalResumenFinanciero} onOpenChange={setModalResumenFinanciero}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl" onClose={() => setModalResumenFinanciero(false)}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -1360,6 +1956,13 @@ export default function Cajas() {
                       <span>-{currency(resumenFinanciero.total_egresos || 0)}</span>
                     </div>
                   )}
+                  
+                  <div className="flex justify-between items-center">
+                    <span>Ganancia/Pérdida</span>
+                    <span className={resumenFinanciero.ganancia_perdida >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {currency(resumenFinanciero.ganancia_perdida || 0)}
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="border-t-2 border-black pt-3">

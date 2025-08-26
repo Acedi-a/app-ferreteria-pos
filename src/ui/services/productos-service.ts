@@ -46,6 +46,14 @@ export interface TipoUnidad {
   activo: boolean;
 }
 
+export interface PaginatedResult<T> {
+  data: T[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
 class ProductosService {
   private marcaSupported: boolean | null = null;
 
@@ -73,11 +81,12 @@ class ProductosService {
       SELECT 
         p.*,
         ia.stock_actual,
+        ia.costo_unitario_ultimo as costo_unitario,
         c.nombre as categoria_nombre,
         tu.nombre as tipo_unidad_nombre,
         tu.abreviacion as tipo_unidad_abreviacion
       FROM productos p
-      LEFT JOIN inventario_actual ia ON p.id = ia.id
+      INNER JOIN inventario_actual ia ON p.id = ia.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
       ORDER BY p.nombre ASC
@@ -85,13 +94,122 @@ class ProductosService {
     return result || [];
   }
 
+  async obtenerProductosPaginados(
+    page: number = 1, 
+    pageSize: number = 25, 
+    searchTerm: string = '', 
+    categoriaId?: number
+  ): Promise<PaginatedResult<Producto>> {
+    this.verificarElectronAPI();
+    
+    const offset = (page - 1) * pageSize;
+    
+    // Construir condiciones WHERE
+    let whereConditions = ['p.activo = 1'];
+    let params: any[] = [];
+    
+    if (searchTerm.trim()) {
+      const terminoLimpio = searchTerm.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
+      
+      // Si el término de búsqueda parece ser un código de barras (solo números y/o guiones)
+      // hacer búsqueda exacta, de lo contrario usar búsqueda parcial
+      const isBarcode = /^[0-9\-]+$/.test(terminoLimpio);
+      
+      if (isBarcode) {
+        // Búsqueda exacta para código de barras
+        whereConditions.push('p.codigo_barras = ?');
+        params.push(terminoLimpio);
+      } else {
+        // Búsqueda parcial para texto normal
+        whereConditions.push('(p.nombre LIKE ? OR p.codigo_interno LIKE ? OR p.codigo_barras LIKE ?)');
+        const searchPattern = `%${terminoLimpio}%`;
+        params.push(searchPattern, searchPattern, searchPattern);
+      }
+    }
+    
+    if (categoriaId) {
+      whereConditions.push('p.categoria_id = ?');
+      params.push(categoriaId);
+    }
+    
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    
+    // Consulta para obtener el total de elementos
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM productos p
+      ${whereClause}
+    `;
+    
+    const countResult = await window.electronAPI.db.query(countQuery, params);
+    const totalItems = countResult[0]?.total || 0;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    
+    // Consulta para obtener los datos paginados
+    const dataQuery = `
+      SELECT 
+        p.*,
+        ia.stock_actual,
+        ia.costo_unitario_ultimo as costo_unitario,
+        c.nombre as categoria_nombre,
+        tu.nombre as tipo_unidad_nombre,
+        tu.abreviacion as tipo_unidad_abreviacion
+      FROM productos p
+      INNER JOIN inventario_actual ia ON p.id = ia.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
+      ${whereClause}
+      ORDER BY p.nombre ASC
+      LIMIT ? OFFSET ?
+    `;
+    
+    const dataParams = [...params, pageSize, offset];
+    const data = await window.electronAPI.db.query(dataQuery, dataParams);
+    
+    return {
+      data: data || [],
+      totalItems,
+      totalPages,
+      currentPage: page,
+      pageSize
+    };
+  }
+
   async buscarProductos(termino: string): Promise<Producto[]> {
     this.verificarElectronAPI();
     const includeMarca = await this.hasMarcaColumn();
+    
+    // Limpiar el término de búsqueda de caracteres especiales, espacios y caracteres de control
+     const terminoLimpio = termino.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
+    
+    // Detectar si es un código de barras (solo números y/o guiones)
+    const isBarcode = /^[0-9\-]+$/.test(terminoLimpio);
+    
+    let whereClause;
+    let params;
+    
+    if (isBarcode) {
+      // Búsqueda exacta para código de barras
+      whereClause = `p.codigo_barras = ?`;
+      params = [terminoLimpio];
+    } else {
+      // Búsqueda parcial para texto normal
+      whereClause = `
+        (p.nombre LIKE ? OR 
+        p.codigo_interno LIKE ? OR 
+        p.codigo_barras LIKE ? OR
+        p.descripcion LIKE ?` + (includeMarca ? ` OR p.marca LIKE ?` : ``) + ` OR
+        c.nombre LIKE ?)`;
+      params = includeMarca
+        ? [`%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`]
+        : [`%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`];
+    }
+    
     const baseSql = `
       SELECT 
         p.*,
         ia.stock_actual,
+        ia.costo_unitario_ultimo as costo_unitario,
         c.nombre as categoria_nombre,
         tu.nombre as tipo_unidad_nombre,
         tu.abreviacion as tipo_unidad_abreviacion
@@ -99,16 +217,9 @@ class ProductosService {
       LEFT JOIN inventario_actual ia ON p.id = ia.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
-      WHERE 
-        (p.nombre LIKE ? OR 
-        p.codigo_interno LIKE ? OR 
-        p.codigo_barras LIKE ? OR
-        p.descripcion LIKE ?` + (includeMarca ? ` OR p.marca LIKE ?` : ``) + ` OR
-        c.nombre LIKE ?)
+      WHERE ${whereClause}
       ORDER BY p.nombre ASC`;
-    const params = includeMarca
-      ? [`%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`]
-      : [`%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`];
+      
     const result = await window.electronAPI.db.query(baseSql, params);
     return result || [];
   }
@@ -291,6 +402,9 @@ class ProductosService {
   }
 
   async obtenerProductoPorCodigo(codigo: string): Promise<Producto | null> {
+    // Limpiar el código de caracteres especiales, espacios y caracteres de control
+    const codigoLimpio = codigo.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
+    
     const result = await window.electronAPI.db.get(`
       SELECT 
         p.*,
@@ -301,7 +415,7 @@ class ProductosService {
       LEFT JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
       WHERE p.codigo_interno = ? OR p.codigo_barras = ?
-    `, [codigo, codigo]);
+    `, [codigoLimpio, codigoLimpio]);
     return result || null;
   }
 

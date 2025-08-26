@@ -135,6 +135,32 @@ export class PuntoVentaService {
 
   static async buscarProductos(termino: string): Promise<Producto[]> {
     try {
+      // Detectar si es un código de barras (solo números y/o guiones)
+      const isBarcode = /^[0-9\-]+$/.test(termino.trim());
+      
+      let whereClause;
+      let params;
+      
+      if (isBarcode) {
+        // Búsqueda exacta para código de barras
+        whereClause = `
+          p.nombre LIKE ? OR 
+          p.codigo_barras = ? OR 
+          p.codigo_interno LIKE ? OR
+          p.descripcion LIKE ?`;
+        const termSearch = `%${termino}%`;
+        params = [termSearch, termino.trim(), termSearch, termSearch];
+      } else {
+        // Búsqueda parcial para texto normal
+        whereClause = `
+          p.nombre LIKE ? OR 
+          p.codigo_barras LIKE ? OR 
+          p.codigo_interno LIKE ? OR
+          p.descripcion LIKE ?`;
+        const termSearch = `%${termino}%`;
+        params = [termSearch, termSearch, termSearch, termSearch];
+      }
+      
       const query = `
         SELECT 
           p.*,
@@ -142,17 +168,11 @@ export class PuntoVentaService {
         FROM productos p
         LEFT JOIN categorias c ON p.categoria_id = c.id
         WHERE p.activo = 1 
-        AND (
-          p.nombre LIKE ? OR 
-          p.codigo_barras LIKE ? OR 
-          p.codigo_interno LIKE ? OR
-          p.descripcion LIKE ?
-        )
+        AND (${whereClause})
         ORDER BY p.nombre ASC
       `;
       
-      const termSearch = `%${termino}%`;
-      return window.electronAPI.db.query(query, [termSearch, termSearch, termSearch, termSearch]);
+      return window.electronAPI.db.query(query, params);
     } catch (error) {
       console.error('Error al buscar productos:', error);
       throw error;

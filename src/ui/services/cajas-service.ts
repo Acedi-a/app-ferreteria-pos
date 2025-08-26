@@ -59,6 +59,9 @@ export interface ResumenCaja {
   ventas_mixto: number;
   total_ventas: number;
   
+  // Ganancia/Pérdida
+  ganancia_perdida: number;
+  
   // Otros movimientos
   cobros_cxc_efectivo: number;
   total_gastos: number;
@@ -453,6 +456,7 @@ export class CajasService {
         ventas_transferencia: resumen.ventas_transferencia,
         ventas_mixto: resumen.ventas_mixto,
         total_ventas: resumen.total_ventas,
+        ganancia_perdida: resumen.ganancia_perdida,
         cobros_cxc_efectivo: resumen.cobros_cxc_efectivo,
         total_gastos: resumen.total_gastos,
         total_pagos_proveedores: resumen.total_pagos_proveedores,
@@ -673,11 +677,12 @@ export class CajasService {
       total_recibido: resumen.total_recibido,
       total_egresos: resumen.total_egresos,
       saldo_final_calculado: resumen.saldo_final_calculado,
+      ganancia_perdida: resumen.ganancia_perdida,
       // Propiedades legacy para compatibilidad
       saldo_inicial: resumen.monto_inicial,
       ventas_total: resumen.total_ventas,
       saldo_final: resumen.saldo_final_calculado,
-      ganancia_perdida_estimada: 0 // Deprecado
+      ganancia_perdida_estimada: resumen.ganancia_perdida // Actualizado con valor real
     };
   }
 }

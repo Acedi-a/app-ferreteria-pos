@@ -138,7 +138,7 @@ export class ConfiguracionService {
       { clave: 'email_empresa', valor: '', descripcion: 'Email de la empresa' },
       { clave: 'ciudad_empresa', valor: '', descripcion: 'Ciudad de la empresa' },
       { clave: 'descripcion_empresa', valor: '', descripcion: 'Descripción del negocio' },
-      { clave: 'ticket_ancho', valor: '80', descripcion: 'Ancho del ticket en mm' },
+      { clave: 'ticket_ancho', valor: '74', descripcion: 'Ancho del ticket en mm' },
       { clave: 'ticket_impresora', valor: '', descripcion: 'Impresora seleccionada' },
       { clave: 'ticket_encabezado', valor: '¡Gracias por su compra!', descripcion: 'Mensaje del encabezado' },
       { clave: 'ticket_pie_pagina', valor: 'Vuelva pronto', descripcion: 'Mensaje del pie de página' },

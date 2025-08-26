@@ -1,8 +1,10 @@
 import React from "react";
-import { Edit, Trash2, Loader2, Package } from "lucide-react";
+import { Edit, Trash2, Loader2, Package, Check, X } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/Table";
+import { productosService } from "../../services/productos-service";
 import type { Producto } from "../../services/productos-service";
+import { useToast } from "../ui/use-toast";
 
 interface ProductTableProps {
   products: Producto[];
@@ -10,12 +12,16 @@ interface ProductTableProps {
   searchTerm: string;
   onEdit: (product: Producto) => void;
   onDelete: (id: number) => void;
+  onProductUpdate?: () => void;
 }
 
 // Margen calculation removed - cost not available in master data
 
-export default function ProductTable({ products, loading, searchTerm, onEdit, onDelete }: ProductTableProps) {
+export default function ProductTable({ products, loading, searchTerm, onEdit, onDelete, onProductUpdate }: ProductTableProps) {
   const [previews, setPreviews] = React.useState<Record<number, string>>({});
+  const [editingField, setEditingField] = React.useState<{ productId: number; field: 'precio_venta' | 'costo_unitario' } | null>(null);
+  const [editValue, setEditValue] = React.useState<string>('');
+  const { toast } = useToast();
 
   React.useEffect(() => {
     let cancelled = false;
@@ -41,6 +47,59 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
     load();
     return () => { cancelled = true; };
   }, [products]);
+
+  const handleStartEdit = (productId: number, field: 'precio_venta' | 'costo_unitario', currentValue: number) => {
+    setEditingField({ productId, field });
+    setEditValue(currentValue?.toString() || '0');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  const handleSaveEdit = async (product: Producto) => {
+    if (!editingField) return;
+
+    const newValue = parseFloat(editValue);
+    if (isNaN(newValue) || newValue < 0) {
+      toast({
+        title: "Error",
+        description: "Por favor ingrese un valor numérico válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updatedProduct = {
+        ...product,
+        [editingField.field]: newValue
+      };
+
+      await productosService.updateProduct(product.id!, updatedProduct);
+      
+      toast({
+        title: "Éxito",
+        description: `${editingField.field === 'precio_venta' ? 'Precio de venta' : 'Costo unitario'} actualizado correctamente`,
+      });
+
+      setEditingField(null);
+      setEditValue('');
+      
+      // Refresh the product list
+      if (onProductUpdate) {
+        onProductUpdate();
+      }
+    } catch (error) {
+      console.error('Error updating product:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el producto",
+        variant: "destructive",
+      });
+    }
+  };
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -117,10 +176,86 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                 {product.categoria_nombre || 'Sin categoría'}
               </TableCell>
               <TableCell className="py-4 px-6 text-sm font-medium text-gray-900">
-                {typeof (product as any).costo_unitario === 'number' ? `Bs ${(product as any).costo_unitario.toFixed(2)}` : '-'}
+                {editingField?.productId === product.id && editingField?.field === 'costo_unitario' ? (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveEdit(product);
+                        if (e.key === 'Escape') handleCancelEdit();
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSaveEdit(product)}
+                      className="p-1 text-green-600 hover:text-green-700"
+                    >
+                      <Check className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      className="p-1 text-red-600 hover:text-red-700"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                    onClick={() => handleStartEdit(product.id!, 'costo_unitario', (product as any).costo_unitario)}
+                  >
+                    {typeof (product as any).costo_unitario === 'number' ? `Bs ${(product as any).costo_unitario.toFixed(2)}` : '-'}
+                  </div>
+                )}
               </TableCell>
               <TableCell className="py-4 px-6 text-sm font-medium text-gray-900">
-                Bs {product.precio_venta.toFixed(2)}
+                {editingField?.productId === product.id && editingField?.field === 'precio_venta' ? (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveEdit(product);
+                        if (e.key === 'Escape') handleCancelEdit();
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSaveEdit(product)}
+                      className="p-1 text-green-600 hover:text-green-700"
+                    >
+                      <Check className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      className="p-1 text-red-600 hover:text-red-700"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                    onClick={() => handleStartEdit(product.id!, 'precio_venta', product.precio_venta)}
+                  >
+                    Bs {product.precio_venta.toFixed(2)}
+                  </div>
+                )}
               </TableCell>
               <TableCell className="py-4 px-6">
                 <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-gray-100/80 text-gray-700 border border-gray-200/50">
