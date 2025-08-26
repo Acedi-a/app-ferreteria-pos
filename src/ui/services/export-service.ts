@@ -113,4 +113,77 @@ export class ExportService {
     });
     doc.save(buildFileName(fileBase, { ...opts, ext: 'pdf' }));
   }
+
+  static exportMultiTablePDF(
+    tables: Array<{ data: any[]; cols: ColumnDef<any>[]; title: string }>,
+    fileBase: string,
+    opts?: { desde?: string; hasta?: string }
+  ) {
+    if (tables.length === 0) return;
+    
+    // Determinar orientación basada en la tabla con más columnas
+    const maxCols = Math.max(...tables.map(t => t.cols.length));
+    const doc = new jsPDF({ orientation: maxCols > 6 ? 'landscape' : 'portrait', unit: 'pt' });
+    
+    tables.forEach((table, index) => {
+      const isFirstTable = index === 0;
+      
+      if (index > 0) {
+        doc.addPage();
+      }
+      
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // Solo agregar logo y encabezado principal en la primera tabla
+      if (isFirstTable) {
+        try {
+          const logoSize = 80;
+          const logoX = (pageWidth - logoSize) / 2;
+          doc.addImage(logoClaudio, 'PNG', logoX, 20, logoSize, logoSize);
+        } catch (error) {
+          console.warn('No se pudo agregar el logo al PDF:', error);
+        }
+        
+        // Título principal centrado debajo del logo
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(fileBase, pageWidth / 2, 120, { align: 'center' });
+        
+        // Subtítulo con rango de fechas centrado
+        const fr = [opts?.desde, opts?.hasta].filter(Boolean).join(' a ');
+        if (fr) {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`Período: ${fr}`, pageWidth / 2, 140, { align: 'center' });
+        }
+        
+        // Línea separadora
+        doc.setDrawColor(200, 200, 200);
+        doc.line(40, 160, pageWidth - 40, 160);
+      }
+      
+      // Título de la tabla actual
+      const titleY = isFirstTable ? 180 : 40;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(table.title, 40, titleY);
+      
+      const head = [table.cols.map((c) => c.header)];
+      const body = table.data.map((r) => table.cols.map((c) => {
+        const v = toValue(r, c.accessor);
+        return typeof v === 'number' ? Number(v.toFixed(2)) : v;
+      }));
+      
+      autoTable(doc, {
+        head,
+        body,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [30, 64, 175] },
+        margin: { top: isFirstTable ? 200 : 60 },
+        startY: isFirstTable ? 200 : 60
+      });
+    });
+    
+    doc.save(buildFileName(fileBase, { ...opts, ext: 'pdf' }));
+  }
 }

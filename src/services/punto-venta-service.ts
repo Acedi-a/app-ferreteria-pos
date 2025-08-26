@@ -84,6 +84,25 @@ export interface Venta {
 
 
 export class PuntoVentaService {
+  // Actualizar producto (precio)
+  static async updateProducto(id: number, data: { precio_venta?: number }): Promise<void> {
+    try {
+      const campos = [];
+      const valores = [];
+      if (data.precio_venta !== undefined) {
+        campos.push('precio_venta = ?');
+        valores.push(data.precio_venta);
+      }
+      if (campos.length === 0) return;
+      valores.push(id);
+      const query = `UPDATE productos SET ${campos.join(', ')}, fecha_modificacion = datetime('now') WHERE id = ?`;
+      await window.electronAPI.db.run(query, valores);
+    } catch (error) {
+      console.error('Error al actualizar producto:', error);
+      throw error;
+    }
+  }
+
   // Productos
   static async obtenerProductos(): Promise<Producto[]> {
     try {

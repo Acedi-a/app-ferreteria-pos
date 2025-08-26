@@ -9,7 +9,7 @@ interface ProductSearchProps {
   onEnter?: () => void;
   onQuickCreate?: (nombre: string) => void;
   placeholder?: string;
-  inputRef?: React.RefObject<HTMLInputElement | null>;
+  inputRef?: React.RefObject<{ focus: () => void; blur: () => void; value: string } | null>;
   autoFocus?: boolean;
 }
 
@@ -18,13 +18,14 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, onQu
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [highlight, setHighlight] = React.useState(0);
+  const [showNotFound, setShowNotFound] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const internalInputRef = React.useRef<HTMLInputElement>(null);
 
   // Cargar data en vivo con debounce
   React.useEffect(() => {
     const term = value.trim();
-    if (!term) { setResults([]); setOpen(false); return; }
+    if (!term) { setResults([]); setOpen(false); setShowNotFound(false); return; }
     setLoading(true);
     
     // Detectar si es un código de barras (solo números y/o guiones)
@@ -51,6 +52,7 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, onQu
         const list = await PuntoVentaService.buscarProductos(term, 12);
         setResults(list);
         setOpen(list.length > 0);
+        setShowNotFound(list.length === 0 && term.length > 0);
         setHighlight(0);
       } catch {}
       setLoading(false);
@@ -64,6 +66,7 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, onQu
       if (!containerRef.current) return;
       if (!containerRef.current.contains(e.target as Node)) {
         setOpen(false);
+        setShowNotFound(false);
       }
     }
     document.addEventListener('mousedown', onDocClick);
@@ -83,8 +86,10 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, onQu
       if (internalInputRef?.current) {
         internalInputRef.current.blur();
         setTimeout(() => {
-          internalInputRef.current.focus();
-          internalInputRef.current.click();
+          if (internalInputRef.current) {
+            internalInputRef.current.focus();
+            internalInputRef.current.click();
+          }
         }, 0);
       }
     },
@@ -122,6 +127,14 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, onQu
   const handleSelect = (p: Producto) => {
     onSelect(p);
     setOpen(false);
+    setShowNotFound(false);
+  };
+
+  const handleAddProduct = () => {
+    if (onQuickCreate && value.trim()) {
+      onQuickCreate(value.trim());
+      setShowNotFound(false);
+    }
   };
 
   return (
@@ -162,6 +175,23 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, onQu
               <ResultItem producto={p} />
             </button>
           ))}
+        </div>
+      )}
+
+      {showNotFound && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg p-4">
+          <div className="text-center">
+            <div className="text-sm text-gray-600 mb-2">
+              Producto no encontrado: <span className="font-medium">"{value}"</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddProduct}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              ¿Desea añadir este producto?
+            </button>
+          </div>
         </div>
       )}
     </div>

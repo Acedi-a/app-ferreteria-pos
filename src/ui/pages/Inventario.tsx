@@ -271,19 +271,19 @@ export default function Inventario() {
                     {/* Botón Primera Página */}
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={() => handlePageChange(1)}
                       disabled={currentPage === 1}
                       title="Primera página"
+                      className="px-2 py-1"
                     >
                       ««
                     </Button>
                     
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
+                      className="px-2 py-1"
                     >
                       Anterior
                     </Button>
@@ -307,7 +307,6 @@ export default function Inventario() {
                               )}
                               <Button
                                 variant={currentPage === page ? "default" : "outline"}
-                                size="sm"
                                 onClick={() => handlePageChange(page)}
                                 className="w-8 h-8 p-0"
                               >
@@ -320,9 +319,9 @@ export default function Inventario() {
                     
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === paginatedData.totalPages}
+                      className="px-2 py-1"
                     >
                       Siguiente
                     </Button>
@@ -330,10 +329,10 @@ export default function Inventario() {
                     {/* Botón Última Página */}
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={() => handlePageChange(paginatedData.totalPages)}
                       disabled={currentPage === paginatedData.totalPages}
                       title="Última página"
+                      className="px-2 py-1"
                     >
                       »»
                     </Button>
@@ -353,32 +352,29 @@ export default function Inventario() {
             <div className="flex gap-2">
               <Button
                 variant={filtroTipoMovimiento === 'todos' ? 'default' : 'outline'}
-                size="sm"
                 onClick={() => setFiltroTipoMovimiento('todos')}
+                className="px-3 py-1"
               >
                 Todos
               </Button>
               <Button
                 variant={filtroTipoMovimiento === 'entrada' ? 'default' : 'outline'}
-                size="sm"
                 onClick={() => setFiltroTipoMovimiento('entrada')}
-                className={filtroTipoMovimiento === 'entrada' ? 'bg-green-600 hover:bg-green-700' : ''}
+                className={`px-3 py-1 ${filtroTipoMovimiento === 'entrada' ? 'bg-green-600 hover:bg-green-700' : ''}`}
               >
                 Entradas
               </Button>
               <Button
                 variant={filtroTipoMovimiento === 'salida' ? 'default' : 'outline'}
-                size="sm"
                 onClick={() => setFiltroTipoMovimiento('salida')}
-                className={filtroTipoMovimiento === 'salida' ? 'bg-red-600 hover:bg-red-700' : ''}
+                className={`px-3 py-1 ${filtroTipoMovimiento === 'salida' ? 'bg-red-600 hover:bg-red-700' : ''}`}
               >
                 Salidas
               </Button>
               <Button
                 variant={filtroTipoMovimiento === 'ajuste' ? 'default' : 'outline'}
-                size="sm"
                 onClick={() => setFiltroTipoMovimiento('ajuste')}
-                className={filtroTipoMovimiento === 'ajuste' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                className={`px-3 py-1 ${filtroTipoMovimiento === 'ajuste' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
               >
                 Ajustes
               </Button>

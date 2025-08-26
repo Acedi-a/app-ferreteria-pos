@@ -70,21 +70,16 @@ ipcMain.handle('image-import', async () => {
 ipcMain.handle('image-read-dataurl', async (event, fileRef: string) => {
   try {
     let filePath = fileRef;
+
     if (fileRef.startsWith('file://')) {
-      // Convertir file:// a ruta local
-      const u = new URL(fileRef);
-      filePath = u.pathname;
-      if (process.platform === 'win32' && filePath.startsWith('/')) {
-        // Quitar el prefijo '/' en Windows
-        filePath = filePath.slice(1);
-      }
+      filePath = fileURLToPath(fileRef);
     }
     
     // Verificar si el archivo existe antes de intentar leerlo
     try {
       await fsp.access(filePath);
+
     } catch {
-      // Archivo no existe, devolver null silenciosamente
       return null;
     }
     
@@ -112,9 +107,7 @@ ipcMain.handle('image-delete', async (event, fileRef: string) => {
     const imagesDir = path.join(app.getPath('userData'), 'product-images');
     let filePath = fileRef;
     if (fileRef.startsWith('file://')) {
-      const u = new URL(fileRef);
-      filePath = u.pathname;
-      if (process.platform === 'win32' && filePath.startsWith('/')) filePath = filePath.slice(1);
+      filePath = fileURLToPath(fileRef);
     }
     const resolved = path.resolve(filePath);
     const allowedRoot = path.resolve(imagesDir);
@@ -134,6 +127,7 @@ ipcMain.handle('image-delete', async (event, fileRef: string) => {
 });
 
 app.on("ready", async ()=> {
+  console.log('User Data Path:', app.getPath('userData'));
   // IMPORTANTE: El preload debe estar en CommonJS y ubicado en dist-electron/preload.cjs
   const preloadPath = isDev() 
     ? path.join(process.cwd(), 'src', 'electron', 'preload.cjs')
@@ -155,23 +149,11 @@ app.on("ready", async ()=> {
     mainWindow.loadFile(indexProd);
   }
 
-    // Backup automático diario (simple): si está habilitado
+    // Configurar backup automático programado
     try {
-      const auto = await dbService.get<{ valor: string }>(`SELECT valor FROM configuracion WHERE clave = 'auto_backup'`);
-      if (auto?.valor === 'true') {
-        const backupsDir = path.join(app.getPath('userData'), 'backups');
-        try { await fsp.mkdir(backupsDir, { recursive: true }); } catch {}
-        const fname = `auto-backup-${new Date().toISOString().slice(0,10)}.sqlite`;
-        const dest = path.join(backupsDir, fname);
-        // Si ya existe el de hoy, omitir
-        const exists = await fsp.stat(dest).then(() => true).catch(() => false);
-        if (!exists) {
-          await dbService.backupTo(dest, 'auto');
-          await dbService.run(`UPDATE configuracion SET valor = datetime('now') WHERE clave = 'ultimo_backup'`);
-        }
-      }
+      await configurarBackupAutomatico();
     } catch (e) {
-      console.warn('Auto-backup skipped:', e);
+      console.warn('Auto-backup configuration failed:', e);
     }
 })
 
@@ -287,6 +269,142 @@ ipcMain.handle('db-restore-from-path', async (_evt, filePath: string) => {
     app.relaunch();
     app.exit(0);
     return { ok: true, path: filePath };
+  } catch (e: any) {
+    return { ok: false, error: String(e) };
+  }
+});
+
+// Variables para el sistema de backup programado
+let backupInterval: NodeJS.Timeout | null = null;
+let nextBackupTime: Date | null = null;
+
+// Función para configurar el backup automático
+async function configurarBackupAutomatico() {
+  try {
+    // Limpiar intervalo anterior si existe
+    if (backupInterval) {
+      clearInterval(backupInterval);
+      backupInterval = null;
+    }
+
+    // Obtener configuraciones
+    const configs = await Promise.all([
+      dbService.get<{ valor: string }>(`SELECT valor FROM configuracion WHERE clave = 'auto_backup'`),
+      dbService.get<{ valor: string }>(`SELECT valor FROM configuracion WHERE clave = 'backup_frecuencia'`),
+      dbService.get<{ valor: string }>(`SELECT valor FROM configuracion WHERE clave = 'backup_hora'`)
+    ]);
+
+    const autoBackup = configs[0]?.valor === 'true';
+    const frecuencia = configs[1]?.valor || 'diario';
+    const hora = configs[2]?.valor || '02:00';
+
+    if (!autoBackup) {
+      console.log('Backup automático deshabilitado');
+      return;
+    }
+
+    // Calcular próximo backup
+    nextBackupTime = calcularProximoBackup(frecuencia, hora);
+    console.log(`Próximo backup programado para: ${nextBackupTime.toLocaleString()}`);
+
+    // Configurar intervalo para verificar cada minuto
+    backupInterval = setInterval(async () => {
+      const ahora = new Date();
+      if (nextBackupTime && ahora >= nextBackupTime) {
+        await ejecutarBackupProgramado();
+        // Recalcular próximo backup
+        nextBackupTime = calcularProximoBackup(frecuencia, hora);
+        console.log(`Próximo backup programado para: ${nextBackupTime.toLocaleString()}`);
+      }
+    }, 60000); // Verificar cada minuto
+
+  } catch (e) {
+    console.error('Error configurando backup automático:', e);
+  }
+}
+
+// Función para calcular el próximo momento de backup
+function calcularProximoBackup(frecuencia: string, hora: string): Date {
+  const [horas, minutos] = hora.split(':').map(Number);
+  const ahora = new Date();
+  let proximoBackup = new Date();
+  
+  proximoBackup.setHours(horas, minutos, 0, 0);
+  
+  // Si ya pasó la hora de hoy, programar para el próximo período
+  if (proximoBackup <= ahora) {
+    switch (frecuencia) {
+      case 'diario':
+        proximoBackup.setDate(proximoBackup.getDate() + 1);
+        break;
+      case 'semanal':
+        // Programar para el próximo domingo
+        const diasHastaDomingo = (7 - proximoBackup.getDay()) % 7;
+        proximoBackup.setDate(proximoBackup.getDate() + (diasHastaDomingo || 7));
+        break;
+      case 'mensual':
+        // Programar para el día 1 del próximo mes
+        proximoBackup.setMonth(proximoBackup.getMonth() + 1, 1);
+        break;
+    }
+  } else {
+    // Si no ha pasado la hora de hoy, verificar si corresponde según la frecuencia
+    switch (frecuencia) {
+      case 'semanal':
+        // Solo los domingos (día 0)
+        if (proximoBackup.getDay() !== 0) {
+          const diasHastaDomingo = (7 - proximoBackup.getDay()) % 7;
+          proximoBackup.setDate(proximoBackup.getDate() + (diasHastaDomingo || 7));
+        }
+        break;
+      case 'mensual':
+        // Solo el día 1 del mes
+        if (proximoBackup.getDate() !== 1) {
+          proximoBackup.setMonth(proximoBackup.getMonth() + 1, 1);
+        }
+        break;
+    }
+  }
+  
+  return proximoBackup;
+}
+
+// Función para ejecutar el backup programado
+async function ejecutarBackupProgramado() {
+  try {
+    console.log('Ejecutando backup automático programado...');
+    
+    const backupsDir = path.join(app.getPath('userData'), 'backups');
+    await fsp.mkdir(backupsDir, { recursive: true });
+    
+    // Obtener frecuencia para el nombre del archivo
+    const frecuenciaConfig = await dbService.get<{ valor: string }>(`SELECT valor FROM configuracion WHERE clave = 'backup_frecuencia'`);
+    const frecuencia = frecuenciaConfig?.valor || 'diario';
+    
+    const fecha = new Date().toISOString().slice(0, 10);
+    const fname = `auto-backup-${frecuencia}-${fecha}.sqlite`;
+    const dest = path.join(backupsDir, fname);
+    
+    // Verificar si ya existe backup para evitar duplicados
+    const exists = await fsp.stat(dest).then(() => true).catch(() => false);
+    if (!exists) {
+      await dbService.backupTo(dest, 'auto');
+      await dbService.run(`UPDATE configuracion SET valor = ? WHERE clave = 'ultimo_backup'`, [new Date().toISOString()]);
+      console.log(`Backup automático completado: ${fname}`);
+    } else {
+      console.log(`Backup ya existe para hoy: ${fname}`);
+    }
+    
+  } catch (e) {
+    console.error('Error ejecutando backup automático:', e);
+  }
+}
+
+// Reconfigurar backup cuando cambien las configuraciones
+ipcMain.handle('reconfigurar-backup', async () => {
+  try {
+    await configurarBackupAutomatico();
+    return { ok: true };
   } catch (e: any) {
     return { ok: false, error: String(e) };
   }

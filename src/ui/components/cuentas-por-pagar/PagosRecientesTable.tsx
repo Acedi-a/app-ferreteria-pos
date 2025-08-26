@@ -1,27 +1,56 @@
-// src/components/cuentas-por-cobrar/PagosRecientesTable.tsx
-import { DollarSign, Calendar, User, Printer } from "lucide-react";
+// src/components/cuentas-por-pagar/PagosRecientesTable.tsx
+import { DollarSign, Calendar, Factory, Printer } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/Table";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
-import type { PagoCuenta } from "../../services/cuentas-por-cobrar-service";
-import { printPagoReceipt } from "./PaymentReceiptRenderer";
-import { CuentasPorCobrarService } from "../../services/cuentas-por-cobrar-service";
+import type { PagoProveedor } from "../../services/cuentas-por-pagar-service";
+import { printPagoProveedorReceipt } from "./PaymentReceiptRenderer";
+import { CuentasPorPagarService } from "../../services/cuentas-por-pagar-service";
 
 interface PagosRecientesTableProps {
-  pagos: PagoCuenta[];
+  pagos: PagoProveedor[];
   loading?: boolean;
 }
 
-export default function PagosRecientesTable({ 
-  pagos, 
-  loading = false 
-}: PagosRecientesTableProps) {
-  
-  const handleImprimirPago = async (pago: PagoCuenta) => {
+function formatearFecha(fechaISO: string): string {
+  const fecha = new Date(fechaISO);
+  const fechaStr = fecha.toLocaleDateString('es-BO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+  const horaStr = fecha.toLocaleTimeString('es-BO', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  return `${fechaStr} ${horaStr}`;
+}
+
+function getMetodoPagoColor(metodo: string): string {
+  switch (metodo.toLowerCase()) {
+    case 'efectivo':
+      return 'bg-green-100 text-green-800';
+    case 'transferencia':
+    case 'transferencia bancaria':
+      return 'bg-blue-100 text-blue-800';
+    case 'cheque':
+      return 'bg-purple-100 text-purple-800';
+    case 'tarjeta':
+    case 'tarjeta de débito':
+    case 'tarjeta de crédito':
+      return 'bg-orange-100 text-orange-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+}
+
+export default function PagosRecientesTable({ pagos, loading }: PagosRecientesTableProps) {
+  const handleImprimirPago = async (pago: PagoProveedor) => {
     try {
       // Obtener la cuenta completa para el recibo
-      const cuentas = await CuentasPorCobrarService.obtenerCuentasPorCobrar();
+      const cuentas = await CuentasPorPagarService.obtenerCuentasPorPagar();
       const cuenta = cuentas.find(c => c.id === pago.cuenta_id);
       
       if (!cuenta) {
@@ -30,41 +59,14 @@ export default function PagosRecientesTable({
       }
 
       // Obtener historial de pagos para cálculo correcto de saldos
-      const historial = await CuentasPorCobrarService.obtenerHistoricoPagos(pago.cuenta_id);
+      const historial = await CuentasPorPagarService.obtenerHistoricoPagos(pago.cuenta_id);
       
-      await printPagoReceipt(cuenta, pago, { 
+      await printPagoProveedorReceipt(cuenta, pago, { 
         mostrarHistorial: false, 
         historial 
       });
     } catch (error) {
       console.error('Error al imprimir recibo:', error);
-    }
-  };
-  
-  const formatearFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getBadgeMetodoPago = (metodo: string) => {
-    switch (metodo.toLowerCase()) {
-      case 'efectivo':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'tarjeta':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'transferencia':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'cheque':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'deposito':
-        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -73,44 +75,36 @@ export default function PagosRecientesTable({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-green-600" />
-            Pagos Recientes
+            <DollarSign className="h-5 w-5 text-orange-600" />
+            <span>Pagos Recientes</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="animate-pulse flex space-x-4 p-4">
-                <div className="rounded-full bg-gray-200 h-10 w-10"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  if (pagos.length === 0) {
+  if (!pagos || pagos.length === 0) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-green-600" />
-            Pagos Recientes
+            <DollarSign className="h-5 w-5 text-orange-600" />
+            <span>Pagos Recientes</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
-            <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No hay pagos recientes
-            </h3>
-            <p className="text-gray-600">
-              Los pagos registrados aparecerán aquí.
+          <div className="text-center py-8">
+            <Factory className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500 text-sm">
+              No hay pagos registrados aún.
+            </p>
+            <p className="text-gray-400 text-xs mt-1">
+              Los pagos a proveedores aparecerán aquí.
             </p>
           </div>
         </CardContent>
@@ -123,7 +117,7 @@ export default function PagosRecientesTable({
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-green-600" />
+            <DollarSign className="h-5 w-5 text-orange-600" />
             <span>Pagos Recientes</span>
           </div>
           <span className="text-sm font-normal text-gray-600">
@@ -136,7 +130,7 @@ export default function PagosRecientesTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Cliente</TableHead>
+                <TableHead>Proveedor</TableHead>
                 <TableHead className="text-right">Monto</TableHead>
                 <TableHead>Método</TableHead>
                 <TableHead>Fecha</TableHead>
@@ -147,34 +141,36 @@ export default function PagosRecientesTable({
             <TableBody>
               {pagos.map((pago) => (
                 <TableRow key={pago.id} className="hover:bg-gray-50">
-                  {/* Cliente */}
+                  {/* Proveedor */}
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <User className="h-4 w-4 text-green-600" />
+                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                        <Factory className="h-4 w-4 text-orange-600" />
                       </div>
                       <div>
                         <div className="font-medium text-gray-900">
-                          {pago.cliente_nombre} {pago.cliente_apellido}
+                          {pago.proveedor_nombre}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          ID Pago: {pago.id}
-                        </div>
+                        {pago.numero_compra && (
+                          <div className="text-xs text-gray-500">
+                            {pago.numero_compra}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </TableCell>
 
                   {/* Monto */}
                   <TableCell className="text-right">
-                    <div className="font-bold text-green-600 text-lg">
+                    <div className="font-semibold text-orange-600">
                       Bs {pago.monto.toFixed(2)}
                     </div>
                   </TableCell>
 
-                  {/* Método */}
+                  {/* Método de pago */}
                   <TableCell>
-                    <Badge className={getBadgeMetodoPago(pago.metodo_pago)}>
-                      {pago.metodo_pago.charAt(0).toUpperCase() + pago.metodo_pago.slice(1)}
+                    <Badge className={`text-xs ${getMetodoPagoColor(pago.metodo_pago)}`}>
+                      {pago.metodo_pago}
                     </Badge>
                   </TableCell>
 
@@ -182,8 +178,8 @@ export default function PagosRecientesTable({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-900">
                           {formatearFecha(pago.fecha_pago).split(' ')[0]}
                         </div>
                         <div className="text-xs text-gray-500">
@@ -210,7 +206,7 @@ export default function PagosRecientesTable({
                       <Button
                         variant="ghost"
                         onClick={() => handleImprimirPago(pago)}
-                        className="text-gray-600 hover:text-green-600 hover:bg-green-50 px-2 py-1"
+                        className="text-gray-600 hover:text-orange-600 hover:bg-orange-50 px-2 py-1"
                         title="Imprimir recibo de este pago"
                       >
                         <Printer className="h-4 w-4" />
@@ -224,12 +220,12 @@ export default function PagosRecientesTable({
         </div>
 
         {/* Resumen al final */}
-        <div className="mt-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+        <div className="mt-4 p-3 bg-orange-50 rounded-lg border-l-4 border-orange-400">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-green-800">
+            <span className="text-sm font-medium text-orange-800">
               Total de pagos mostrados:
             </span>
-            <span className="text-lg font-bold text-green-600">
+            <span className="text-lg font-bold text-orange-600">
               Bs {pagos.reduce((sum, pago) => sum + pago.monto, 0).toFixed(2)}
             </span>
           </div>

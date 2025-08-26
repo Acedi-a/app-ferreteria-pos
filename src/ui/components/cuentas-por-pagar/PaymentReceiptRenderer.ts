@@ -1,10 +1,7 @@
+// src/components/cuentas-por-pagar/PaymentReceiptRenderer.ts
 import { ConfiguracionService } from "../../services/configuracion-service";
-import type { CuentaPorCobrar, PagoCuenta } from "../../services/cuentas-por-cobrar-service";
 import logoClaudio from "../../assets/logo_claudio.png";
-
-function fmt(n?: number) {
-  return (n ?? 0).toFixed(2);
-}
+import type { CuentaPorPagar, PagoProveedor } from "../../services/cuentas-por-pagar-service";
 
 // Función helper para convertir imagen a base64 en blanco y negro puro (umbralización)
 async function imageToBase64(src: string): Promise<string> {
@@ -49,15 +46,21 @@ async function imageToBase64(src: string): Promise<string> {
   });
 }
 
-export interface PrintPagoOptions {
-  mostrarHistorial?: boolean;
-  historial?: PagoCuenta[];
+// Función para formatear números
+function fmt(num?: number): string {
+  if (num == null) return '0.00';
+  return Number(num).toFixed(2);
 }
 
-export async function buildPagoReceiptHTML(
-  cuenta: CuentaPorCobrar,
-  pago?: Partial<PagoCuenta> & { fecha_pago?: string; id?: number },
-  opts: PrintPagoOptions = {}
+export interface PrintPagoProveedorOptions {
+  mostrarHistorial?: boolean;
+  historial?: PagoProveedor[];
+}
+
+export async function buildPagoProveedorReceiptHTML(
+  cuenta: CuentaPorPagar,
+  pago?: Partial<PagoProveedor> & { fecha_pago?: string; id?: number },
+  opts: PrintPagoProveedorOptions = {}
 ): Promise<string> {
   const ahora = new Date();
   const fecha = pago?.fecha_pago ? new Date(pago.fecha_pago) : ahora;
@@ -85,12 +88,12 @@ export async function buildPagoReceiptHTML(
   const header = `
     <div class="wrap center">
       <div class="center"><img src="${logoClaudiaBase64}" style="width:110px;max-height:88px;object-fit:contain;margin-bottom:15px" /></div>
-      <div class="bold">RECIBO DE PAGO</div>
-      <div>Cuenta #${cuenta.id} · ${cuenta.numero_venta || (cuenta.venta_id ? 'VENTA-' + cuenta.venta_id : '')}</div>
+      <div class="bold">COMPROBANTE DE PAGO</div>
+      <div>Cuenta #${cuenta.id} · ${cuenta.numero_compra || (cuenta.compra_id ? 'COMPRA-' + cuenta.compra_id : '')}</div>
       <div>${fecha.toLocaleString()}</div>
       <div class="hr"></div>
-      <div class="bold">${(cuenta.cliente_nombre || '') + ' ' + (cuenta.cliente_apellido || '')}</div>
-      <div class="small">Código: ${cuenta.cliente_codigo || ''}</div>
+      <div class="bold">${cuenta.proveedor_nombre || ''}</div>
+      <div class="small">Proveedor</div>
       <div class="hr"></div>
     </div>
   `;
@@ -100,7 +103,7 @@ export async function buildPagoReceiptHTML(
       <table>
         <tbody>
           <tr><td>Saldo anterior</td><td class="right">Bs ${fmt(previo)}</td></tr>
-          <tr><td class="bold">Pago recibido</td><td class="right bold">Bs ${fmt(pago?.monto)}</td></tr>
+          <tr><td class="bold">Pago realizado</td><td class="right bold">Bs ${fmt(pago?.monto)}</td></tr>
           <tr><td>Método</td><td class="right">${pago?.metodo_pago || '-'}</td></tr>
           ${pago?.observaciones ? `<tr><td colspan="2" class="small">Obs.: ${pago.observaciones}</td></tr>` : ''}
           <tr><td class="right bold">Saldo restante</td><td class="right bold">Bs ${fmt(nuevoSaldo)}</td></tr>
@@ -117,14 +120,20 @@ export async function buildPagoReceiptHTML(
       new Date(b.fecha_pago).getTime() - new Date(a.fecha_pago).getTime()
     );
     
-    // Generar filas del historial con formato mejorado
+    // Generar filas del historial
     const filas = historialOrdenado
       .map(h => {
-        const fecha = new Date(h.fecha_pago);
-        const fechaStr = fecha.toLocaleDateString('es-BO');
-        const horaStr = fecha.toLocaleTimeString('es-BO', { hour12: false });
+        const fecha = new Date(h.fecha_pago).toLocaleDateString('es-BO', {
+          day: '2-digit',
+          month: '2-digit', 
+          year: 'numeric'
+        });
+        const hora = new Date(h.fecha_pago).toLocaleTimeString('es-BO', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
         return `<tr>
-          <td class="small">${fechaStr}<br/>${horaStr}</td>
+          <td class="small">${fecha}<br/>${hora}</td>
           <td class="right">Bs ${fmt(h.monto)}</td>
           <td class="right small">${h.metodo_pago}</td>
         </tr>`;
@@ -143,7 +152,7 @@ export async function buildPagoReceiptHTML(
         <div class="hr"></div>
       </div>`;
     
-    // Tabla del historial con encabezados
+    // Tabla del historial
     historial = `
       <div class="wrap">
         <div class="bold">Historial de pagos</div>
@@ -151,7 +160,7 @@ export async function buildPagoReceiptHTML(
           <thead>
             <tr>
               <th class="small">Fecha</th>
-              <th class="right">Monto</th>
+              <th class="right small">Monto</th>
               <th class="right small">Método</th>
             </tr>
           </thead>
@@ -160,6 +169,7 @@ export async function buildPagoReceiptHTML(
         <div class="hr"></div>
       </div>
     `;
+    
     historial = resumen + historial;
   }
 
@@ -179,20 +189,20 @@ export async function buildPagoReceiptHTML(
     </style>
   `;
 
-  return `<!doctype html><html><head><meta charset="utf-8" />${css}</head><body>${header}${cuerpo}${historial}<div class="wrap center small">Gracias por su pago</div></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8" />${css}</head><body>${header}${cuerpo}${historial}<div class="wrap center small">Comprobante de pago a proveedor</div></body></html>`;
 }
 
-export async function printPagoReceipt(
-  cuenta: CuentaPorCobrar,
-  pago?: Partial<PagoCuenta> & { fecha_pago?: string },
-  opts: PrintPagoOptions = {}
+export async function printPagoProveedorReceipt(
+  cuenta: CuentaPorPagar,
+  pago?: Partial<PagoProveedor> & { fecha_pago?: string },
+  opts: PrintPagoProveedorOptions = {}
 ) {
   const ticket = await ConfiguracionService.obtenerConfiguracionTickets();
   const widthMm = Number(ticket.ticket_ancho || '80');
   const deviceName = ticket.ticket_impresora || undefined;
   const auto = (ticket.ticket_auto_imprimir || 'true') === 'true';
-  const htmlRaw = await buildPagoReceiptHTML(cuenta, pago, opts);
+  const htmlRaw = await buildPagoProveedorReceiptHTML(cuenta, pago, opts);
   // Ajustar ancho con CSS inline @page segun widthMm
   const html = htmlRaw.replace('@page { size: 80mm auto;', `@page { size: ${widthMm}mm auto;`).replace('body { width: 80mm;', `body { width: ${widthMm}mm;`);
-  return window.electronAPI.printHtml({ html, widthMm, deviceName, silent: auto, title: `Recibo Pago Cta ${cuenta.id}` });
+  return window.electronAPI.printHtml({ html, widthMm, deviceName, silent: auto, title: `Comprobante Pago Proveedor ${cuenta.id}` });
 }

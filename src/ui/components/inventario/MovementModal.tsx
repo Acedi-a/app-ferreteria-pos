@@ -2,19 +2,15 @@ import React, { useState, useCallback, useEffect } from "react";
 import { Dialog } from "../ui/Dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
 import { Button } from "../ui/Button";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/Table";
-import { X, Search, Plus, Trash2, Package } from "lucide-react";
+
+import { X, Search, Plus, Package } from "lucide-react";
 import { productosService, type Producto } from "../../services/productos-service";
 import { MovimientosService } from "../../services/movimientos-service";
-import { ProveedoresService } from "../../services/proveedores-service";
+import { ProveedoresService, type Proveedor } from "../../services/proveedores-service";
 import { useToast } from "../ui/use-toast";
 import MovementList from './MovementList';
 
-export interface Proveedor {
-  id: number;
-  codigo: string;
-  nombre: string;
-}
+
 
 export interface MovementItem {
   id: number;
@@ -123,7 +119,7 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
     }
 
     const newItem: MovementItem = {
-      id: producto.id,
+      id: producto.id || 0,
       producto_id: producto.id,
       codigo_barras: producto.codigo_barras || producto.codigo_interno,
       nombre: producto.nombre,
@@ -189,18 +185,7 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
     }
   };
 
-  const actualizarItem = (id: number, campo: keyof MovementItem, valor: any) => {
-    setMovementItems(prev => prev.map(item => {
-      if (item.id === id) {
-        const updated = { ...item, [campo]: valor };
-        if (campo === 'cantidad' || campo === 'costo_unitario') {
-          updated.costo_total = updated.cantidad * updated.costo_unitario;
-        }
-        return updated;
-      }
-      return item;
-    }));
-  };
+
 
   const eliminarItem = (id: number) => {
     setMovementItems(prev => prev.filter(item => item.id !== id));
@@ -339,7 +324,7 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
                           setShowNewProductForm(true);
                         }}
                         variant="outline"
-                        size="sm"
+                        className="px-2 py-1"
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Crear Producto Nuevo
@@ -415,14 +400,14 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Button onClick={crearYAgregarProducto} size="sm">
+                      <Button onClick={crearYAgregarProducto} className="px-2 py-1">
                         <Package className="mr-2 h-4 w-4" />
                         Crear y Agregar
                       </Button>
                       <Button
                         onClick={() => setShowNewProductForm(false)}
                         variant="outline"
-                        size="sm"
+                        className="px-2 py-1"
                       >
                         Cancelar
                       </Button>
@@ -460,7 +445,7 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
                         <option value="">Seleccionar proveedor...</option>
                         {proveedores.map(proveedor => (
                           <option key={proveedor.id} value={proveedor.id}>
-                            {proveedor.codigo} - {proveedor.nombre}
+                            {proveedor.id} - {proveedor.nombre}
                           </option>
                         ))}
                       </select>

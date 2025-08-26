@@ -51,7 +51,7 @@ const convertirProductoBase = (producto: ProductoBase): Producto => ({
   nombre: producto.nombre,
   precio: Number(producto.precio_venta),
   stock: producto.stock_actual,
-  ventaFraccionada: false, // Por defecto false ya que no existe en la BD
+  ventaFraccionada: Boolean(producto.venta_fraccionada), // Tomar el valor real de la BD
   unidadMedida: 'unidad', // Por defecto ya que no existe en ProductoBase
   categoria: producto.categoria_nombre
 });
@@ -65,7 +65,7 @@ const convertirClienteBase = (cliente: ClienteBase): Cliente => ({
 /* ---------- componente principal ---------- */
 export default function PuntoVenta() {
   const { toast } = useToast();
-  const scanInputRef = useRef<HTMLInputElement | null>(null);
+  const scanInputRef = useRef<{ focus: () => void; blur: () => void; value: string }>(null);
   
   // Estados de datos
   // Ya no listamos todos los productos; trabajamos por escaneo/código
@@ -179,20 +179,30 @@ export default function PuntoVenta() {
     }
   };
 
+  const actualizarPrecio = (id: number, nuevoPrecio: number) => {
+    setProductos(productos.map(p => {
+      if (p.id !== id) return p;
+      return { ...p, precio: nuevoPrecio, subtotal: p.cantidad * nuevoPrecio };
+    }));
+  };
+
   /* ---------- lógica del carrito ---------- */
   const agregarProducto = (producto: Producto) => {
     console.log('Agregando producto al carrito:', producto);
-    
     const existente = productos.find((p) => p.id === producto.id);
     const stock = Number(producto.stock) || 0;
-
     if (stock <= 0) {
       toast({ title: "Sin stock", description: `${producto.nombre} no tiene stock disponible`, variant: "destructive" });
       return;
     }
-
     if (existente) {
-      const siguiente = existente.cantidad + 1;
+      let siguiente = existente.cantidad + (producto.ventaFraccionada ? 0.1 : 1);
+      // Para productos fraccionados, no redondear; para productos enteros, usar Math.floor
+      if (producto.ventaFraccionada) {
+        siguiente = Math.min(siguiente, stock);
+      } else {
+        siguiente = Math.floor(Math.min(siguiente, stock));
+      }
       if (siguiente > stock) {
         toast({ title: "Stock insuficiente", description: `Solo hay ${stock} en stock para ${producto.nombre}.`, variant: "destructive" });
         return;
@@ -200,7 +210,7 @@ export default function PuntoVenta() {
       actualizarCantidad(producto.id, siguiente);
       toast({ title: "Cantidad actualizada", description: `Ahora: ${siguiente} x ${producto.nombre}` });
     } else {
-      const cantidadInicial = Math.min(1, stock);
+      const cantidadInicial = producto.ventaFraccionada ? Math.min(0.1, stock) : Math.min(1, stock);
       const nuevoProducto = {
         id: producto.id,
         codigo: producto.codigo,
@@ -211,7 +221,6 @@ export default function PuntoVenta() {
         ventaFraccionada: producto.ventaFraccionada,
         unidadMedida: producto.unidadMedida,
       };
-      
       console.log('Producto a agregar al carrito:', nuevoProducto);
       setProductos([...productos, nuevoProducto]);
       toast({ title: "Producto agregado", description: `${producto.nombre} agregado al carrito` });
@@ -403,14 +412,24 @@ export default function PuntoVenta() {
 
     // No permitir superar stock
     if (cantidadSolicitada > stock) {
-      const ajustada = stock;
+      const ajustada = prod.ventaFraccionada ? stock : Math.floor(stock);
       setProductos(productos.map(p => p.id === id ? { ...p, cantidad: ajustada, subtotal: Number(p.precio) * ajustada } : p));
-      toast({ title: "Stock insuficiente", description: `Se ajustó la cantidad de ${prod.nombre} a ${stock} (stock disponible).`, variant: "destructive" });
+      toast({ title: "Stock insuficiente", description: `Se ajustó la cantidad de ${prod.nombre} a ${ajustada} (stock disponible).`, variant: "destructive" });
       return;
     }
 
     // Actualización normal dentro de stock
-    setProductos(productos.map(p => p.id === id ? { ...p, cantidad: cantidadSolicitada, subtotal: Number(p.precio) * cantidadSolicitada } : p));
+    setProductos(productos.map(p => {
+      if (p.id !== id) return p;
+      // Si el producto es fraccionado, permitir decimales completos
+      if (p.ventaFraccionada) {
+        return { ...p, cantidad: cantidadSolicitada, subtotal: Number(p.precio) * cantidadSolicitada };
+      } else {
+        // Si no es fraccionado, redondear a entero
+        const cantidadEntera = Math.round(cantidadSolicitada);
+        return { ...p, cantidad: cantidadEntera, subtotal: Number(p.precio) * cantidadEntera };
+      }
+    }));
   };
 
   const eliminarProducto = (id: number) => {
@@ -623,6 +642,7 @@ export default function PuntoVenta() {
           <CartPanel
             productos={productos}
             onActualizarCantidad={actualizarCantidad}
+            onActualizarPrecio={actualizarPrecio}
             onEliminarProducto={eliminarProducto}
             onProcesarVenta={procesarVenta}
             onImprimirTicket={imprimirTicket}

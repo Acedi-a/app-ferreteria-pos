@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -76,14 +76,7 @@ export default function MovementList({ items, onUpdateItem, onRemoveItem, tipo }
     setEditingField(null);
   }, [items, onUpdateItem]);
 
-  const handleKeyPress = useCallback((e: React.KeyboardEvent, id: number, field: string) => {
-    if (e.key === 'Enter') {
-      const target = e.target as HTMLInputElement;
-      handleFieldEdit(id, field, target.value);
-    } else if (e.key === 'Escape') {
-      setEditingField(null);
-    }
-  }, [handleFieldEdit]);
+
 
   const totalGeneral = items.reduce((sum, item) => sum + item.costo_total, 0);
 
@@ -230,7 +223,6 @@ export default function MovementList({ items, onUpdateItem, onRemoveItem, tipo }
               <div className="col-span-1 text-center">
                 <Button
                   variant="ghost"
-                  size="sm"
                   onClick={() => onRemoveItem(item.id)}
                   className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                 >

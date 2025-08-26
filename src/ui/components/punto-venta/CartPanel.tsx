@@ -8,6 +8,7 @@ import {
 
 import { Button } from "../ui/Button";
 import { useEffect, useState } from "react";
+import { productosService } from "../../services/productos-service";
 
 interface ProductoVenta {
   id: number;
@@ -29,6 +30,7 @@ interface Cliente {
 interface CartPanelProps {
   productos: ProductoVenta[];
   onActualizarCantidad: (id: number, cantidad: number) => void;
+  onActualizarPrecio: (id: number, precio: number) => void;
   onEliminarProducto: (id: number) => void;
   onProcesarVenta: () => void;
   onImprimirTicket: () => void;
@@ -54,6 +56,7 @@ interface CartPanelProps {
 export default function CartPanel({
   productos,
   onActualizarCantidad,
+  onActualizarPrecio,
   onEliminarProducto,
   onProcesarVenta,
   onImprimirTicket,
@@ -77,8 +80,7 @@ export default function CartPanel({
 }: CartPanelProps) {
   // Estado local de inputs de cantidad para edición gradual (permite vacío temporalmente)
   const [qtyInputs, setQtyInputs] = useState<Record<number, string | undefined>>({});
-  // Estado local informativo para monto pagado (solo efectivo y sin crédito)
-  const [montoPagado, setMontoPagado] = useState<number>(0);
+
   
   // Estados para el autocompletar de clientes
   const [busquedaCliente, setBusquedaCliente] = useState("");
@@ -169,7 +171,7 @@ export default function CartPanel({
   const total = subtotal - descuento;
   const totalItems = productos.reduce((total, p) => total + p.cantidad, 0);
   const creditBlocked = !clienteSeleccionado; // No permitir crédito sin cliente seleccionado
-  const cambio = Math.max(0, (montoPagado || 0) - total);
+
 
   const commitCantidad = (prod: ProductoVenta, raw: string) => {
     const v = raw.trim();
@@ -192,8 +194,9 @@ export default function CartPanel({
       });
       return;
     }
+    // Permitir decimales para productos fraccionados, redondear solo para no fraccionados
     const finalVal = prod.ventaFraccionada
-      ? roundToStep(parsed, stepOf(prod))
+      ? Math.floor(parsed * 1000) / 1000
       : Math.round(parsed);
     onActualizarCantidad(prod.id, finalVal);
     // Limpiar edición para reflejar valor desde props en el próximo render
@@ -281,15 +284,48 @@ export default function CartPanel({
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Bs {p.precio.toFixed(2)}</span>
-                  
+                  {/* Input editable de precio */}
+                  <input
+                    type="number"
+                    className="w-20 text-sm border border-blue-300 rounded px-2 py-1 mr-2 text-right font-medium"
+                    defaultValue={p.precio}
+                    min="0"
+                    step="0.01"
+                    onBlur={async (e) => {
+                      const nuevoPrecio = parseFloat(e.target.value);
+                      if (!isNaN(nuevoPrecio) && nuevoPrecio > 0 && nuevoPrecio !== p.precio) {
+                        try {
+                          await productosService.actualizarProducto(p.id, { precio_venta: nuevoPrecio });
+                          // Actualizar el precio en el carrito local
+                          onActualizarPrecio(p.id, nuevoPrecio);
+                        } catch (err) {
+                          console.error('Error al actualizar el precio:', err);
+                        }
+                      }
+                    }}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') {
+                        const nuevoPrecio = parseFloat((e.target as HTMLInputElement).value);
+                        if (!isNaN(nuevoPrecio) && nuevoPrecio > 0 && nuevoPrecio !== p.precio) {
+                          try {
+                            await productosService.actualizarProducto(p.id, { precio_venta: nuevoPrecio });
+                            // Actualizar el precio en el carrito local
+                            onActualizarPrecio(p.id, nuevoPrecio);
+                          } catch (err) {
+                            console.error('Error al actualizar el precio:', err);
+                          }
+                        }
+                      }
+                    }}
+                    autoFocus
+                  />
                   <div className="flex items-center gap-1">
                     <Button
                       variant="outline"
                       className="h-6 w-6 p-0"
                       onClick={() => {
                         const step = stepOf(p);
-                        const nuevo = subStep(p.cantidad, step);
+                        const nuevo = p.ventaFraccionada ? Math.max(0, p.cantidad - step) : subStep(p.cantidad, step);
                         onActualizarCantidad(p.id, nuevo);
                         setQtyInputs((prev) => {
                           const next = { ...prev };
@@ -302,7 +338,7 @@ export default function CartPanel({
                     </Button>
                     <input
                       type="number"
-                      value={qtyInputs[p.id] ?? (p.ventaFraccionada ? p.cantidad.toFixed(1) : String(p.cantidad))}
+                      value={qtyInputs[p.id] ?? (p.ventaFraccionada ? p.cantidad.toString() : String(p.cantidad))}
                       onChange={(e) => {
                         const val = e.target.value;
                         setQtyInputs((prev) => ({ ...prev, [p.id]: val }));
@@ -315,7 +351,7 @@ export default function CartPanel({
                         }
                       }}
                       className="w-12 text-center text-xs border border-gray-300 rounded"
-                      step={p.ventaFraccionada ? "0.1" : "1"}
+                      step={p.ventaFraccionada ? "any" : "1"}
                       min="0"
                     />
                     <Button
@@ -323,7 +359,7 @@ export default function CartPanel({
                       className="h-6 w-6"
                       onClick={() => {
                         const step = stepOf(p);
-                        const nuevo = addStep(p.cantidad, step);
+                        const nuevo = p.ventaFraccionada ? (p.cantidad + step) : addStep(p.cantidad, step);
                         onActualizarCantidad(p.id, nuevo);
                         setQtyInputs((prev) => {
                           const next = { ...prev };
@@ -408,29 +444,7 @@ export default function CartPanel({
               </select>
             </div>
 
-            {/* Monto pagado (informativo), solo cuando es efectivo y NO es a crédito */}
-            {metodoPago === 'efectivo' && !ventaCredito && (
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Monto pagado (informativo)</label>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">Bs</span>
-                  <input
-                    type="number"
-                    value={Number.isNaN(montoPagado) ? 0 : montoPagado}
-                    onChange={(e) => setMontoPagado(Number.parseFloat(e.target.value) || 0)}
-                    className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                  />
-                </div>
-                {montoPagado > 0 && (
-                  <div className="mt-1 text-xs text-gray-700">
-                    Cambio a devolver: <span className="font-medium">Bs {cambio.toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-            )}
+
 
             {/* Descuento */}
             <div className="flex items-center justify-between">

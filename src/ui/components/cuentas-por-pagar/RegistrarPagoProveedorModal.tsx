@@ -176,11 +176,51 @@ export default function RegistrarPagoProveedorModal({
                 type="number"
                 step="any"
                 min="0"
+                max={cuenta.saldo}
                 value={monto}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMonto(e.target.value)}
                 placeholder="0.00"
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
               />
+              <div className="text-xs text-gray-500 mt-1">
+                Máximo: Bs {cuenta.saldo.toFixed(2)}
+              </div>
+            </div>
+
+            {/* Botones rápidos de monto */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Montos rápidos
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMonto(cuenta.saldo.toString())}
+                  className="text-xs px-3 py-1 text-green-600 hover:bg-green-50"
+                  disabled={loading}
+                >
+                  Pago Total (Bs {cuenta.saldo.toFixed(2)})
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMonto((cuenta.saldo / 2).toString())}
+                  className="text-xs px-3 py-1 text-blue-600 hover:bg-blue-50"
+                  disabled={loading}
+                >
+                  50% (Bs {(cuenta.saldo / 2).toFixed(2)})
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMonto((cuenta.saldo * 0.25).toString())}
+                  className="text-xs px-3 py-1 text-purple-600 hover:bg-purple-50"
+                  disabled={loading}
+                >
+                  25% (Bs {(cuenta.saldo * 0.25).toFixed(2)})
+                </Button>
+              </div>
             </div>
 
             <div>

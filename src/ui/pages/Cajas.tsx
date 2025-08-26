@@ -211,13 +211,30 @@ export default function Cajas() {
       if (typeof window !== 'undefined' && !(window as any).electronAPI) {
         console.log('Using mock data for browser testing');
         const mockResumen = {
+          caja_id: caja.id,
+          fecha_apertura: caja.fecha_apertura,
+          fecha_cierre: caja.fecha_cierre,
+          usuario: caja.usuario,
+          estado: caja.estado,
           monto_inicial: 1000,
+          saldo_final_calculado: 1900,
+          total_ingresos: 1000,
+          total_egresos: 100,
+          total_ajustes: 0,
           ventas_efectivo: 500,
           ventas_tarjeta: 300,
           ventas_transferencia: 200,
+          ventas_mixto: 0,
           total_ventas: 1000,
-          total_egresos: 100,
-          saldo_final_calculado: 1900
+          ganancia_perdida: 900,
+          cobros_cxc_efectivo: 0,
+          total_gastos: 100,
+          total_pagos_proveedores: 0,
+          efectivo_disponible: 500,
+          total_recibido: 1000,
+          diferencia_esperada: 0,
+          porcentaje_efectivo: 50,
+          porcentaje_digital: 50
         };
         setCajaResumenFinanciero(caja);
         setResumenFinanciero(mockResumen);
@@ -409,6 +426,8 @@ export default function Cajas() {
         setModalReapertura(false);
         setCajaIdReabriendo(null);
         await cargar();
+        // Navegar a la vista de caja activa
+        setModoVistaCompleta(false);
         return;
       }
       
@@ -428,6 +447,8 @@ export default function Cajas() {
         setCajaIdReabriendo(null);
         await cargar();
         await refreshCaja(); // Notificar cambio de caja
+        // Navegar a la vista de caja activa
+        setModoVistaCompleta(false);
       } else {
         toast({ 
           title: 'Error al reabrir', 
@@ -580,8 +601,7 @@ export default function Cajas() {
                 <Button 
                   onClick={() => setModoVistaCompleta(true)} 
                   variant="ghost" 
-                  size="sm"
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 py-1"
                 >
                   Ver todas
                 </Button>
@@ -752,7 +772,7 @@ export default function Cajas() {
                 </p>
                 <p className="text-sm text-orange-700 mt-2">
                   {cajaActiva ? (
-                    <>Esta acción cerrará automáticamente la caja activa actual (#{cajaActiva?.id}) y reabrirá la caja histórica seleccionada.</>
+                    <>Esta acción cerrará automáticamente la caja activa actual (#{cajaActiva && typeof cajaActiva === 'object' && 'id' in cajaActiva ? (cajaActiva as any).id : 'N/A'}) y reabrirá la caja histórica seleccionada.</>
                   ) : (
                     <>Esta acción reabrirá la caja histórica seleccionada como caja activa.</>
                   )}
@@ -1291,7 +1311,6 @@ export default function Cajas() {
                                   {esVenta && ventaId && (
                                     <Button
                                       variant="ghost"
-                                      size="sm"
                                       onClick={() => toggleDetallesVenta(ventaId)}
                                       className="h-6 px-2 text-xs text-blue-600 hover:bg-blue-50"
                                     >
@@ -1778,7 +1797,7 @@ export default function Cajas() {
                   </div>
                   <div className="flex justify-between">
                     <span>Ganancia/Pérdida:</span>
-                    <span className={resumen?.ganancia_perdida >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    <span className={(resumen?.ganancia_perdida ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
                       {currency(resumen?.ganancia_perdida || 0)}
                     </span>
                   </div>

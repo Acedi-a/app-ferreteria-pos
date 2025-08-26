@@ -8,9 +8,7 @@ export interface TicketOptions {
   showTaxes?: boolean; // default from config mostrar_impuestos_ticket
 }
 
-function padRight(str: string, len: number) {
-  return (str || '').substring(0, len).padEnd(len, ' ');
-}
+
 
 function fmtMoney(n: number) {
   return (n ?? 0).toFixed(2);
@@ -159,7 +157,7 @@ export async function buildTicketHTML(venta: Venta, detalles: VentaDetalle[]): P
     const totalLinea = d.subtotal;
     return `
       <div class="product-item">
-        <div class="product-code">Cod.: ${d.producto_codigo || 'N/A'}</div>
+        <div class="product-code">Cod.: ${d.producto_id || 'N/A'}</div>
         <div class="product-name">${d.producto_nombre}</div>
         <div class="product-details">
           <span class="quantity">${d.cantidad} X</span>

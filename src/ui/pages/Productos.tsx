@@ -22,7 +22,7 @@ export default function Productos() {
     productosActivos: 0
   });
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
+
   const [showModal, setShowModal] = useState(false);
   
   // Estados para paginación
@@ -44,7 +44,7 @@ const { toast } = useToast();
   }, []);
 
   const cargarDatosIniciales = async () => {
-    setLoading(true);
+    setIsLoading(true);
     try {
       await Promise.all([
         cargarProductos(),
@@ -56,7 +56,7 @@ const { toast } = useToast();
       console.error("Error cargando datos:", error);
       toast({ title: "Error", description: "Error al cargar los datos" });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -117,10 +117,7 @@ const { toast } = useToast();
     setCurrentPage(1); // Resetear a la primera página
   };
 
-  const handleCategoryChange = (categoryId: number | undefined) => {
-    setSelectedCategory(categoryId);
-    setCurrentPage(1); // Resetear a la primera página
-  };
+
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -356,19 +353,19 @@ const { toast } = useToast();
                       {/* Botón Primera Página */}
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => handlePageChange(1)}
                         disabled={paginatedData.currentPage === 1}
                         title="Primera página"
+                        className="px-2 py-1"
                       >
                         ««
                       </Button>
                       
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => handlePageChange(paginatedData.currentPage - 1)}
                         disabled={paginatedData.currentPage === 1}
+                        className="px-2 py-1"
                       >
                         Anterior
                       </Button>
@@ -385,8 +382,8 @@ const { toast } = useToast();
                             <Button
                               key={1}
                               variant="outline"
-                              size="sm"
                               onClick={() => handlePageChange(1)}
+                              className="px-2 py-1"
                             >
                               1
                             </Button>
@@ -406,8 +403,8 @@ const { toast } = useToast();
                             <Button
                               key={i}
                               variant={i === currentPage ? "default" : "outline"}
-                              size="sm"
                               onClick={() => handlePageChange(i)}
+                              className="px-2 py-1"
                             >
                               {i}
                             </Button>
@@ -427,8 +424,8 @@ const { toast } = useToast();
                             <Button
                               key={totalPages}
                               variant="outline"
-                              size="sm"
                               onClick={() => handlePageChange(totalPages)}
+                              className="px-2 py-1"
                             >
                               {totalPages}
                             </Button>
@@ -440,9 +437,9 @@ const { toast } = useToast();
                       
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => handlePageChange(paginatedData.currentPage + 1)}
                         disabled={paginatedData.currentPage === paginatedData.totalPages}
+                        className="px-2 py-1"
                       >
                         Siguiente
                       </Button>
@@ -450,10 +447,10 @@ const { toast } = useToast();
                       {/* Botón Última Página */}
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => handlePageChange(paginatedData.totalPages)}
                         disabled={paginatedData.currentPage === paginatedData.totalPages}
                         title="Última página"
+                        className="px-2 py-1"
                       >
                         »»
                       </Button>

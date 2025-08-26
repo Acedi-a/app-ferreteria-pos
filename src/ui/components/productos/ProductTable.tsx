@@ -77,7 +77,7 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
         [editingField.field]: newValue
       };
 
-      await productosService.updateProduct(product.id!, updatedProduct);
+      await productosService.actualizarProducto(product.id!, updatedProduct);
       
       toast({
         title: "Éxito",
@@ -192,7 +192,6 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                     />
                     <Button
                       variant="ghost"
-                      size="sm"
                       onClick={() => handleSaveEdit(product)}
                       className="p-1 text-green-600 hover:text-green-700"
                     >
@@ -200,7 +199,6 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
                       onClick={handleCancelEdit}
                       className="p-1 text-red-600 hover:text-red-700"
                     >
@@ -233,7 +231,6 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                     />
                     <Button
                       variant="ghost"
-                      size="sm"
                       onClick={() => handleSaveEdit(product)}
                       className="p-1 text-green-600 hover:text-green-700"
                     >
@@ -241,7 +238,6 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
                       onClick={handleCancelEdit}
                       className="p-1 text-red-600 hover:text-red-700"
                     >

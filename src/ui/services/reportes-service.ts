@@ -206,8 +206,19 @@ export class ReportesService {
       SELECT COALESCE(SUM(monto), 0) as total FROM gastos WHERE ${filtroGastos}
     `, paramsGastos);
 
+    // Calcular ganancia/pérdida basada en costo vs precio de venta (mismo método que cajas)
+    const gananciaPerdida = await window.electronAPI.db.get(`
+      SELECT 
+        COALESCE(SUM((vd.precio_unitario - COALESCE(p.costo_unitario, 0)) * vd.cantidad), 0) AS ganancia_total
+      FROM venta_detalles vd
+      INNER JOIN ventas v ON v.id = vd.venta_id
+      INNER JOIN productos p ON p.id = vd.producto_id
+      WHERE ${filtroVentas} AND v.estado != 'cancelada' AND v.caja_id = ?
+    `, paramsVentas);
+
     const utilidad_bruta = (ingresos?.total || 0) - (costos?.total || 0);
     const utilidad_neta = utilidad_bruta - (gastos?.total || 0);
+    const ganancia_perdida_total = gananciaPerdida?.ganancia_total || 0;
 
     const margen_bruto = ingresos?.total ? Number(((utilidad_bruta / ingresos.total) * 100).toFixed(2)) : 0;
     const margen_neto = ingresos?.total ? Number(((utilidad_neta / ingresos.total) * 100).toFixed(2)) : 0;
@@ -218,6 +229,7 @@ export class ReportesService {
       utilidad_bruta,
       gastos: gastos?.total || 0,
       utilidad_neta,
+      ganancia_perdida: ganancia_perdida_total,
       margen_bruto,
       margen_neto,
     };

@@ -5,6 +5,7 @@ import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import type { CuentaPorPagar, PagoProveedor } from "../../services/cuentas-por-pagar-service";
 import { CuentasPorPagarService } from "../../services/cuentas-por-pagar-service";
+import { printPagoProveedorReceipt } from "./PaymentReceiptRenderer";
 
 interface CuentaPorPagarDetalleModalProps {
   cuenta: CuentaPorPagar | null;
@@ -305,8 +306,28 @@ export default function CuentaPorPagarDetalleModal({
                             </div>
                           </div>
                         </div>
+                        
+                        <div className="flex justify-between items-center mt-2">
+                          <div></div>
+                          <Button
+                            variant="ghost"
+                            className="text-gray-600 hover:text-gray-800 text-xs px-2 py-1"
+                            onClick={async () => {
+                              try {
+                                // No mostrar historial en el recibo de un pago específico,
+                                // pero pásalo para cálculo correcto de saldos.
+                                await printPagoProveedorReceipt(cuenta, { ...pago }, { mostrarHistorial: false, historial: pagos });
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }}
+                          >
+                            <Printer className="h-3 w-3 mr-1" /> Imprimir este pago
+                          </Button>
+                        </div>
+                        
                         {pago.observaciones && (
-                          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded mt-2">
+                          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded border mt-2">
                             {pago.observaciones}
                           </div>
                         )}

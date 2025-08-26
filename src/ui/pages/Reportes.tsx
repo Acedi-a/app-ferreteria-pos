@@ -65,6 +65,7 @@ interface FinancialData {
   utilidad_bruta: number;
   gastos: number;
   utilidad_neta: number;
+  ganancia_perdida: number;
   margen_bruto: number;
   margen_neto: number;
 }
@@ -270,21 +271,23 @@ export default function Reportes() {
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
-                <span className="text-sm font-medium text-slate-600">Costos de Ventas</span>
-                <span className="text-sm font-bold text-red-600">
-                  -Bs {(financialData?.costos ?? 0).toFixed(2)}
+                <span className="text-sm font-medium text-slate-600">Ganancia/Pérdida</span>
+                <span className={`text-sm font-bold ${
+                  (financialData?.ganancia_perdida ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {(financialData?.ganancia_perdida ?? 0) >= 0 ? '+' : ''}Bs {(financialData?.ganancia_perdida ?? 0).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
-                <span className="text-sm font-medium text-slate-600">Utilidad Bruta</span>
+                <span className="text-sm font-medium text-slate-600">Margen Bruto</span>
                 <span className="text-sm font-bold text-blue-600">
-                  Bs {(financialData?.utilidad_bruta ?? 0).toFixed(2)}
+                  {(financialData?.margen_bruto ?? 0).toFixed(2)}%
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-200">
-                <span className="text-sm font-medium text-slate-600">Gastos Operativos</span>
-                <span className="text-sm font-bold text-red-600">
-                  -Bs {(financialData?.gastos ?? 0).toFixed(2)}
+                <span className="text-sm font-medium text-slate-600">Margen Neto</span>
+                <span className="text-sm font-bold text-purple-600">
+                  {(financialData?.margen_neto ?? 0).toFixed(2)}%
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-t-2 border-slate-300">
@@ -492,8 +495,12 @@ export default function Reportes() {
         ExportService.exportExcel(ventasItems, itemCols, baseIt, range);
       }
       if (fmt === 'pdf') {
-        ExportService.exportPDF(ventasCab, cabCols, 'Ventas - cabeceras', range);
-        ExportService.exportPDF(ventasItems, itemCols, 'Ventas - items', range);
+        const tables = [
+          { data: salesData, cols, title: 'Ventas por día' },
+          { data: ventasCab, cols: cabCols, title: 'Ventas - cabeceras' },
+          { data: ventasItems, cols: itemCols, title: 'Ventas - items' }
+        ];
+        ExportService.exportMultiTablePDF(tables, 'Reporte_de_Ventas', range);
       }
     } else if (selectedReport === 'productos') {
       const cols: ColumnDef<ProductData>[] = [
@@ -503,7 +510,6 @@ export default function Reportes() {
       ];
       if (fmt === 'csv') ExportService.exportCSV(topProducts, cols, 'top_productos', range);
       if (fmt === 'xlsx') ExportService.exportExcel(topProducts, cols, 'top_productos', range);
-      if (fmt === 'pdf') ExportService.exportPDF(topProducts, cols, 'Top productos', range);
       const margenCols: ColumnDef<MargenProductoRow>[] = [
         { header: 'Producto', accessor: 'producto' },
         { header: 'Und.', accessor: (r) => r.unidad ?? '-' },
@@ -514,9 +520,21 @@ export default function Reportes() {
         { header: 'Margen', accessor: 'margen' },
         { header: 'Margen %', accessor: 'margen_pct' },
       ];
-      if (fmt === 'csv') ExportService.exportCSV(margenProducto, margenCols, 'margen_por_producto', range);
-      if (fmt === 'xlsx') ExportService.exportExcel(margenProducto, margenCols, 'margen_por_producto', range);
-      if (fmt === 'pdf') ExportService.exportPDF(margenProducto, margenCols, 'Margen por producto', range);
+      if (fmt === 'csv') {
+        ExportService.exportCSV(topProducts, cols, 'top_productos', range);
+        ExportService.exportCSV(margenProducto, margenCols, 'margen_por_producto', range);
+      }
+      if (fmt === 'xlsx') {
+        ExportService.exportExcel(topProducts, cols, 'top_productos', range);
+        ExportService.exportExcel(margenProducto, margenCols, 'margen_por_producto', range);
+      }
+      if (fmt === 'pdf') {
+        const tables = [
+          { data: topProducts, cols, title: 'Top productos' },
+          { data: margenProducto, cols: margenCols, title: 'Margen por producto' }
+        ];
+        ExportService.exportMultiTablePDF(tables, 'Análisis_de_Productos', range);
+      }
     } else if (selectedReport === 'clientes') {
       const cols: ColumnDef<ClientData>[] = [
         { header: 'Cliente', accessor: 'nombre' },
@@ -526,7 +544,6 @@ export default function Reportes() {
       ];
       if (fmt === 'csv') ExportService.exportCSV(clientData, cols, 'mejores_clientes', range);
       if (fmt === 'xlsx') ExportService.exportExcel(clientData, cols, 'mejores_clientes', range);
-      if (fmt === 'pdf') ExportService.exportPDF(clientData, cols, 'Mejores clientes', range);
       const cxcCols: ColumnDef<CxCRow>[] = [
         { header: 'Fecha', accessor: 'fecha' },
         { header: 'Cliente', accessor: 'cliente' },
@@ -538,9 +555,21 @@ export default function Reportes() {
         { header: 'Días venc.', accessor: (r) => r.dias_vencido ?? '-' },
         { header: 'Venta', accessor: (r) => r.numero_venta ?? '-' },
       ];
-      if (fmt === 'csv') ExportService.exportCSV(cxcRows, cxcCols, 'cuentas_por_cobrar', range);
-      if (fmt === 'xlsx') ExportService.exportExcel(cxcRows, cxcCols, 'cuentas_por_cobrar', range);
-      if (fmt === 'pdf') ExportService.exportPDF(cxcRows, cxcCols, 'Cuentas por cobrar', range);
+      if (fmt === 'csv') {
+        ExportService.exportCSV(clientData, cols, 'mejores_clientes', range);
+        ExportService.exportCSV(cxcRows, cxcCols, 'cuentas_por_cobrar', range);
+      }
+      if (fmt === 'xlsx') {
+        ExportService.exportExcel(clientData, cols, 'mejores_clientes', range);
+        ExportService.exportExcel(cxcRows, cxcCols, 'cuentas_por_cobrar', range);
+      }
+      if (fmt === 'pdf') {
+        const tables = [
+          { data: clientData, cols, title: 'Mejores clientes' },
+          { data: cxcRows, cols: cxcCols, title: 'Cuentas por cobrar' }
+        ];
+        ExportService.exportMultiTablePDF(tables, 'Reporte_de_Clientes', range);
+      }
     } else if (selectedReport === 'inventario') {
       const cols: ColumnDef<InventoryData>[] = [
         { header: 'Categoría', accessor: 'categoria' },
@@ -550,7 +579,6 @@ export default function Reportes() {
       ];
       if (fmt === 'csv') ExportService.exportCSV(inventoryData, cols, 'inventario_por_categoria', range);
       if (fmt === 'xlsx') ExportService.exportExcel(inventoryData, cols, 'inventario_por_categoria', range);
-      if (fmt === 'pdf') ExportService.exportPDF(inventoryData, cols, 'Inventario por categoría', range);
       const compCols: ColumnDef<CompraItem>[] = [
         { header: 'Fecha', accessor: 'fecha' },
         { header: 'N° Compra', accessor: 'numero_compra' },
@@ -562,9 +590,21 @@ export default function Reportes() {
         { header: 'Subtotal', accessor: 'subtotal' },
         { header: 'Proveedor', accessor: 'proveedor' },
       ];
-      if (fmt === 'csv') ExportService.exportCSV(comprasItems, compCols, 'compras_detalladas', range);
-      if (fmt === 'xlsx') ExportService.exportExcel(comprasItems, compCols, 'compras_detalladas', range);
-      if (fmt === 'pdf') ExportService.exportPDF(comprasItems, compCols, 'Compras detalladas', range);
+      if (fmt === 'csv') {
+        ExportService.exportCSV(inventoryData, cols, 'inventario_por_categoria', range);
+        ExportService.exportCSV(comprasItems, compCols, 'compras_detalladas', range);
+      }
+      if (fmt === 'xlsx') {
+        ExportService.exportExcel(inventoryData, cols, 'inventario_por_categoria', range);
+        ExportService.exportExcel(comprasItems, compCols, 'compras_detalladas', range);
+      }
+      if (fmt === 'pdf') {
+        const tables = [
+          { data: inventoryData, cols, title: 'Inventario por categoría' },
+          { data: comprasItems, cols: compCols, title: 'Compras detalladas' }
+        ];
+        ExportService.exportMultiTablePDF(tables, 'Estado_de_Inventario', range);
+      }
     } else if (selectedReport === 'financiero' && financialData) {
       const row = [financialData];
       const cols: ColumnDef<FinancialData>[] = [

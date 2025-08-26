@@ -8,10 +8,11 @@ import { useToast } from "../components/ui/use-toast";
 import CuentasPorPagarStats from "../components/cuentas-por-pagar/CuentasPorPagarStats";
 import CuentasPorPagarFilters from "../components/cuentas-por-pagar/CuentasPorPagarFilters";
 import CuentasPorPagarTable from "../components/cuentas-por-pagar/CuentasPorPagarTable";
-import PagosProveedoresTable from "../components/cuentas-por-pagar/PagosProveedoresTable";
+import PagosRecientesTable from "../components/cuentas-por-pagar/PagosRecientesTable";
 import RegistrarPagoProveedorModal from "../components/cuentas-por-pagar/RegistrarPagoProveedorModal";
 import CuentaPorPagarDetalleModal from "../components/cuentas-por-pagar/CuentaPorPagarDetalleModal";
 import RegistrarDeudaModal, { type NuevaCuentaPorPagarFormData } from "../components/cuentas-por-pagar/RegistrarDeudaModal";
+import { printPagoProveedorReceipt } from "../components/cuentas-por-pagar/PaymentReceiptRenderer";
 
 import {
   CuentasPorPagarService,
@@ -148,11 +149,26 @@ export default function CuentasPorPagar() {
     }
   };
 
-  const handleImprimir = (cuenta: CuentaPorPagar) => {
-    toast({
-      title: "Imprimiendo",
-      description: `Generando reporte de la cuenta ${cuenta.id}...`
-    });
+  const handleImprimir = async (cuenta: CuentaPorPagar) => {
+    try {
+      // Preguntar si desea incluir historial
+      const incluir = window.confirm('¿Incluir historial de pagos en el comprobante?');
+      let historial = undefined;
+      if (incluir) {
+        try { 
+          historial = await CuentasPorPagarService.obtenerHistoricoPagos(cuenta.id); 
+        } catch {}
+      }
+      const res = await printPagoProveedorReceipt(cuenta, undefined, { mostrarHistorial: incluir, historial });
+      if (res?.ok) {
+        toast({ title: 'Comprobante enviado', description: `Cuenta #${cuenta.id}` });
+      } else {
+        toast({ title: 'No se pudo imprimir', description: res?.error || 'Revise la impresora en Configuración', variant: 'destructive' });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Error al imprimir', description: String(e), variant: 'destructive' });
+    }
   };
 
   const handleExportarReporte = () => {
@@ -285,7 +301,7 @@ export default function CuentasPorPagar() {
           />
         </div>
 
-        <PagosProveedoresTable 
+        <PagosRecientesTable 
           pagos={pagosRecientes}
           loading={loadingPagos}
         />

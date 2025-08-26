@@ -30,7 +30,11 @@ function ProductModal({
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
 
   const handleInputChange = (field: keyof Producto, value: any) => {
-    setFormData({ ...formData, [field]: value });
+    console.log('Input change:', field, value); // Debug log
+    console.log('Current formData:', formData); // Debug log
+    const newFormData = { ...formData, [field]: value };
+    console.log('New formData:', newFormData); // Debug log
+    setFormData(newFormData);
   };
 
   const handleDialogOpenChange = (open: boolean) => {
@@ -106,14 +110,13 @@ function ProductModal({
                   type="text"
                   id="product-codigo-interno"
                   key="product-codigo-interno"
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                    !editingProduct ? 'bg-gray-50 text-gray-600' : ''
-                  }`}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   value={formData.codigo_interno || ""}
                   onChange={(e) => handleInputChange('codigo_interno', e.target.value)}
-                  placeholder="Generado automáticamente"
-                  readOnly={!editingProduct}
+                  placeholder={editingProduct ? "Código interno del producto" : "Generado automáticamente o ingrese uno personalizado"}
                   required
+                  autoComplete="off"
+                  spellCheck={false}
                 />
                 {!editingProduct && (
                   <button
