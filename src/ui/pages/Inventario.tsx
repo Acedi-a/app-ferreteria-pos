@@ -15,6 +15,7 @@ import MovementModal from "../components/inventario/MovementModal";
 export default function Inventario() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedMarca, setSelectedMarca] = useState("");
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustingProduct, setAdjustingProduct] = useState<InventarioItem | null>(null);
   const [inventario, setInventario] = useState<InventarioItem[]>([]);
@@ -32,8 +33,10 @@ export default function Inventario() {
   const [showMovementModal, setShowMovementModal] = useState(false);
   const [movementType, setMovementType] = useState<'entrada' | 'salida'>('entrada');
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState<TipoMovimiento | 'todos'>('todos');
+  const [todasLasMarcas, setTodasLasMarcas] = useState<string[]>([]);
 
   const categorias = ["Todas", ...Array.from(new Set(inventario.map(i => i.categoria || "Sin categoría")))];
+  const marcas = ["Todas", ...todasLasMarcas];
 
   useEffect(() => {
     cargarDatos();
@@ -41,14 +44,14 @@ export default function Inventario() {
 
   useEffect(() => {
     cargarInventario();
-  }, [currentPage, searchTerm, selectedCategory]);
+  }, [currentPage, searchTerm, selectedCategory, selectedMarca]);
 
   useEffect(() => {
     cargarMovimientos();
   }, [filtroTipoMovimiento]);
 
   const cargarDatos = async () => {
-    await Promise.all([cargarInventario(), cargarMovimientos(), cargarProveedores(), cargarComprasRecientes()]);
+    await Promise.all([cargarInventario(), cargarMovimientos(), cargarProveedores(), cargarComprasRecientes(), cargarMarcas()]);
   };
 
   const cargarInventario = async () => {
@@ -58,7 +61,8 @@ export default function Inventario() {
         currentPage, 
         pageSize, 
         searchTerm, 
-        selectedCategory === 'Todas' ? '' : selectedCategory
+        selectedCategory === 'Todas' ? '' : selectedCategory,
+        selectedMarca === 'Todas' ? '' : selectedMarca
       );
       setPaginatedData(result);
       setInventario(result.items);
@@ -98,6 +102,16 @@ export default function Inventario() {
     }
   };
 
+  const cargarMarcas = async () => {
+    try {
+      const marcasData = await InventarioService.obtenerMarcas();
+      setTodasLasMarcas(marcasData);
+    } catch (error) {
+      console.error('Error cargando marcas:', error);
+      setTodasLasMarcas([]);
+    }
+  };
+
   // Ya no necesitamos filtrar aquí porque la paginación maneja los filtros
   const filteredInventory = inventario;
 
@@ -121,6 +135,11 @@ export default function Inventario() {
   const handleCategoryChange = (newCategory: string) => {
     setSelectedCategory(newCategory);
     setCurrentPage(1); // Reset to first page when changing category
+  };
+
+  const handleMarcaChange = (newMarca: string) => {
+    setSelectedMarca(newMarca);
+    setCurrentPage(1); // Reset to first page when changing marca
   };
 
   const handleAdjustStock = (product: InventarioItem) => {
@@ -160,6 +179,7 @@ export default function Inventario() {
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedCategory("");
+    setSelectedMarca("");
     setCurrentPage(1);
   };
 
@@ -235,6 +255,9 @@ export default function Inventario() {
         selectedCategory={selectedCategory}
         onSelectedCategory={handleCategoryChange}
         categorias={categorias}
+        selectedMarca={selectedMarca}
+        onSelectedMarca={handleMarcaChange}
+        marcas={marcas}
         onClear={clearFilters}
       />
 

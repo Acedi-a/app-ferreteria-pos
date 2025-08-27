@@ -4,6 +4,7 @@ export interface InventarioItem {
   id: number;
   codigo_interno: string | null;
   nombre: string;
+  marca: string | null;
   categoria: string | null;
   stock_minimo: number | null;
   unidad_medida: string | null;
@@ -45,7 +46,8 @@ export class InventarioService {
     page: number = 1, 
     pageSize: number = 10, 
     searchTerm: string = '', 
-    categoria: string = ''
+    categoria: string = '',
+    marca: string = ''
   ): Promise<PaginatedResult<InventarioItem>> {
     const offset = (page - 1) * pageSize;
     
@@ -62,6 +64,11 @@ export class InventarioService {
     if (categoria && categoria !== '' && categoria !== 'Todas') {
       whereConditions.push('categoria = ?');
       params.push(categoria);
+    }
+    
+    if (marca && marca !== '' && marca !== 'Todas') {
+      whereConditions.push('marca = ?');
+      params.push(marca);
     }
     
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
@@ -153,6 +160,17 @@ export class InventarioService {
       WHERE DATE(c.fecha_compra) >= DATE(?)
     `, [fechaLimite]);
     return result?.total_compras || 0;
+  }
+
+  static async obtenerMarcas(): Promise<string[]> {
+    const result = await window.electronAPI.db.query(`
+      SELECT DISTINCT marca 
+      FROM inventario_actual 
+      WHERE marca IS NOT NULL AND marca != ''
+      ORDER BY marca
+    `);
+    
+    return result.map((row: any) => row.marca);
   }
 
   static async registrarMovimiento(data: Movimiento): Promise<number> {

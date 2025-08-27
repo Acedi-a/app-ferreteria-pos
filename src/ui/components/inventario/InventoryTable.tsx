@@ -17,6 +17,7 @@ export function InventoryTable({ items, onAdjust }: InventoryTableProps) {
         <TableRow>
           <TableHead>Producto</TableHead>
           <TableHead>Código</TableHead>
+          <TableHead>Marca</TableHead>
           <TableHead>Categoría</TableHead>
           <TableHead>Stock Actual</TableHead>
           <TableHead>Stock Mínimo</TableHead>
@@ -41,6 +42,9 @@ export function InventoryTable({ items, onAdjust }: InventoryTableProps) {
                 </div>
               </TableCell>
               <TableCell>{item.codigo_interno}</TableCell>
+              <TableCell>
+                <span className="text-sm text-slate-600">{item.marca || "-"}</span>
+              </TableCell>
               <TableCell>
                 <Badge variant="default">{item.categoria}</Badge>
               </TableCell>
