@@ -248,6 +248,18 @@ export class VentasService {
             throw new Error('La venta ya está cancelada');
         }
 
+        // Validar que la venta pertenezca a la caja activa
+        const CajasService = (await import('./cajas-service')).default;
+        const cajaActiva = await CajasService.getCajaActiva();
+        
+        if (!cajaActiva) {
+            throw new Error('No hay una caja activa para procesar la cancelación');
+        }
+        
+        if (venta.caja_id !== cajaActiva.id) {
+            throw new Error('Solo se pueden cancelar ventas de la caja activa actual');
+        }
+
         // Iniciar transacción para asegurar la integridad de los datos
         await window.electronAPI.db.run('BEGIN TRANSACTION');
 
@@ -258,10 +270,16 @@ export class VentasService {
                 estado = 'cancelada',
                 observaciones = COALESCE(observaciones || ' | ', '') || 'Cancelada: ' || ?,
                 fecha_modificacion = ?
-                WHERE id = ?
+                WHERE id = ? AND caja_id = ?
             `;
 
-            await window.electronAPI.db.run(query, [motivo || 'Sin motivo especificado', getBoliviaISOString(), ventaId]);
+            await window.electronAPI.db.run(query, [motivo || 'Sin motivo especificado', getBoliviaISOString(), ventaId, cajaActiva.id]);
+
+            // Eliminar registros de venta_pagos para actualizar el desglose por método de pago
+            await window.electronAPI.db.run(`
+                DELETE FROM venta_pagos WHERE venta_id = ?
+            `, [ventaId]);
+            console.log(`Registros de venta_pagos eliminados para venta #${ventaId}`);
 
             // Restaurar stock de los productos creando movimientos de entrada
             const detalles = await this.obtenerDetallesVenta(ventaId);
@@ -295,24 +313,21 @@ export class VentasService {
 
         // Registrar transacción de cancelación en caja (egreso para revertir el ingreso)
             try {
-                const CajasService = (await import('./cajas-service')).default;
-                const cajaActiva = await CajasService.getCajaActiva();
-                if (cajaActiva) {
-                    const movimiento = {
-                        tipo: 'egreso' as const,
-                        monto: venta.total,
-                        concepto: `Cancelación venta ${venta.numero_venta}`,
-                        usuario: 'Sistema',
-                        metodo_pago: venta.metodo_pago,
-                        referencia: `cancelacion_venta_${ventaId}`
-                    };
-                    
-                    const resultado = await CajasService.registrarMovimiento(movimiento);
-                    if (!resultado.exito) {
-                        throw new Error(`Error al registrar cancelación en caja: ${resultado.mensaje}`);
-                    }
-                    console.log(`Transacción de cancelación registrada en caja: -Bs ${venta.total.toFixed(2)}`);
+                const movimiento = {
+                    tipo: 'egreso' as const,
+                    monto: venta.total,
+                    concepto: `Cancelación venta ${venta.numero_venta}`,
+                    usuario: 'Sistema',
+                    metodo_pago: venta.metodo_pago,
+                    referencia: `cancelacion_venta_${ventaId}`
+                };
+                
+                const resultado = await CajasService.registrarMovimiento(movimiento);
+                if (!resultado.exito) {
+                    throw new Error(`Error al registrar cancelación en caja: ${resultado.mensaje}`);
                 }
+                console.log(`Transacción de cancelación registrada en caja: -Bs ${venta.total.toFixed(2)}`);
+                 console.log(`Cancelación procesada en caja activa #${cajaActiva.id}`);
 
                 // Confirmar la transacción si todo fue exitoso
                 await window.electronAPI.db.run('COMMIT');

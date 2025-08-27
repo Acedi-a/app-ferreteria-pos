@@ -107,6 +107,10 @@ export default function Inventario() {
     stockBajo: inventario.filter((item) => (item.stock_actual || 0) <= (item.stock_minimo ?? 0)).length,
     valorTotal: inventario.reduce((sum, item) => sum + ((item.valor_total ?? ((item.costo_unitario_ultimo || 0) * (item.stock_actual || 0))) || 0), 0),
     totalComprasRecientes,
+    gananciaTotal: inventario.reduce((sum, item) => {
+      const ganancia = (item.precio_venta - (item.costo_unitario_ultimo || 0)) * (item.stock_actual || 0);
+      return sum + ganancia;
+    }, 0),
   };
 
   const handlePageChange = (newPage: number) => {
@@ -226,6 +230,7 @@ export default function Inventario() {
         stockBajo={stats.stockBajo}
         valorTotal={stats.valorTotal}
         totalComprasRecientes={stats.totalComprasRecientes}
+        gananciaTotal={stats.gananciaTotal}
       />
 
       {/* Filters */}

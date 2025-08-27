@@ -1,13 +1,11 @@
-import Database = require('better-sqlite3');
+import sqlite3 from 'sqlite3';
 import path from 'path';
 import { app } from 'electron';
 import fs from 'fs';
 import { promises as fsp } from 'fs';
 
-type DatabaseInstance = ReturnType<typeof Database>;
-
 export class DatabaseService {
-  private db: DatabaseInstance | null = null;
+  private db: sqlite3.Database | null = null;
   private dbPath!: string;
 
   constructor() {
@@ -17,38 +15,51 @@ export class DatabaseService {
   private initDatabase() {
     // Usar directorio de datos del usuario para lectura/escritura
     const userDir = app.getPath('userData');
-    const dbPath = path.join(userDir, 'db.sqlite');
-    this.dbPath = dbPath;
+  const dbPath = path.join(userDir, 'db.sqlite');
+  this.dbPath = dbPath;
 
     // Asegurar carpeta
     try { fs.mkdirSync(userDir, { recursive: true }); } catch {}
 
-    try {
-      this.db = new Database(dbPath);
-      console.log('Connected to SQLite database');
-      // Crear esquema/ajustes de forma idempotente
-      this.ensureSchema();
-      this.migrate();
-    } catch (err) {
-      console.error('Error opening database:', err);
-    }
+    this.db = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        console.error('Error opening database:', err);
+      } else {
+        console.log('Connected to SQLite database');
+        // Crear esquema/ajustes de forma idempotente
+        this.ensureSchema()
+          .then(() => this.migrate())
+          .catch((e) => console.error('DB init/migrate error:', e));
+      }
+    });
   }
 
-  private reopen() {
-    if (this.db) {
-      try { this.db.close(); } catch {}
-    }
-    this.db = new Database(this.dbPath);
-    this.ensureSchema();
-    this.migrate();
+  private async reopen() {
+    return new Promise<void>((resolve, reject) => {
+      if (this.db) {
+        try { this.db.close(); } catch {}
+      }
+      this.db = new sqlite3.Database(this.dbPath, (err) => {
+        if (err) return reject(err);
+        this.ensureSchema()
+          .then(() => this.migrate())
+          .then(() => resolve())
+          .catch(reject);
+      });
+    });
   }
 
-  private exec(sql: string): void {
-    if (!this.db) throw new Error('Database not initialized');
-    this.db.exec(sql);
+  private exec(sql: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.db) return reject(new Error('Database not initialized'));
+      this.db.exec(sql, (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
   }
 
-  private ensureSchema() {
+  private async ensureSchema() {
     const schema = `
 PRAGMA foreign_keys = ON;
 
@@ -386,12 +397,13 @@ SELECT
     SELECT SUM(monto) FROM caja_transacciones ct 
     WHERE ct.caja_id = c.id AND ct.tipo = 'ajuste'
   ), 0) AS total_ajustes,
-  -- Ventas por método de pago desde venta_pagos
+  -- Ventas por método de pago desde venta_pagos (excluyendo canceladas y por caja)
   COALESCE((
     SELECT SUM(vp.monto) FROM venta_pagos vp
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.estado != 'cancelada'
     AND v.caja_id = c.id
     AND vp.metodo_pago = 'efectivo'
   ), 0) AS ventas_efectivo,
@@ -400,6 +412,7 @@ SELECT
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.estado != 'cancelada'
     AND v.caja_id = c.id
     AND vp.metodo_pago = 'tarjeta'
   ), 0) AS ventas_tarjeta,
@@ -408,6 +421,7 @@ SELECT
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.estado != 'cancelada'
     AND v.caja_id = c.id
     AND vp.metodo_pago = 'transferencia'
   ), 0) AS ventas_transferencia,
@@ -416,16 +430,17 @@ SELECT
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.estado != 'cancelada'
     AND v.caja_id = c.id
     AND vp.metodo_pago = 'mixto'
   ), 0) AS ventas_mixto,
-  -- Total de ventas
+  -- Total de ventas (por caja)
   COALESCE((
     SELECT SUM(v.total) FROM ventas v
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
-    AND v.caja_id = c.id
     AND v.estado != 'cancelada'
+    AND v.caja_id = c.id
   ), 0) AS total_ventas,
   -- Cobros de cuentas por cobrar en efectivo
   COALESCE((
@@ -447,14 +462,18 @@ SELECT
     WHERE pp.fecha_pago >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR pp.fecha_pago <= c.fecha_cierre)
   ), 0) AS total_pagos_proveedores,
-  -- Saldo final calculado: monto inicial + solo ingresos (ventas)
+  -- Saldo final calculado: monto inicial + ingresos + ajustes - solo ventas canceladas
   c.monto_inicial + 
   COALESCE((
-    SELECT SUM(monto)
-    FROM caja_transacciones ct 
-    WHERE ct.caja_id = c.id AND ct.tipo = 'ingreso'
+    SELECT SUM(CASE 
+      WHEN ct.tipo = 'ingreso' THEN ct.monto
+      WHEN ct.tipo = 'ajuste' THEN ct.monto
+      -- Restar solo transacciones de ventas canceladas
+      WHEN ct.tipo = 'egreso' AND ct.referencia LIKE 'cancelacion_venta_%' THEN -ct.monto
+      ELSE 0 END)
+    FROM caja_transacciones ct WHERE ct.caja_id = c.id
   ), 0) AS saldo_final_calculado,
-  -- Ganancia/Pérdida: diferencia entre precio de venta y costo de productos vendidos
+  -- Ganancia/Pérdida calculada: (precio_unitario - costo_unitario) * cantidad
   COALESCE((
     SELECT SUM((vd.precio_unitario - COALESCE(p.costo_unitario, 0)) * vd.cantidad)
     FROM venta_detalles vd
@@ -462,8 +481,8 @@ SELECT
     INNER JOIN productos p ON p.id = vd.producto_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
-    AND v.caja_id = c.id
     AND v.estado != 'cancelada'
+    AND v.caja_id = c.id
   ), 0) AS ganancia_perdida
 FROM cajas c;
 
@@ -520,7 +539,7 @@ GROUP BY DATE(v.fecha_venta), vp.metodo_pago
 ORDER BY fecha DESC, vp.metodo_pago;
 `;
 
-    this.exec(schema);
+    await this.exec(schema);
 
     // Sembrar configuración por defecto (idempotente)
     const defaults = [
@@ -553,23 +572,23 @@ ORDER BY fecha DESC, vp.metodo_pago;
       ['ultimo_backup', '', 'Fecha del último respaldo']
     ];
     for (const [clave, valor, descripcion] of defaults) {
-      this.run(
+      await this.run(
         `INSERT OR IGNORE INTO configuracion (clave, valor, descripcion, fecha_modificacion) VALUES (?, ?, ?, datetime('now'))`,
         [clave, valor, descripcion]
       );
     }
   }
 
-  private migrate() {
+  private async migrate() {
     // Agregar columna costo_unitario a productos si no existe
     try {
-      const hasCol: any[] = this.query(
+      const hasCol: any[] = await this.query(
         "PRAGMA table_info('productos')"
       );
       const exists = hasCol.some((c: any) => c.name === 'costo_unitario');
       if (!exists) {
         console.log('Migrating: adding productos.costo_unitario ...');
-        this.run(
+        await this.run(
           "ALTER TABLE productos ADD COLUMN costo_unitario DECIMAL(10,2) DEFAULT 0"
         );
         console.log('Migration done: productos.costo_unitario');
@@ -580,7 +599,7 @@ ORDER BY fecha DESC, vp.metodo_pago;
 
     // Crear tabla cuentas_por_pagar si no existe
     try {
-      this.run(`
+      await this.run(`
         CREATE TABLE IF NOT EXISTS cuentas_por_pagar (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           proveedor_id INTEGER NOT NULL,
@@ -602,7 +621,7 @@ ORDER BY fecha DESC, vp.metodo_pago;
 
     // Crear tabla pagos_proveedores si no existe
     try {
-      this.run(`
+      await this.run(`
         CREATE TABLE IF NOT EXISTS pagos_proveedores (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           cuenta_id INTEGER NOT NULL,
@@ -620,13 +639,13 @@ ORDER BY fecha DESC, vp.metodo_pago;
 
     // Agregar columna saldo_pendiente a proveedores si no existe
     try {
-      const hasProvCol: any[] = this.query(
+      const hasProvCol: any[] = await this.query(
         "PRAGMA table_info('proveedores')"
       );
       const existsProv = hasProvCol.some((c: any) => c.name === 'saldo_pendiente');
       if (!existsProv) {
         console.log('Migrating: adding proveedores.saldo_pendiente ...');
-        this.run(
+        await this.run(
           "ALTER TABLE proveedores ADD COLUMN saldo_pendiente DECIMAL(10,2) DEFAULT 0"
         );
         console.log('Migration done: proveedores.saldo_pendiente');
@@ -637,11 +656,11 @@ ORDER BY fecha DESC, vp.metodo_pago;
 
     // Agregar columna imagen_url a productos si no existe
     try {
-      const cols: any[] = this.query("PRAGMA table_info('productos')");
+      const cols: any[] = await this.query("PRAGMA table_info('productos')");
       const hasImagen = cols.some((c: any) => c.name === 'imagen_url');
       if (!hasImagen) {
         console.log('Migrating: adding productos.imagen_url ...');
-        this.run("ALTER TABLE productos ADD COLUMN imagen_url TEXT");
+        await this.run("ALTER TABLE productos ADD COLUMN imagen_url TEXT");
         console.log('Migration done: productos.imagen_url');
       }
     } catch (e) {
@@ -650,14 +669,14 @@ ORDER BY fecha DESC, vp.metodo_pago;
 
     // Agregar columna marca a productos si no existe
     try {
-      const cols: any[] = this.query("PRAGMA table_info('productos')");
+      const cols: any[] = await this.query("PRAGMA table_info('productos')");
       const hasMarca = cols.some((c: any) => c.name === 'marca');
       if (!hasMarca) {
         console.log('Migrating: adding productos.marca ...');
-        this.run("ALTER TABLE productos ADD COLUMN marca TEXT");
+        await this.run("ALTER TABLE productos ADD COLUMN marca TEXT");
         console.log('Migration done: productos.marca');
         // Recrear la vista inventario_actual para incluir la nueva columna
-        this.exec(`
+        await this.exec(`
 DROP VIEW IF EXISTS inventario_actual;
 CREATE VIEW IF NOT EXISTS inventario_actual AS
 SELECT
@@ -715,11 +734,11 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
     
     // Agregar columna venta_fraccionada a productos si no existe
     try {
-      const cols2: any[] = this.query("PRAGMA table_info('productos')");
+      const cols2: any[] = await this.query("PRAGMA table_info('productos')");
       const hasFrac = cols2.some((c: any) => c.name === 'venta_fraccionada');
       if (!hasFrac) {
         console.log('Migrating: adding productos.venta_fraccionada ...');
-        this.run("ALTER TABLE productos ADD COLUMN venta_fraccionada INTEGER DEFAULT 0");
+        await this.run("ALTER TABLE productos ADD COLUMN venta_fraccionada INTEGER DEFAULT 0");
         console.log('Migration done: productos.venta_fraccionada');
       }
     } catch (e) {
@@ -728,11 +747,11 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
 
     // Agregar columna genero a clientes si no existe
     try {
-      const colsCli: any[] = this.query("PRAGMA table_info('clientes')");
+      const colsCli: any[] = await this.query("PRAGMA table_info('clientes')");
       const hasGenero = colsCli.some((c: any) => c.name === 'genero');
       if (!hasGenero) {
         console.log('Migrating: adding clientes.genero ...');
-        this.run("ALTER TABLE clientes ADD COLUMN genero TEXT");
+        await this.run("ALTER TABLE clientes ADD COLUMN genero TEXT");
         console.log('Migration done: clientes.genero');
       }
     } catch (e) {
@@ -741,11 +760,11 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
 
     // Agregar columna fecha_modificacion a ventas si no existe
     try {
-      const ventasCols: any[] = this.query("PRAGMA table_info('ventas')");
+      const ventasCols: any[] = await this.query("PRAGMA table_info('ventas')");
       const hasFechaModificacion = ventasCols.some((c: any) => c.name === 'fecha_modificacion');
       if (!hasFechaModificacion) {
         console.log('Migrating: adding ventas.fecha_modificacion ...');
-        this.run("ALTER TABLE ventas ADD COLUMN fecha_modificacion TEXT");
+        await this.run("ALTER TABLE ventas ADD COLUMN fecha_modificacion TEXT");
         console.log('Migration done: ventas.fecha_modificacion');
       }
     } catch (e) {
@@ -754,7 +773,7 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
 
     // Crear tabla venta_pagos si no existe
     try {
-      this.run(`
+      await this.run(`
         CREATE TABLE IF NOT EXISTS venta_pagos (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           venta_id INTEGER NOT NULL,
@@ -772,19 +791,19 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
 
     // Agregar columnas datos_anteriores y datos_nuevos a auditoria_cajas si no existen
     try {
-      const auditoriaCols: any[] = this.query("PRAGMA table_info('auditoria_cajas')");
+      const auditoriaCols: any[] = await this.query("PRAGMA table_info('auditoria_cajas')");
       const hasDatosAnteriores = auditoriaCols.some((c: any) => c.name === 'datos_anteriores');
       const hasDatosNuevos = auditoriaCols.some((c: any) => c.name === 'datos_nuevos');
       
       if (!hasDatosAnteriores) {
         console.log('Migrating: adding auditoria_cajas.datos_anteriores ...');
-        this.run("ALTER TABLE auditoria_cajas ADD COLUMN datos_anteriores TEXT");
+        await this.run("ALTER TABLE auditoria_cajas ADD COLUMN datos_anteriores TEXT");
         console.log('Migration done: auditoria_cajas.datos_anteriores');
       }
       
       if (!hasDatosNuevos) {
         console.log('Migrating: adding auditoria_cajas.datos_nuevos ...');
-        this.run("ALTER TABLE auditoria_cajas ADD COLUMN datos_nuevos TEXT");
+        await this.run("ALTER TABLE auditoria_cajas ADD COLUMN datos_nuevos TEXT");
         console.log('Migration done: auditoria_cajas.datos_nuevos');
       }
     } catch (e) {
@@ -793,17 +812,17 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
 
     // Agregar columna caja_id a ventas si no existe
     try {
-      const ventasCols: any[] = this.query("PRAGMA table_info('ventas')");
+      const ventasCols: any[] = await this.query("PRAGMA table_info('ventas')");
       const hasCajaId = ventasCols.some((c: any) => c.name === 'caja_id');
       if (!hasCajaId) {
         console.log('Migrating: adding ventas.caja_id ...');
-        this.run("ALTER TABLE ventas ADD COLUMN caja_id INTEGER");
+        await this.run("ALTER TABLE ventas ADD COLUMN caja_id INTEGER");
         console.log('Migration done: ventas.caja_id');
         
         // Actualizar ventas existentes con la primera caja disponible
-        const primeracaja = this.get("SELECT id FROM cajas ORDER BY id LIMIT 1");
+        const primeracaja = await this.get("SELECT id FROM cajas ORDER BY id LIMIT 1");
         if (primeracaja) {
-          this.run("UPDATE ventas SET caja_id = ? WHERE caja_id IS NULL", [primeracaja.id]);
+          await this.run("UPDATE ventas SET caja_id = ? WHERE caja_id IS NULL", [primeracaja.id]);
           console.log('Migration done: updated existing ventas with caja_id');
         }
       }
@@ -816,17 +835,17 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
   async backupTo(destPath: string, triggeredBy: 'manual' | 'auto' = 'manual'): Promise<void> {
     await new Promise<void>((resolve) => {
       if (this.db) {
-        try { this.db.close(); resolve(); } catch { resolve(); }
+        try { this.db.close(() => resolve()); } catch { resolve(); }
       } else {
         resolve();
       }
     });
     await fsp.copyFile(this.dbPath, destPath);
     // Reabrir y luego registrar el backup
-    this.reopen();
+    await this.reopen();
     try {
       const stat = await fsp.stat(destPath);
-      this.run(
+      await this.run(
         `INSERT INTO backups (file_path, size_bytes, status, triggered_by, operation, notes) VALUES (?, ?, 'completed', ?, 'backup', NULL)`,
         [destPath, stat.size, triggeredBy]
       );
@@ -839,17 +858,17 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
   async restoreFrom(sourcePath: string): Promise<void> {
     await new Promise<void>((resolve) => {
       if (this.db) {
-        try { this.db.close(); resolve(); } catch { resolve(); }
+        try { this.db.close(() => resolve()); } catch { resolve(); }
       } else {
         resolve();
       }
     });
     await fsp.copyFile(sourcePath, this.dbPath);
     // Reabrir y luego registrar el restore en la BD restaurada
-    this.reopen();
+    await this.reopen();
     try {
       const stat = await fsp.stat(sourcePath);
-      this.run(
+      await this.run(
         `INSERT INTO backups (file_path, size_bytes, status, triggered_by, operation, notes) VALUES (?, ?, 'completed', 'manual', 'restore', NULL)`,
         [sourcePath, stat.size]
       );
@@ -859,34 +878,60 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
   }
 
   // Método genérico para ejecutar consultas SELECT
-  query<T = any>(sql: string, params: any[] = []): T[] {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    const stmt = this.db.prepare(sql);
-    return stmt.all(params) as T[];
+  query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      this.db.all(sql, params, (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows as T[]);
+        }
+      });
+    });
   }
 
   // Método para ejecutar INSERT, UPDATE, DELETE
-  run(sql: string, params: any[] = []): { id?: number; changes: number } {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    const stmt = this.db.prepare(sql);
-    const result = stmt.run(params);
-    return {
-      id: result.lastInsertRowid as number,
-      changes: result.changes
-    };
+  run(sql: string, params: any[] = []): Promise<{ id?: number; changes: number }> {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      this.db.run(sql, params, function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({
+            id: this.lastID,
+            changes: this.changes
+          });
+        }
+      });
+    });
   }
 
   // Método para obtener un solo registro
-  get<T = any>(sql: string, params: any[] = []): T | undefined {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    const stmt = this.db.prepare(sql);
-    return stmt.get(params) as T;
+  get<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      this.db.get(sql, params, (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row as T);
+        }
+      });
+    });
   }
 
   close() {

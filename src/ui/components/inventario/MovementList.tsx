@@ -1,14 +1,12 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Trash2, Package } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
-import { productosService } from '../../services/productos-service';
 
 export interface MovementItem {
   id: number;
-  producto_id?: number;
   codigo_barras: string;
   nombre: string;
   precio_venta: number;
@@ -28,55 +26,49 @@ interface MovementListProps {
 export default function MovementList({ items, onUpdateItem, onRemoveItem, tipo }: MovementListProps) {
   const [editingField, setEditingField] = useState<{ id: number; field: string } | null>(null);
 
-  const handleFieldEdit = useCallback(async (id: number, field: string, value: string) => {
+  const handleFieldEdit = useCallback((id: number, field: string, value: string) => {
     const numericValue = parseFloat(value) || 0;
-    const item = items.find(i => i.id === id);
-    if (!item) return;
     
     if (field === 'cantidad') {
-      const newCostoTotal = numericValue * item.costo_unitario;
-      onUpdateItem(id, { 
-        cantidad: numericValue,
-        costo_total: newCostoTotal
-      });
-    } else if (field === 'costo_unitario') {
-      const newCostoTotal = item.cantidad * numericValue;
-      onUpdateItem(id, { 
-        costo_unitario: numericValue,
-        costo_total: newCostoTotal
-      });
-      
-      // Actualizar el producto en la base de datos si tiene producto_id
-      if (item.producto_id) {
-        try {
-          await productosService.actualizarProducto(item.producto_id, {
-            costo_unitario: numericValue
-          });
-        } catch (error) {
-          console.error('Error actualizando costo unitario del producto:', error);
-        }
+      const item = items.find(i => i.id === id);
+      if (item) {
+        const newCostoTotal = numericValue * item.costo_unitario;
+        onUpdateItem(id, { 
+          cantidad: numericValue,
+          costo_total: newCostoTotal
+        });
       }
-    } else if (field === 'precio_venta') {
-      onUpdateItem(id, { 
-        precio_venta: numericValue
-      });
-      
-      // Actualizar el producto en la base de datos si tiene producto_id
-      if (item.producto_id) {
-        try {
-          await productosService.actualizarProducto(item.producto_id, {
-            precio_venta: numericValue
-          });
-        } catch (error) {
-          console.error('Error actualizando precio de venta del producto:', error);
-        }
+    } else if (field === 'costo_unitario') {
+      const item = items.find(i => i.id === id);
+      if (item) {
+        const newCostoTotal = item.cantidad * numericValue;
+        onUpdateItem(id, { 
+          costo_unitario: numericValue,
+          costo_total: newCostoTotal
+        });
+      }
+    } else if (field === 'costo_total') {
+      const item = items.find(i => i.id === id);
+      if (item && item.cantidad > 0) {
+        const newCostoUnitario = numericValue / item.cantidad;
+        onUpdateItem(id, { 
+          costo_total: numericValue,
+          costo_unitario: newCostoUnitario
+        });
       }
     }
     
     setEditingField(null);
   }, [items, onUpdateItem]);
 
-
+  const handleKeyPress = useCallback((e: React.KeyboardEvent, id: number, field: string) => {
+    if (e.key === 'Enter') {
+      const target = e.target as HTMLInputElement;
+      handleFieldEdit(id, field, target.value);
+    } else if (e.key === 'Escape') {
+      setEditingField(null);
+    }
+  }, [handleFieldEdit]);
 
   const totalGeneral = items.reduce((sum, item) => sum + item.costo_total, 0);
 
@@ -105,21 +97,20 @@ export default function MovementList({ items, onUpdateItem, onRemoveItem, tipo }
       <CardContent>
         <div className="space-y-2">
           {/* Header */}
-          <div className="grid grid-cols-14 gap-2 text-sm font-medium text-gray-600 border-b pb-2">
-            <div className="col-span-3">Producto</div>
+          <div className="grid grid-cols-12 gap-2 text-sm font-medium text-gray-600 border-b pb-2">
+            <div className="col-span-4">Producto</div>
             <div className="col-span-1 text-center">Stock</div>
             <div className="col-span-2 text-center">Cantidad</div>
-            <div className="col-span-2 text-center">Precio Venta</div>
             <div className="col-span-2 text-center">Costo Unit.</div>
-            <div className="col-span-3 text-center">Costo Total</div>
+            <div className="col-span-2 text-center">Costo Total</div>
             <div className="col-span-1 text-center">Acciones</div>
           </div>
 
           {/* Items */}
           {items.map((item) => (
-            <div key={item.id} className="grid grid-cols-14 gap-2 items-center py-2 border-b border-gray-100">
+            <div key={item.id} className="grid grid-cols-12 gap-2 items-center py-2 border-b border-gray-100">
               {/* Producto */}
-              <div className="col-span-3">
+              <div className="col-span-4">
                 <div className="font-medium text-sm">{item.nombre}</div>
                 <div className="text-xs text-gray-500">{item.codigo_barras}</div>
               </div>
@@ -140,19 +131,17 @@ export default function MovementList({ items, onUpdateItem, onRemoveItem, tipo }
                 {editingField?.id === item.id && editingField?.field === 'cantidad' ? (
                   <Input
                     type="number"
-                    defaultValue={item.cantidad.toString()}
-                    onBlur={(e) => handleFieldEdit(item.id, 'cantidad', e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleFieldEdit(item.id, 'cantidad', e.currentTarget.value);
-                      }
-                    }}
+                    defaultValue={item.cantidad}
                     className="h-8 text-center"
                     autoFocus
+                    onBlur={(e) => handleFieldEdit(item.id, 'cantidad', e.target.value)}
+                    onKeyDown={(e) => handleKeyPress(e, item.id, 'cantidad')}
+                    min="0"
+                    step="0.01"
                   />
                 ) : (
                   <div 
-                    className="text-center cursor-pointer hover:bg-gray-50 p-1 rounded"
+                    className="h-8 flex items-center justify-center cursor-pointer hover:bg-gray-50 rounded border"
                     onClick={() => setEditingField({ id: item.id, field: 'cantidad' })}
                   >
                     {item.cantidad}
@@ -160,69 +149,57 @@ export default function MovementList({ items, onUpdateItem, onRemoveItem, tipo }
                 )}
               </div>
 
-              {/* Precio Venta */}
+              {/* Costo unitario */}
               <div className="col-span-2">
-                {editingField?.id === item.id && editingField?.field === 'precio_venta' ? (
+                {editingField?.id === item.id && editingField?.field === 'costo_unitario' ? (
                   <Input
                     type="number"
-                    step="0.01"
-                    defaultValue={item.precio_venta?.toString() || '0'}
-                    onBlur={(e) => handleFieldEdit(item.id, 'precio_venta', e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleFieldEdit(item.id, 'precio_venta', e.currentTarget.value);
-                      }
-                    }}
+                    defaultValue={item.costo_unitario}
                     className="h-8 text-center"
                     autoFocus
+                    onBlur={(e) => handleFieldEdit(item.id, 'costo_unitario', e.target.value)}
+                    onKeyDown={(e) => handleKeyPress(e, item.id, 'costo_unitario')}
+                    min="0"
+                    step="0.01"
                   />
                 ) : (
                   <div 
-                    className="text-center cursor-pointer hover:bg-gray-50 p-1 rounded"
-                    onClick={() => setEditingField({ id: item.id, field: 'precio_venta' })}
+                    className="h-8 flex items-center justify-center cursor-pointer hover:bg-gray-50 rounded border"
+                    onClick={() => setEditingField({ id: item.id, field: 'costo_unitario' })}
                   >
-                    {formatCurrency(item.precio_venta || 0)}
+                    {formatCurrency(item.costo_unitario)}
                   </div>
                 )}
               </div>
 
-              {/* Costo unitario */}
-               <div className="col-span-2">
-                 {editingField?.id === item.id && editingField?.field === 'costo_unitario' ? (
-                   <Input
-                     type="number"
-                     step="0.01"
-                     defaultValue={item.costo_unitario.toString()}
-                     onBlur={(e) => handleFieldEdit(item.id, 'costo_unitario', e.target.value)}
-                     onKeyDown={(e) => {
-                       if (e.key === 'Enter') {
-                         handleFieldEdit(item.id, 'costo_unitario', e.currentTarget.value);
-                       }
-                     }}
-                     className="h-8 text-center"
-                     autoFocus
-                   />
-                 ) : (
-                   <div 
-                     className="text-center cursor-pointer hover:bg-gray-50 p-1 rounded"
-                     onClick={() => setEditingField({ id: item.id, field: 'costo_unitario' })}
-                   >
-                     {formatCurrency(item.costo_unitario)}
-                   </div>
-                 )}
-               </div>
-
-              {/* Costo Total - No editable */}
-              <div className="col-span-3">
-                <div className="text-center p-1 rounded bg-gray-50 text-gray-600">
-                  {formatCurrency(item.costo_total)}
-                </div>
+              {/* Costo total */}
+              <div className="col-span-2">
+                {editingField?.id === item.id && editingField?.field === 'costo_total' ? (
+                  <Input
+                    type="number"
+                    defaultValue={item.costo_total}
+                    className="h-8 text-center"
+                    autoFocus
+                    onBlur={(e) => handleFieldEdit(item.id, 'costo_total', e.target.value)}
+                    onKeyDown={(e) => handleKeyPress(e, item.id, 'costo_total')}
+                    min="0"
+                    step="0.01"
+                  />
+                ) : (
+                  <div 
+                    className="h-8 flex items-center justify-center cursor-pointer hover:bg-gray-50 rounded border font-medium"
+                    onClick={() => setEditingField({ id: item.id, field: 'costo_total' })}
+                  >
+                    {formatCurrency(item.costo_total)}
+                  </div>
+                )}
               </div>
 
               {/* Acciones */}
               <div className="col-span-1 text-center">
                 <Button
                   variant="ghost"
+                  size="sm"
                   onClick={() => onRemoveItem(item.id)}
                   className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                 >

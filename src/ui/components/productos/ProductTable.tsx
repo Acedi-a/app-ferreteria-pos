@@ -139,12 +139,13 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
             <TableHead className="w-[22%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Producto</TableHead>
             <TableHead className="w-[10%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Marca</TableHead>
             <TableHead className="w-[12%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Categoría</TableHead>
-            <TableHead className="w-[10%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Costo</TableHead>
-            <TableHead className="w-[10%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Precio</TableHead>
-            <TableHead className="w-[8%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Margen</TableHead>
-            <TableHead className="w-[10%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Stock</TableHead>
-            <TableHead className="w-[8%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Estado</TableHead>
-            <TableHead className="w-[12%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Acciones</TableHead>
+            <TableHead className="w-[9%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Costo</TableHead>
+            <TableHead className="w-[9%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Precio</TableHead>
+            <TableHead className="w-[7%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Margen</TableHead>
+            <TableHead className="w-[9%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Stock</TableHead>
+            <TableHead className="w-[10%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Ganancia Total</TableHead>
+            <TableHead className="w-[7%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Estado</TableHead>
+            <TableHead className="w-[11%] text-xs font-semibold text-gray-700 uppercase tracking-wider py-5 px-6">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -267,6 +268,18 @@ export default function ProductTable({ products, loading, searchTerm, onEdit, on
                   </div>
                   <div className="text-xs text-gray-500">Min: {product.stock_minimo}</div>
                 </div>
+              </TableCell>
+              <TableCell className="py-4 px-6">
+                {(() => {
+                  const gananciaTotal = ((product.precio_venta ?? 0) - ((product as any).costo_unitario ?? 0)) * (product.stock_actual ?? 0);
+                  return (
+                    <span className={`text-sm font-medium ${
+                      gananciaTotal >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      Bs {gananciaTotal.toFixed(2)}
+                    </span>
+                  );
+                })()}
               </TableCell>
               <TableCell className="py-4 px-6">
                 <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${

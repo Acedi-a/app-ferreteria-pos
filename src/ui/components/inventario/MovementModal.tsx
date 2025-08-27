@@ -2,15 +2,19 @@ import React, { useState, useCallback, useEffect } from "react";
 import { Dialog } from "../ui/Dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
 import { Button } from "../ui/Button";
-
-import { X, Search, Plus, Package } from "lucide-react";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/Table";
+import { X, Search, Plus, Trash2, Package } from "lucide-react";
 import { productosService, type Producto } from "../../services/productos-service";
 import { MovimientosService } from "../../services/movimientos-service";
-import { ProveedoresService, type Proveedor } from "../../services/proveedores-service";
+import { ProveedoresService } from "../../services/proveedores-service";
 import { useToast } from "../ui/use-toast";
 import MovementList from './MovementList';
 
-
+export interface Proveedor {
+  id: number;
+  codigo: string;
+  nombre: string;
+}
 
 export interface MovementItem {
   id: number;
@@ -44,10 +48,8 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
   const [showNewProductForm, setShowNewProductForm] = useState(false);
   const [newProduct, setNewProduct] = useState({
     codigo_interno: "",
-    codigo_barras: "",
     nombre: "",
     precio_venta: 0,
-    costo_unitario: 0,
     stock_minimo: 0
   });
   const [isProcessing, setIsProcessing] = useState(false);
@@ -95,15 +97,9 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
   }, []);
 
   useEffect(() => {
-    // Detectar si es un código de barras (solo números y/o guiones)
-    const isBarcode = /^[0-9\-]+$/.test(searchTerm.trim());
-    
-    // Si es código de barras, búsqueda inmediata; si no, usar debounce
-    const delay = isBarcode ? 0 : 300;
-    
     const timeoutId = setTimeout(() => {
       buscarProductos(searchTerm);
-    }, delay);
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm, buscarProductos]);
@@ -119,7 +115,7 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
     }
 
     const newItem: MovementItem = {
-      id: producto.id || 0,
+      id: producto.id,
       producto_id: producto.id,
       codigo_barras: producto.codigo_barras || producto.codigo_interno,
       nombre: producto.nombre,
@@ -148,10 +144,8 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
     try {
       const productoId = await productosService.crearProducto({
         codigo_interno: newProduct.codigo_interno,
-        codigo_barras: newProduct.codigo_barras || undefined,
         nombre: newProduct.nombre,
         precio_venta: newProduct.precio_venta,
-        costo_unitario: newProduct.costo_unitario,
         stock_minimo: newProduct.stock_minimo,
         activo: true
       });
@@ -159,19 +153,19 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
       const newItem: MovementItem = {
         id: productoId,
         producto_id: productoId,
-        codigo_barras: newProduct.codigo_barras || newProduct.codigo_interno,
+        codigo_barras: newProduct.codigo_interno,
         nombre: newProduct.nombre,
         precio_venta: newProduct.precio_venta,
         stock_actual: 0,
         cantidad: 1,
-        costo_unitario: newProduct.costo_unitario,
-        costo_total: newProduct.costo_unitario,
+        costo_unitario: 0,
+        costo_total: 0,
         es_nuevo: true
       };
 
       setMovementItems(prev => [...prev, newItem]);
       setShowNewProductForm(false);
-      setNewProduct({ codigo_interno: "", codigo_barras: "", nombre: "", precio_venta: 0, costo_unitario: 0, stock_minimo: 0 });
+      setNewProduct({ codigo_interno: "", nombre: "", precio_venta: 0, stock_minimo: 0 });
       toast({ 
           title: 'Producto creado y agregado a la lista',
           variant: 'success'
@@ -185,7 +179,18 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
     }
   };
 
-
+  const actualizarItem = (id: number, campo: keyof MovementItem, valor: any) => {
+    setMovementItems(prev => prev.map(item => {
+      if (item.id === id) {
+        const updated = { ...item, [campo]: valor };
+        if (campo === 'cantidad' || campo === 'costo_unitario') {
+          updated.costo_total = updated.cantidad * updated.costo_unitario;
+        }
+        return updated;
+      }
+      return item;
+    }));
+  };
 
   const eliminarItem = (id: number) => {
     setMovementItems(prev => prev.filter(item => item.id !== id));
@@ -324,7 +329,7 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
                           setShowNewProductForm(true);
                         }}
                         variant="outline"
-                        className="px-2 py-1"
+                        size="sm"
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Crear Producto Nuevo
@@ -351,15 +356,6 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Código de Barras</label>
-                      <input
-                        type="text"
-                        value={newProduct.codigo_barras}
-                        onChange={(e) => setNewProduct(prev => ({ ...prev, codigo_barras: e.target.value }))}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
                       <label className="block text-sm font-medium mb-1">Nombre *</label>
                       <input
                         type="text"
@@ -380,34 +376,24 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">Costo Unitario</label>
+                        <label className="block text-sm font-medium mb-1">Stock Mínimo</label>
                         <input
                           type="number"
-                          step="0.01"
-                          value={newProduct.costo_unitario}
-                          onChange={(e) => setNewProduct(prev => ({ ...prev, costo_unitario: Number(e.target.value) }))}
+                          value={newProduct.stock_minimo}
+                          onChange={(e) => setNewProduct(prev => ({ ...prev, stock_minimo: Number(e.target.value) }))}
                           className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Stock Mínimo</label>
-                      <input
-                        type="number"
-                        value={newProduct.stock_minimo}
-                        onChange={(e) => setNewProduct(prev => ({ ...prev, stock_minimo: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
                     <div className="flex gap-2">
-                      <Button onClick={crearYAgregarProducto} className="px-2 py-1">
+                      <Button onClick={crearYAgregarProducto} size="sm">
                         <Package className="mr-2 h-4 w-4" />
                         Crear y Agregar
                       </Button>
                       <Button
                         onClick={() => setShowNewProductForm(false)}
                         variant="outline"
-                        className="px-2 py-1"
+                        size="sm"
                       >
                         Cancelar
                       </Button>
@@ -445,7 +431,7 @@ function MovementModal({ open, tipo, onClose, onSuccess }: MovementModalProps) {
                         <option value="">Seleccionar proveedor...</option>
                         {proveedores.map(proveedor => (
                           <option key={proveedor.id} value={proveedor.id}>
-                            {proveedor.id} - {proveedor.nombre}
+                            {proveedor.codigo} - {proveedor.nombre}
                           </option>
                         ))}
                       </select>

@@ -7,7 +7,7 @@ interface ProductStatsProps {
 
 export default function ProductStats({ stats }: ProductStatsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
       {/* Total Productos */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         <div className="flex items-center justify-between mb-4">
@@ -77,6 +77,34 @@ export default function ProductStats({ stats }: ProductStatsProps) {
           <p className="text-sm font-medium text-gray-600 uppercase">Valor Inventario</p>
           <p className="text-2xl font-semibold text-gray-900 mt-1">Bs {stats.valorInventario.toLocaleString()}</p>
           <p className="text-xs text-gray-500 mt-1">Capital invertido</p>
+        </div>
+      </div>
+
+      {/* Ganancia Total */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <div className={`flex items-center justify-center w-10 h-10 rounded-lg ${
+            (stats.gananciaTotal || 0) >= 0 ? 'bg-green-500' : 'bg-red-500'
+          }`}>
+            <TrendingUp className="h-5 w-5 text-white" />
+          </div>
+          <div className={`flex items-center space-x-1 px-2 py-1 rounded ${
+            (stats.gananciaTotal || 0) >= 0 ? 'bg-green-100' : 'bg-red-100'
+          }`}>
+            <TrendingUp className={`h-3 w-3 ${
+              (stats.gananciaTotal || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+            }`} />
+            <span className={`text-xs font-medium ${
+              (stats.gananciaTotal || 0) >= 0 ? 'text-green-700' : 'text-red-700'
+            }`}>Ganancia</span>
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-600 uppercase">Ganancia Total</p>
+          <p className={`text-2xl font-semibold mt-1 ${
+            (stats.gananciaTotal || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+          }`}>Bs {(stats.gananciaTotal || 0).toLocaleString()}</p>
+          <p className="text-xs text-gray-500 mt-1">Ganancia potencial</p>
         </div>
       </div>
     </div>

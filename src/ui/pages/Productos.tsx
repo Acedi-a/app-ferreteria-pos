@@ -19,7 +19,8 @@ export default function Productos() {
     totalProductos: 0,
     stockBajo: 0,
     valorInventario: 0,
-    productosActivos: 0
+    productosActivos: 0,
+    gananciaTotal: 0
   });
   const [searchTerm, setSearchTerm] = useState("");
 
