@@ -66,7 +66,6 @@ export async function buildTicketHTML(venta: Venta, detalles: VentaDetalle[]): P
   const mostrarLogo = (ticket.ticket_mostrar_logo || 'false') === 'true';
   const logoPath = ticket.ticket_logo_path || '';
   const logoWidth = Number(ticket.ticket_logo_width || '60');
-  const encabezado = ticket.ticket_encabezado || '';
   const pie = ticket.ticket_pie_pagina || '';
   const mostrarImpuestos = (impuestosCfg.mostrar_impuestos_ticket || 'false') === 'true';
   const tipoComprobante = (ticket.ticket_tipo_comprobante || 'recibo').toLowerCase();
@@ -74,39 +73,39 @@ export async function buildTicketHTML(venta: Venta, detalles: VentaDetalle[]): P
   // Convertir logo de Claudio a base64 para impresión
   const logoClaudiaBase64 = await imageToBase64(logoClaudio);
 
-  // CSS simplificado para ancho fijo (mm) y fuente monoespaciada
+  // CSS optimizado para recibo compacto y ahorro de papel
   const css = `
     <style>
       @page { size: ${ancho}mm auto; margin: 0; }
-      body { width: ${ancho}mm; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 16px; }
-      .wrap { padding: 8px 10px; }
+      body { width: ${ancho}mm; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 14px; line-height: 1.2; }
+      .wrap { padding: 4px 6px; }
       .center { text-align: center; }
       .right { text-align: right; }
       .bold { font-weight: 700; }
-      .mt { margin-top: 8px; }
-      .hr { border-top: 1px dashed #000; margin: 12px 0; }
-      .hr-thin { border-top: 1px solid #000; margin: 4px 0; }
-      table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-      td { vertical-align: top; padding: 3px 2px; }
-      .small { font-size: 14px; }
-      .section-spacing { margin: 16px 0; }
-      .product-line { margin: 2px 0; }
-      .products-header { display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 8px; }
-      .product-item { margin: 8px 0; }
-      .product-code { font-size: 12px; margin-bottom: 2px; }
-      .product-name { font-weight: bold; margin-bottom: 4px; }
+      .mt { margin-top: 4px; }
+      .hr { border-top: 1px dashed #000; margin: 6px 0; }
+      .hr-thin { border-top: 1px solid #000; margin: 2px 0; }
+      table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+      td { vertical-align: top; padding: 1px 2px; }
+      .small { font-size: 12px; }
+      .section-spacing { margin: 8px 0; }
+      .product-line { margin: 1px 0; }
+      .products-header { display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px; }
+      .product-item { margin: 4px 0; }
+      .product-code { font-size: 10px; margin-bottom: 1px; }
+      .product-name { font-weight: bold; margin-bottom: 2px; font-size: 13px; }
       .product-details { display: flex; justify-content: space-between; align-items: center; }
       .quantity { font-weight: bold; }
       .unit-price { text-align: center; flex: 1; }
       .line-total { font-weight: bold; text-align: right; }
-      .product-separator { font-size: 12px; color: #666; margin-top: 4px; }
+      .product-separator { display: none; }
     </style>
   `;
 
-  // Encabezado de empresa
+  // Encabezado de empresa con logo optimizado
   let logoTag = '';
-  // Calcular el tamaño del logo basado en el ancho del ticket desde la base de datos
-  const logoSize = Math.min(110, Math.round(ancho * 1.2)); // Logo proporcional al ancho configurado en BD
+  // Calcular el tamaño del logo más pequeño para ahorrar espacio
+  const logoSize = Math.min(70, Math.round(ancho * 0.8)); // Logo más pequeño y proporcional
   
   if (mostrarLogo) {
     if (logoPath) {
@@ -117,19 +116,19 @@ export async function buildTicketHTML(venta: Venta, detalles: VentaDetalle[]): P
           if (data) logoSrc = data;
         }
       } catch {}
-      // Si hay logo personalizado, usar el tamaño configurado o el calculado
-      const customWidth = logoWidth > 0 ? logoWidth : logoSize;
-      logoTag = `<div class=\"center\"><img src=\"${logoSrc}\" style=\"width:${customWidth}px;max-height:${Math.round(customWidth * 0.8)}px;object-fit:contain;margin-bottom:15px\" /></div>`;
+      // Si hay logo personalizado, usar el tamaño configurado o el calculado (más pequeño)
+      const customWidth = logoWidth > 0 ? Math.min(logoWidth, logoSize) : logoSize;
+      logoTag = `<div class="center"><img src="${logoSrc}" style="width:${customWidth}px;max-height:${Math.round(customWidth * 0.6)}px;object-fit:contain;margin-bottom:4px" /></div>`;
     } else {
       // Usar el logo de Claudio convertido a base64 si no hay logo configurado
       if (logoClaudiaBase64) {
-        logoTag = `<div class=\"center\"><img src=\"${logoClaudiaBase64}\" style=\"width:${logoSize}px;max-height:${Math.round(logoSize * 0.8)}px;object-fit:contain;margin-bottom:15px\" /></div>`;
+        logoTag = `<div class="center"><img src="${logoClaudiaBase64}" style="width:${logoSize}px;max-height:${Math.round(logoSize * 0.6)}px;object-fit:contain;margin-bottom:4px" /></div>`;
       }
     }
   } else {
-    // Siempre mostrar el logo de Claudio aunque la configuración esté deshabilitada
+    // Siempre mostrar el logo de Claudio aunque la configuración esté deshabilitada (más pequeño)
     if (logoClaudiaBase64) {
-      logoTag = `<div class=\"center\"><img src=\"${logoClaudiaBase64}\" style=\"width:${logoSize}px;max-height:${Math.round(logoSize * 0.8)}px;object-fit:contain;margin-bottom:15px\" /></div>`;
+      logoTag = `<div class="center"><img src="${logoClaudiaBase64}" style="width:${logoSize}px;max-height:${Math.round(logoSize * 0.6)}px;object-fit:contain;margin-bottom:4px" /></div>`;
     }
   }
 
@@ -137,34 +136,30 @@ export async function buildTicketHTML(venta: Venta, detalles: VentaDetalle[]): P
     <div class="wrap section-spacing">
       ${logoTag}
       <div class="center bold">${empresa.nombre_empresa || ''}</div>
-      <div class="center small">${empresa.descripcion_empresa || ''}</div>
       <div class="center small">${empresa.direccion_empresa || ''}${empresa.ciudad_empresa ? ' - ' + empresa.ciudad_empresa : ''}</div>
-      <div class="center small">${empresa.telefono_empresa || ''}${empresa.email_empresa ? ' - ' + empresa.email_empresa : ''}</div>
+      <div class="center small">${empresa.telefono_empresa || ''}</div>
       <div class="center small bold mt">${tipoComprobante === 'factura' ? 'FACTURA' : 'RECIBO'}</div>
-      ${encabezado ? `<div class="center mt">${encabezado}</div>` : ''}
     </div>
     <div class="hr"></div>
     <div class="wrap section-spacing">
       <div>Venta: <span class="bold">${venta.numero_venta}</span></div>
-      <div>Fecha: ${new Date(venta.fecha_venta).toLocaleString()}</div>
+      <div>Fecha: ${new Date(venta.fecha_venta).toLocaleDateString()}</div>
       <div>Cliente: ${venta.cliente_nombre || 'Cliente general'}</div>
     </div>
     <div class="hr"></div>
   `;
 
-  // Detalle de productos
+  // Detalle de productos optimizado
   const lines = detalles.map(d => {
     const totalLinea = d.subtotal;
     return `
       <div class="product-item">
-        <div class="product-code">Cod.: ${d.producto_id || 'N/A'}</div>
         <div class="product-name">${d.producto_nombre}</div>
         <div class="product-details">
           <span class="quantity">${d.cantidad} X</span>
           <span class="unit-price">${fmtMoney(d.precio_unitario)}</span>
           <span class="line-total">${fmtMoney(totalLinea)}</span>
         </div>
-        <div class="product-separator">.....................................</div>
       </div>
     `;
   }).join('');
@@ -182,12 +177,12 @@ export async function buildTicketHTML(venta: Venta, detalles: VentaDetalle[]): P
     <div class="hr"></div>
   `;
 
-  // Totales
+  // Totales optimizados
   const totales = `
     <div class="wrap section-spacing">
       <table>
         <tbody>
-          <tr class="product-line"><td class="right bold">SUBTOTAL</td><td class="right">${fmtMoney(venta.subtotal)}</td></tr>
+          ${venta.descuento > 0 ? `<tr class="product-line"><td class="right bold">SUBTOTAL</td><td class="right">${fmtMoney(venta.subtotal)}</td></tr>` : ''}
           ${venta.descuento > 0 ? `<tr class="product-line"><td class="right bold">DESCUENTO</td><td class="right">-${fmtMoney(venta.descuento)}</td></tr>` : ''}
           ${mostrarImpuestos ? `<tr class="product-line"><td class="right bold">IMPUESTOS</td><td class="right">${fmtMoney(venta.impuestos)}</td></tr>` : ''}
           <tr class="product-line"><td class="right bold">TOTAL</td><td class="right bold">${fmtMoney(venta.total)}</td></tr>

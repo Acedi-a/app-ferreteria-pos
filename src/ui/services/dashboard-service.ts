@@ -1,4 +1,3 @@
-import { getBoliviaISOString } from '../lib/utils';
 import CajasService from './cajas-service';
 
 export interface DashboardStats {

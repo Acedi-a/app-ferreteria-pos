@@ -199,7 +199,6 @@ export default function MovementList({ items, onUpdateItem, onRemoveItem, tipo }
               <div className="col-span-1 text-center">
                 <Button
                   variant="ghost"
-                  size="sm"
                   onClick={() => onRemoveItem(item.id)}
                   className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                 >

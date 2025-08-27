@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode, useCallback, useRef } from 'react';
 import { CajasService, type Caja } from '../services/cajas-service';
 
 interface CajaContextType {

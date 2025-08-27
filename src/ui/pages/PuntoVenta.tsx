@@ -12,6 +12,7 @@ import { productosService } from "../services/productos-service";
 import { MovimientosService } from "../services/movimientos-service";
 import ProductSearch from "../components/punto-venta/ProductSearch";
 import { getBoliviaDate, getBoliviaISOString } from "../lib/utils";
+import CajasService from "../services/cajas-service";
 
 /* ---------- tipos ---------- */
 interface ProductoVenta {
@@ -517,12 +518,20 @@ export default function PuntoVenta() {
       const ahora = getBoliviaDate();
       const num = `P-${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}${String(ahora.getDate()).padStart(2, '0')}-${String(ahora.getHours()).padStart(2, '0')}${String(ahora.getMinutes()).padStart(2, '0')}${String(ahora.getSeconds()).padStart(2, '0')}`;
 
+      // Obtener caja activa
+      const cajaActiva = await CajasService.getCajaActiva();
+      if (!cajaActiva) {
+        toast({ title: "Error", description: "No hay caja activa. Abra una caja antes de imprimir.", variant: "destructive" });
+        return;
+      }
+
       const venta: VentaModel = {
         id: 0,
         numero_venta: num,
         cliente_id: clienteSeleccionado?.id,
         cliente_nombre: clienteSeleccionado?.nombre || nombreClientePersonalizado || 'Cliente general',
         almacen_id: 1,
+        caja_id: cajaActiva.id,
         subtotal,
         descuento,
         impuestos: 0,

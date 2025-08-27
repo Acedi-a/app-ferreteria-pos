@@ -19,6 +19,7 @@ export interface Venta {
   cliente_id?: number;
   cliente_nombre?: string;
   almacen_id: number;
+  caja_id: number;
   subtotal: number;
   descuento: number;
   impuestos: number;

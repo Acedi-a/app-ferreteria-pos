@@ -1,5 +1,13 @@
 import { getBoliviaISOString } from '../lib/utils';
 
+export interface PaginatedResult<T> {
+  data: T[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
 export interface Producto {
   id?: number;
   codigo_barras?: string;
@@ -304,6 +312,85 @@ class ProductosService {
       WHERE p.codigo_interno = ? OR p.codigo_barras = ?
     `, [codigo, codigo]);
     return result || null;
+  }
+
+  async obtenerProductosPaginados(
+    page: number = 1,
+    pageSize: number = 25,
+    searchTerm: string = '',
+    categoryId?: number
+  ): Promise<PaginatedResult<Producto>> {
+    this.verificarElectronAPI();
+    const includeMarca = await this.hasMarcaColumn();
+    
+    // Construir condiciones WHERE
+    const conditions = ['p.activo = 1'];
+    const params: any[] = [];
+    
+    if (searchTerm) {
+      const searchCondition = `(
+        p.nombre LIKE ? OR 
+        p.codigo_interno LIKE ? OR 
+        p.codigo_barras LIKE ? OR
+        p.descripcion LIKE ?` + (includeMarca ? ` OR p.marca LIKE ?` : ``) + ` OR
+        c.nombre LIKE ?
+      )`;
+      conditions.push(searchCondition);
+      const searchParam = `%${searchTerm}%`;
+      if (includeMarca) {
+        params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
+      } else {
+        params.push(searchParam, searchParam, searchParam, searchParam, searchParam);
+      }
+    }
+    
+    if (categoryId) {
+      conditions.push('p.categoria_id = ?');
+      params.push(categoryId);
+    }
+    
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    
+    // Consulta para contar total de elementos
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM productos p
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      ${whereClause}
+    `;
+    
+    const countResult = await window.electronAPI.db.get(countQuery, params);
+    const totalItems = countResult?.total || 0;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    
+    // Consulta para obtener los datos paginados
+    const offset = (page - 1) * pageSize;
+    const dataQuery = `
+      SELECT 
+        p.*,
+        ia.stock_actual,
+        c.nombre as categoria_nombre,
+        tu.nombre as tipo_unidad_nombre,
+        tu.abreviacion as tipo_unidad_abreviacion
+      FROM productos p
+      LEFT JOIN inventario_actual ia ON p.id = ia.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
+      ${whereClause}
+      ORDER BY p.nombre ASC
+      LIMIT ? OFFSET ?
+    `;
+    
+    const dataParams = [...params, pageSize, offset];
+    const data = await window.electronAPI.db.query(dataQuery, dataParams);
+    
+    return {
+      data: data || [],
+      totalItems,
+      totalPages,
+      currentPage: page,
+      pageSize
+    };
   }
 
   async obtenerEstadisticas(): Promise<ProductoStats> {
