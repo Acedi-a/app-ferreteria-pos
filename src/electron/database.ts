@@ -1,13 +1,11 @@
-import Database = require('better-sqlite3');
+import Database from 'better-sqlite3';
 import path from 'path';
 import { app } from 'electron';
 import fs from 'fs';
 import { promises as fsp } from 'fs';
 
-type DatabaseInstance = ReturnType<typeof Database>;
-
 export class DatabaseService {
-  private db: DatabaseInstance | null = null;
+  private db: Database.Database | null = null;
   private dbPath!: string;
 
   constructor() {
@@ -34,13 +32,17 @@ export class DatabaseService {
     }
   }
 
-  private reopen() {
+  private async reopen() {
     if (this.db) {
       try { this.db.close(); } catch {}
     }
-    this.db = new Database(this.dbPath);
-    this.ensureSchema();
-    this.migrate();
+    try {
+      this.db = new Database(this.dbPath);
+      this.ensureSchema();
+      this.migrate();
+    } catch (err) {
+      throw err;
+    }
   }
 
   private exec(sql: string): void {
@@ -386,12 +388,13 @@ SELECT
     SELECT SUM(monto) FROM caja_transacciones ct 
     WHERE ct.caja_id = c.id AND ct.tipo = 'ajuste'
   ), 0) AS total_ajustes,
-  -- Ventas por método de pago desde venta_pagos
+  -- Ventas por método de pago desde venta_pagos (excluyendo canceladas y por caja)
   COALESCE((
     SELECT SUM(vp.monto) FROM venta_pagos vp
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.estado != 'cancelada'
     AND v.caja_id = c.id
     AND vp.metodo_pago = 'efectivo'
   ), 0) AS ventas_efectivo,
@@ -400,6 +403,7 @@ SELECT
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.estado != 'cancelada'
     AND v.caja_id = c.id
     AND vp.metodo_pago = 'tarjeta'
   ), 0) AS ventas_tarjeta,
@@ -408,6 +412,7 @@ SELECT
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.estado != 'cancelada'
     AND v.caja_id = c.id
     AND vp.metodo_pago = 'transferencia'
   ), 0) AS ventas_transferencia,
@@ -416,16 +421,17 @@ SELECT
     INNER JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
+    AND v.estado != 'cancelada'
     AND v.caja_id = c.id
     AND vp.metodo_pago = 'mixto'
   ), 0) AS ventas_mixto,
-  -- Total de ventas
+  -- Total de ventas (por caja)
   COALESCE((
     SELECT SUM(v.total) FROM ventas v
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
-    AND v.caja_id = c.id
     AND v.estado != 'cancelada'
+    AND v.caja_id = c.id
   ), 0) AS total_ventas,
   -- Cobros de cuentas por cobrar en efectivo
   COALESCE((
@@ -447,14 +453,18 @@ SELECT
     WHERE pp.fecha_pago >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR pp.fecha_pago <= c.fecha_cierre)
   ), 0) AS total_pagos_proveedores,
-  -- Saldo final calculado: monto inicial + solo ingresos (ventas)
+  -- Saldo final calculado: monto inicial + ingresos + ajustes - solo ventas canceladas
   c.monto_inicial + 
   COALESCE((
-    SELECT SUM(monto)
-    FROM caja_transacciones ct 
-    WHERE ct.caja_id = c.id AND ct.tipo = 'ingreso'
+    SELECT SUM(CASE 
+      WHEN ct.tipo = 'ingreso' THEN ct.monto
+      WHEN ct.tipo = 'ajuste' THEN ct.monto
+      -- Restar solo transacciones de ventas canceladas
+      WHEN ct.tipo = 'egreso' AND ct.referencia LIKE 'cancelacion_venta_%' THEN -ct.monto
+      ELSE 0 END)
+    FROM caja_transacciones ct WHERE ct.caja_id = c.id
   ), 0) AS saldo_final_calculado,
-  -- Ganancia/Pérdida: diferencia entre precio de venta y costo de productos vendidos
+  -- Ganancia/Pérdida calculada: (precio_unitario - costo_unitario) * cantidad
   COALESCE((
     SELECT SUM((vd.precio_unitario - COALESCE(p.costo_unitario, 0)) * vd.cantidad)
     FROM venta_detalles vd
@@ -462,8 +472,8 @@ SELECT
     INNER JOIN productos p ON p.id = vd.producto_id
     WHERE v.fecha_venta >= c.fecha_apertura 
     AND (c.fecha_cierre IS NULL OR v.fecha_venta <= c.fecha_cierre)
-    AND v.caja_id = c.id
     AND v.estado != 'cancelada'
+    AND v.caja_id = c.id
   ), 0) AS ganancia_perdida
 FROM cajas c;
 
@@ -553,7 +563,7 @@ ORDER BY fecha DESC, vp.metodo_pago;
       ['ultimo_backup', '', 'Fecha del último respaldo']
     ];
     for (const [clave, valor, descripcion] of defaults) {
-      this.run(
+      await this.run(
         `INSERT OR IGNORE INTO configuracion (clave, valor, descripcion, fecha_modificacion) VALUES (?, ?, ?, datetime('now'))`,
         [clave, valor, descripcion]
       );
@@ -814,13 +824,9 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
 
   // Backup: cierra, copia y reabre
   async backupTo(destPath: string, triggeredBy: 'manual' | 'auto' = 'manual'): Promise<void> {
-    await new Promise<void>((resolve) => {
-      if (this.db) {
-        try { this.db.close(); resolve(); } catch { resolve(); }
-      } else {
-        resolve();
-      }
-    });
+    if (this.db) {
+      try { this.db.close(); } catch { /* ignore */ }
+    }
     await fsp.copyFile(this.dbPath, destPath);
     // Reabrir y luego registrar el backup
     this.reopen();
@@ -837,13 +843,9 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
 
   // Restore: cierra, reemplaza y reabre
   async restoreFrom(sourcePath: string): Promise<void> {
-    await new Promise<void>((resolve) => {
-      if (this.db) {
-        try { this.db.close(); resolve(); } catch { resolve(); }
-      } else {
-        resolve();
-      }
-    });
+    if (this.db) {
+      try { this.db.close(); } catch { /* ignore */ }
+    }
     await fsp.copyFile(sourcePath, this.dbPath);
     // Reabrir y luego registrar el restore en la BD restaurada
     this.reopen();
@@ -886,7 +888,7 @@ LEFT JOIN tipos_unidad tu ON tu.id = p.tipo_unidad_id;
       throw new Error('Database not initialized');
     }
     const stmt = this.db.prepare(sql);
-    return stmt.get(params) as T;
+    return stmt.get(params) as T | undefined;
   }
 
   close() {

@@ -24,6 +24,7 @@ export function InventoryTable({ items, onAdjust }: InventoryTableProps) {
           <TableHead>Precio Venta</TableHead>
           <TableHead>Costo Unit.</TableHead>
           <TableHead>Valor Total</TableHead>
+          <TableHead>Ganancia Total</TableHead>
           <TableHead>Estado</TableHead>
           <TableHead>Acciones</TableHead>
         </TableRow>
@@ -31,6 +32,7 @@ export function InventoryTable({ items, onAdjust }: InventoryTableProps) {
       <TableBody>
         {items.map((item) => {
           const stockStatus = item.stock_actual <= (item.stock_minimo ?? 0) ? "low" : "normal";
+          const gananciaTotal = ((item.precio_venta ?? 0) - (item.costo_unitario_ultimo ?? 0)) * (item.stock_actual ?? 0);
           return (
             <TableRow key={item.id}>
               <TableCell>
@@ -68,6 +70,9 @@ export function InventoryTable({ items, onAdjust }: InventoryTableProps) {
                 Bs {(item.costo_unitario_ultimo ?? 0).toFixed(2)}
               </TableCell>
               <TableCell className="font-medium">Bs {(item.valor_total ?? 0).toFixed(2)}</TableCell>
+              <TableCell className={`font-medium ${gananciaTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                Bs {gananciaTotal.toFixed(2)}
+              </TableCell>
               <TableCell>
                 <Badge variant={stockStatus === "low" ? "destructive" : "success"}>
                   {stockStatus === "low" ? "Stock Bajo" : "Normal"}

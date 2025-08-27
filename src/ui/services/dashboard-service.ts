@@ -1,4 +1,3 @@
-import { getBoliviaISOString } from '../lib/utils';
 import CajasService from './cajas-service';
 
 export interface DashboardStats {
@@ -6,6 +5,7 @@ export interface DashboardStats {
   productosEnStock: number;
   clientesActivos: number;
   cuentasPorCobrarTotal: number;
+  gananciaPerdida: number;
 }
 
 export interface VentaReciente {
@@ -30,21 +30,31 @@ export class DashboardService {
     // Obtener caja activa
     const cajaActiva = await CajasService.getCajaActiva();
     
-    const fechaHoy = getBoliviaISOString().split('T')[0];
-    let ventasHoy;
+    let ventasTotalesCaja;
+    let gananciaPerdidaCaja;
     
     if (cajaActiva) {
-      // Filtrar ventas por caja activa
-      ventasHoy = await window.electronAPI.db.get(`
+      // Obtener ventas totales de la caja activa
+      ventasTotalesCaja = await window.electronAPI.db.get(`
         SELECT COALESCE(SUM(v.total), 0) as total
         FROM ventas v
-        WHERE DATE(v.fecha_venta) = DATE(?)
-        AND v.estado != 'cancelada'
+        WHERE v.estado != 'cancelada'
         AND v.caja_id = ?
-      `, [fechaHoy, cajaActiva.id]);
+      `, [cajaActiva.id]);
+      
+      // Calcular ganancia/pérdida de la caja activa
+      gananciaPerdidaCaja = await window.electronAPI.db.get(`
+        SELECT 
+          COALESCE(SUM((vd.precio_unitario - COALESCE(p.costo_unitario, 0)) * vd.cantidad), 0) AS ganancia_total
+        FROM venta_detalles vd
+        INNER JOIN ventas v ON v.id = vd.venta_id
+        INNER JOIN productos p ON p.id = vd.producto_id
+        WHERE v.estado != 'cancelada' AND v.caja_id = ?
+      `, [cajaActiva.id]);
     } else {
       // Si no hay caja activa, mostrar 0
-      ventasHoy = { total: 0 };
+      ventasTotalesCaja = { total: 0 };
+      gananciaPerdidaCaja = { ganancia_total: 0 };
     }
 
     const productosEnStock = await window.electronAPI.db.get(`
@@ -66,10 +76,11 @@ export class DashboardService {
     `);
 
     return {
-      ventasHoyTotal: ventasHoy?.total || 0,
+      ventasHoyTotal: ventasTotalesCaja?.total || 0,
       productosEnStock: productosEnStock?.total || 0,
       clientesActivos: clientesActivos?.total || 0,
       cuentasPorCobrarTotal: cxc?.total || 0,
+      gananciaPerdida: gananciaPerdidaCaja?.ganancia_total || 0,
     };
   }
 

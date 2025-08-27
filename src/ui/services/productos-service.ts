@@ -1,5 +1,13 @@
 import { getBoliviaISOString } from '../lib/utils';
 
+export interface PaginatedResult<T> {
+  data: T[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
 export interface Producto {
   id?: number;
   codigo_barras?: string;
@@ -29,6 +37,7 @@ export interface ProductoStats {
   stockBajo: number;
   valorInventario: number;
   productosActivos: number;
+  gananciaTotal: number;
 }
 
 export interface Categoria {
@@ -44,14 +53,6 @@ export interface TipoUnidad {
   abreviacion: string;
   descripcion?: string;
   activo: boolean;
-}
-
-export interface PaginatedResult<T> {
-  data: T[];
-  totalItems: number;
-  totalPages: number;
-  currentPage: number;
-  pageSize: number;
 }
 
 class ProductosService {
@@ -81,135 +82,6 @@ class ProductosService {
       SELECT 
         p.*,
         ia.stock_actual,
-        ia.costo_unitario_ultimo as costo_unitario,
-        c.nombre as categoria_nombre,
-        tu.nombre as tipo_unidad_nombre,
-        tu.abreviacion as tipo_unidad_abreviacion
-      FROM productos p
-      INNER JOIN inventario_actual ia ON p.id = ia.id
-      LEFT JOIN categorias c ON p.categoria_id = c.id
-      LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
-      ORDER BY p.nombre ASC
-    `);
-    return result || [];
-  }
-
-  async obtenerProductosPaginados(
-    page: number = 1, 
-    pageSize: number = 25, 
-    searchTerm: string = '', 
-    categoriaId?: number
-  ): Promise<PaginatedResult<Producto>> {
-    this.verificarElectronAPI();
-    
-    const offset = (page - 1) * pageSize;
-    
-    // Construir condiciones WHERE
-    let whereConditions = ['p.activo = 1'];
-    let params: any[] = [];
-    
-    if (searchTerm.trim()) {
-      const terminoLimpio = searchTerm.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
-      
-      // Si el término de búsqueda parece ser un código de barras (solo números y/o guiones)
-      // hacer búsqueda exacta, de lo contrario usar búsqueda parcial
-      const isBarcode = /^[0-9\-]+$/.test(terminoLimpio);
-      
-      if (isBarcode) {
-        // Búsqueda exacta para código de barras
-        whereConditions.push('p.codigo_barras = ?');
-        params.push(terminoLimpio);
-      } else {
-        // Búsqueda parcial para texto normal
-        whereConditions.push('(p.nombre LIKE ? OR p.codigo_interno LIKE ? OR p.codigo_barras LIKE ?)');
-        const searchPattern = `%${terminoLimpio}%`;
-        params.push(searchPattern, searchPattern, searchPattern);
-      }
-    }
-    
-    if (categoriaId) {
-      whereConditions.push('p.categoria_id = ?');
-      params.push(categoriaId);
-    }
-    
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-    
-    // Consulta para obtener el total de elementos
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM productos p
-      ${whereClause}
-    `;
-    
-    const countResult = await window.electronAPI.db.query(countQuery, params);
-    const totalItems = countResult[0]?.total || 0;
-    const totalPages = Math.ceil(totalItems / pageSize);
-    
-    // Consulta para obtener los datos paginados
-    const dataQuery = `
-      SELECT 
-        p.*,
-        ia.stock_actual,
-        ia.costo_unitario_ultimo as costo_unitario,
-        c.nombre as categoria_nombre,
-        tu.nombre as tipo_unidad_nombre,
-        tu.abreviacion as tipo_unidad_abreviacion
-      FROM productos p
-      INNER JOIN inventario_actual ia ON p.id = ia.id
-      LEFT JOIN categorias c ON p.categoria_id = c.id
-      LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
-      ${whereClause}
-      ORDER BY p.nombre ASC
-      LIMIT ? OFFSET ?
-    `;
-    
-    const dataParams = [...params, pageSize, offset];
-    const data = await window.electronAPI.db.query(dataQuery, dataParams);
-    
-    return {
-      data: data || [],
-      totalItems,
-      totalPages,
-      currentPage: page,
-      pageSize
-    };
-  }
-
-  async buscarProductos(termino: string): Promise<Producto[]> {
-    this.verificarElectronAPI();
-    const includeMarca = await this.hasMarcaColumn();
-    
-    // Limpiar el término de búsqueda de caracteres especiales, espacios y caracteres de control
-     const terminoLimpio = termino.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
-    
-    // Detectar si es un código de barras (solo números y/o guiones)
-    const isBarcode = /^[0-9\-]+$/.test(terminoLimpio);
-    
-    let whereClause;
-    let params;
-    
-    if (isBarcode) {
-      // Búsqueda exacta para código de barras
-      whereClause = `p.codigo_barras = ?`;
-      params = [terminoLimpio];
-    } else {
-      // Búsqueda parcial para texto normal
-      whereClause = `
-        (p.nombre LIKE ? OR 
-        p.codigo_interno LIKE ? OR 
-        p.codigo_barras LIKE ? OR
-        p.descripcion LIKE ?` + (includeMarca ? ` OR p.marca LIKE ?` : ``) + ` OR
-        c.nombre LIKE ?)`;
-      params = includeMarca
-        ? [`%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`]
-        : [`%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`, `%${terminoLimpio}%`];
-    }
-    
-    const baseSql = `
-      SELECT 
-        p.*,
-        ia.stock_actual,
-        ia.costo_unitario_ultimo as costo_unitario,
         c.nombre as categoria_nombre,
         tu.nombre as tipo_unidad_nombre,
         tu.abreviacion as tipo_unidad_abreviacion
@@ -217,9 +89,35 @@ class ProductosService {
       LEFT JOIN inventario_actual ia ON p.id = ia.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
-      WHERE ${whereClause}
+      ORDER BY p.nombre ASC
+    `);
+    return result || [];
+  }
+
+  async buscarProductos(termino: string): Promise<Producto[]> {
+    this.verificarElectronAPI();
+    const includeMarca = await this.hasMarcaColumn();
+    const baseSql = `
+      SELECT 
+        p.*,
+        ia.stock_actual,
+        c.nombre as categoria_nombre,
+        tu.nombre as tipo_unidad_nombre,
+        tu.abreviacion as tipo_unidad_abreviacion
+      FROM productos p
+      LEFT JOIN inventario_actual ia ON p.id = ia.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
+      WHERE 
+        (p.nombre LIKE ? OR 
+        p.codigo_interno LIKE ? OR 
+        p.codigo_barras LIKE ? OR
+        p.descripcion LIKE ?` + (includeMarca ? ` OR p.marca LIKE ?` : ``) + ` OR
+        c.nombre LIKE ?)
       ORDER BY p.nombre ASC`;
-      
+    const params = includeMarca
+      ? [`%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`]
+      : [`%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`, `%${termino}%`];
     const result = await window.electronAPI.db.query(baseSql, params);
     return result || [];
   }
@@ -402,9 +300,6 @@ class ProductosService {
   }
 
   async obtenerProductoPorCodigo(codigo: string): Promise<Producto | null> {
-    // Limpiar el código de caracteres especiales, espacios y caracteres de control
-    const codigoLimpio = codigo.trim().replace(/[\r\n\t\f\v\u0000-\u001F\u007F-\u009F]/g, '');
-    
     const result = await window.electronAPI.db.get(`
       SELECT 
         p.*,
@@ -415,8 +310,87 @@ class ProductosService {
       LEFT JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
       WHERE p.codigo_interno = ? OR p.codigo_barras = ?
-    `, [codigoLimpio, codigoLimpio]);
+    `, [codigo, codigo]);
     return result || null;
+  }
+
+  async obtenerProductosPaginados(
+    page: number = 1,
+    pageSize: number = 25,
+    searchTerm: string = '',
+    categoryId?: number
+  ): Promise<PaginatedResult<Producto>> {
+    this.verificarElectronAPI();
+    const includeMarca = await this.hasMarcaColumn();
+    
+    // Construir condiciones WHERE
+    const conditions = ['p.activo = 1'];
+    const params: any[] = [];
+    
+    if (searchTerm) {
+      const searchCondition = `(
+        p.nombre LIKE ? OR 
+        p.codigo_interno LIKE ? OR 
+        p.codigo_barras LIKE ? OR
+        p.descripcion LIKE ?` + (includeMarca ? ` OR p.marca LIKE ?` : ``) + ` OR
+        c.nombre LIKE ?
+      )`;
+      conditions.push(searchCondition);
+      const searchParam = `%${searchTerm}%`;
+      if (includeMarca) {
+        params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
+      } else {
+        params.push(searchParam, searchParam, searchParam, searchParam, searchParam);
+      }
+    }
+    
+    if (categoryId) {
+      conditions.push('p.categoria_id = ?');
+      params.push(categoryId);
+    }
+    
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    
+    // Consulta para contar total de elementos
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM productos p
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      ${whereClause}
+    `;
+    
+    const countResult = await window.electronAPI.db.get(countQuery, params);
+    const totalItems = countResult?.total || 0;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    
+    // Consulta para obtener los datos paginados
+    const offset = (page - 1) * pageSize;
+    const dataQuery = `
+      SELECT 
+        p.*,
+        ia.stock_actual,
+        c.nombre as categoria_nombre,
+        tu.nombre as tipo_unidad_nombre,
+        tu.abreviacion as tipo_unidad_abreviacion
+      FROM productos p
+      LEFT JOIN inventario_actual ia ON p.id = ia.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      LEFT JOIN tipos_unidad tu ON p.tipo_unidad_id = tu.id
+      ${whereClause}
+      ORDER BY p.nombre ASC
+      LIMIT ? OFFSET ?
+    `;
+    
+    const dataParams = [...params, pageSize, offset];
+    const data = await window.electronAPI.db.query(dataQuery, dataParams);
+    
+    return {
+      data: data || [],
+      totalItems,
+      totalPages,
+      currentPage: page,
+      pageSize
+    };
   }
 
   async obtenerEstadisticas(): Promise<ProductoStats> {
@@ -426,7 +400,8 @@ class ProductosService {
         COUNT(*) as totalProductos,
         COUNT(CASE WHEN ia.stock_actual <= p.stock_minimo THEN 1 END) as stockBajo,
         COALESCE(SUM(ia.valor_total), 0) as valorInventario,
-        COUNT(CASE WHEN p.activo = 1 THEN 1 END) as productosActivos
+        COUNT(CASE WHEN p.activo = 1 THEN 1 END) as productosActivos,
+        COALESCE(SUM(CASE WHEN ia.stock_actual > 0 THEN (p.precio_venta - COALESCE(p.costo_unitario, 0)) * ia.stock_actual ELSE 0 END), 0) as gananciaTotal
       FROM inventario_actual ia
       JOIN productos p ON p.id = ia.id
     `);
@@ -436,6 +411,7 @@ class ProductosService {
       stockBajo: result?.stockBajo || 0,
       valorInventario: result?.valorInventario || 0,
       productosActivos: result?.productosActivos || 0,
+      gananciaTotal: result?.gananciaTotal || 0,
     };
   }
 

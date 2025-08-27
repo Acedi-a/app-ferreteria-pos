@@ -31,28 +31,29 @@ export default function ProductSearch({ value, onChange, onSelect, onEnter, onQu
     // Detectar si es un código de barras (solo números y/o guiones)
     const isBarcode = /^[0-9\-]+$/.test(term);
     
-    // Para códigos de barras, esperar más tiempo para asegurar que el código esté completo
-    const delay = isBarcode ? 300 : 200;
+    // Para códigos de barras, esperar un poco más, pero mantener búsqueda reactiva
+    const delay = isBarcode ? 150 : 100;
     
     const id = setTimeout(async () => {
       try {
+        let foundResults: any[] = [];
+        
         // Si es código de barras, intentar búsqueda exacta primero
         if (isBarcode) {
           const exactMatch = await PuntoVentaService.obtenerProductoPorCodigo(term);
           if (exactMatch) {
-            setResults([exactMatch]);
-            setOpen(true);
-            setHighlight(0);
-            setLoading(false);
-            return;
+            foundResults = [exactMatch];
           }
         }
         
-        // Si no es código de barras o no se encontró coincidencia exacta
-        const list = await PuntoVentaService.buscarProductos(term, 12);
-        setResults(list);
-        setOpen(list.length > 0);
-        setShowNotFound(list.length === 0 && term.length > 0);
+        // Si no se encontró coincidencia exacta, buscar productos similares
+        if (foundResults.length === 0) {
+          foundResults = await PuntoVentaService.buscarProductos(term, 12);
+        }
+        
+        setResults(foundResults);
+        setOpen(foundResults.length > 0);
+        setShowNotFound(foundResults.length === 0 && term.length > 0);
         setHighlight(0);
       } catch {}
       setLoading(false);

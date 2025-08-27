@@ -9,7 +9,8 @@ import { InventoryStats } from "../components/inventario/InventoryStats";
 import { InventoryFilters } from "../components/inventario/InventoryFilters";
 import { InventoryTable } from "../components/inventario/InventoryTable";
 import { MovementsTable } from "../components/inventario/MovementsTable";
-import AdjustStockModal, { type Proveedor } from "../components/inventario/AdjustStockModal";
+import AdjustStockModal from "../components/inventario/AdjustStockModal";
+import type { Proveedor } from "../services/proveedores-service";
 import MovementModal from "../components/inventario/MovementModal";
 
 export default function Inventario() {
@@ -81,11 +82,7 @@ export default function Inventario() {
   const cargarProveedores = async () => {
     try {
       const items = await ProveedoresService.obtenerTodos();
-      setProveedores(items.filter(p => p.activo).map((p: any) => ({
-        id: p.id,
-        codigo: p.codigo,
-        nombre: p.nombre
-      })));
+      setProveedores(items.filter(p => p.activo));
     } catch (error) {
       console.error('Error cargando proveedores:', error);
       setProveedores([]);
@@ -121,6 +118,10 @@ export default function Inventario() {
     stockBajo: inventario.filter((item) => (item.stock_actual || 0) <= (item.stock_minimo ?? 0)).length,
     valorTotal: inventario.reduce((sum, item) => sum + ((item.valor_total ?? ((item.costo_unitario_ultimo || 0) * (item.stock_actual || 0))) || 0), 0),
     totalComprasRecientes,
+    gananciaTotal: inventario.reduce((sum, item) => {
+      const ganancia = (item.precio_venta - (item.costo_unitario_ultimo || 0)) * (item.stock_actual || 0);
+      return sum + ganancia;
+    }, 0),
   };
 
   const handlePageChange = (newPage: number) => {
@@ -246,6 +247,7 @@ export default function Inventario() {
         stockBajo={stats.stockBajo}
         valorTotal={stats.valorTotal}
         totalComprasRecientes={stats.totalComprasRecientes}
+        gananciaTotal={stats.gananciaTotal}
       />
 
       {/* Filters */}

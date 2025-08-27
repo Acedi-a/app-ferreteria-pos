@@ -96,6 +96,7 @@ export default function Dashboard() {
           productosEnStock={stats.productosEnStock}
           clientesActivos={stats.clientesActivos}
           cuentasPorCobrarTotal={stats.cuentasPorCobrarTotal}
+          gananciaPerdida={stats.gananciaPerdida}
         />
       )}
 

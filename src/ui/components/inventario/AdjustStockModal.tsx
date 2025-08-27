@@ -4,12 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { X } from "lucide-react";
 import type { InventarioItem, TipoMovimiento } from "../../services/inventario-service";
-
-export interface Proveedor {
-  id: number;
-  codigo: string;
-  nombre: string;
-}
+import type { Proveedor } from "../../services/proveedores-service";
 
 export interface AdjustStockModalProps {
   open: boolean;
@@ -134,7 +129,7 @@ function AdjustStockModal({
                     <option value="">Seleccionar proveedor...</option>
                     {proveedores.map(proveedor => (
                       <option key={proveedor.id} value={proveedor.id}>
-                        {proveedor.codigo} - {proveedor.nombre}
+                        {proveedor.nombre}
                       </option>
                     ))}
                   </select>

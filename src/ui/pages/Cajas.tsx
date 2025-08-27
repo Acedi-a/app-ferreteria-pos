@@ -266,7 +266,7 @@ export default function Cajas() {
         color: 'text-green-600'
       },
       {
-        titulo: 'Ventas del Día',
+        titulo: 'Venta Total de Caja',
         valor: resumenActual.total_ventas || 0,
         icono: <ShoppingCart className="h-5 w-5" />,
         color: 'text-blue-600',

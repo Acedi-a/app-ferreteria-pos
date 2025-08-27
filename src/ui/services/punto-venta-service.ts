@@ -179,7 +179,8 @@ export class PuntoVentaService {
       let params;
       
       if (isBarcode) {
-        // Búsqueda exacta por código de barras
+        // Búsqueda por código de barras (exacta) y código interno (parcial)
+        const like = `%${terminoLimpio}%`;
         query = `
           SELECT 
             p.id,
@@ -200,11 +201,11 @@ export class PuntoVentaService {
           FROM inventario_actual ia
           INNER JOIN productos p ON p.id = ia.id
           LEFT JOIN categorias c ON p.categoria_id = c.id
-          WHERE p.activo = 1 AND p.codigo_barras = ?
+          WHERE p.activo = 1 AND (p.codigo_barras = ? OR p.codigo_interno LIKE ?)
           ORDER BY p.nombre ASC
           LIMIT ?
         `;
-        params = [terminoLimpio, limit];
+        params = [terminoLimpio, like, limit];
       } else {
         // Búsqueda parcial por nombre, código interno y descripción
         const like = `%${terminoLimpio}%`;
